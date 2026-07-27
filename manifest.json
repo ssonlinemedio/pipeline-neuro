@@ -1,0 +1,113 @@
+{
+  "name": "Pipeline Lingüístico Neuro",
+  "short_name": "Pipeline Neuro",
+  "description": "Sistema de aprendizaje de idiomas con neurociencia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FA",
+  "theme_color": "#6C5CE7",
+  "orientation": "portrait",
+  "categories": ["education", "language", "productivity"],
+  "lang": "es",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/study.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "Pantalla de estudio"
+    },
+    {
+      "src": "screenshots/grammar.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "Mapa gramatical"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Estudiar",
+      "short_name": "Estudiar",
+      "description": "Ir a la pantalla de estudio",
+      "url": "/?action=study",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Gramática",
+      "short_name": "Gramática",
+      "description": "Ver mapa gramatical",
+      "url": "/?action=grammar",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Historias",
+      "short_name": "Historias",
+      "description": "Ver tus historias",
+      "url": "/?action=stories",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Vigía",
+      "short_name": "Vigía",
+      "description": "Consultar a Vigía IA",
+      "url": "/?action=vigia",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}

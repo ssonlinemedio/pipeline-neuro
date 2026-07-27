@@ -1,0 +1,18 @@
+project-root/
+├── index.html
+├── manifest.json
+├── service-worker.js
+├── css/
+│   ├── base.css         (Reset, variables, tipografía)
+│   ├── components.css   (Tarjetas, botones, inputs)
+│   ├── layouts.css      (Grids, contenedores, menú inferior)
+│   └── themes.css       (Colores y gradientes para las tarjetas)
+├── js/
+│   ├── app.js
+│   ├── database.js
+│   ├── vigia.js
+│   ├── centinela.js
+│   ├── pipeline.js
+│   ├── gramatica.js
+│   └── ui.js
+└── icons/               (Iconos para PWA y tarjetas)

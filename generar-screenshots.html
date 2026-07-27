@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Screenshots - Pipeline Neuro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F8F9FA;
+            padding: 40px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #6C5CE7; text-align: center; }
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .screenshot-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .screenshot-card canvas {
+            border-radius: 12px;
+            border: 1px solid #DFE6E9;
+            max-width: 100%;
+            height: auto;
+        }
+        .screenshot-card .label {
+            font-weight: 600;
+            margin-top: 12px;
+            color: #2D3436;
+            font-size: 16px;
+        }
+        .screenshot-card .filename {
+            font-size: 12px;
+            color: #B2BEC3;
+            margin-top: 4px;
+        }
+        .btn-download {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6C5CE7, #0984E3);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 10px 0;
+        }
+        .btn-download:hover { transform: scale(1.02); }
+        .instructions {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .status { text-align: center; padding: 12px; border-radius: 8px; margin: 10px 0; }
+        .status.success { background: #55EFC4; color: #00B894; }
+        .status.info { background: #74B9FF; color: #0984E3; }
+    </style>
+</head>
+<body>
+    <h1>📸 Generador de Screenshots</h1>
+    <p style="text-align:center;color:#636E72;">Pipeline Lingüístico Neuro v15.0</p>
+
+    <div id="status" class="status info">⏳ Generando screenshots...</div>
+
+    <div class="screenshot-grid" id="screenshotGrid"></div>
+
+    <button class="btn-download" onclick="descargarScreenshots()">
+        ⬇️ Descargar Screenshots (ZIP)
+    </button>
+
+    <div class="instructions">
+        <h3>📁 Instrucciones</h3>
+        <ol>
+            <li>Haz clic en <strong>"Descargar Screenshots"</strong></li>
+            <li>Extrae el ZIP en la carpeta <code>/screenshots/</code> de tu proyecto</li>
+            <li>Opcional: Reemplaza con capturas reales de tu app</li>
+        </ol>
+        <p style="margin-top:12px;font-size:13px;color:#636E72;">
+            💡 Las screenshots muestran el diseño de la app en modo móvil
+        </p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script>
+        const SCREENSHOTS = [
+            { 
+                name: 'study', 
+                label: 'Pantalla de Estudio',
+                filename: 'study.png',
+                desc: 'Tarjeta de viaje con frase y controles neuroadaptativos'
+            },
+            { 
+                name: 'grammar', 
+                label: 'Mapa Gramatical',
+                filename: 'grammar.png',
+                desc: 'Familias de palabras con niveles neuro'
+            }
+        ];
+
+        let screenshotDataUrls = {};
+
+        function dibujarScreenshot(tipo) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            // Fondo
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#F8F9FA');
+            grad.addColorStop(1, '#E8ECF0');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Borde del teléfono
+            ctx.strokeStyle = '#DFE6E9';
+            ctx.lineWidth = 20;
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+            // Esquina redondeada del teléfono
+            ctx.strokeStyle = 'rgba(108,92,231,0.1)';
+            ctx.lineWidth = 2;
+            
+            // Simular barra de estado
+            ctx.fillStyle = '#6C5CE7';
+            ctx.fillRect(0, 0, canvas.width, 80);
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Pipeline Neuro', canvas.width / 2, 42);
+
+            // Contenido según tipo
+            if (tipo === 'study') {
+                // Tarjeta de estudio
+                const cardX = 100;
+                const cardY = 180;
+                const cardW = canvas.width - 200;
+                const cardH = 600;
+
+                // Sombra de la tarjeta
+                ctx.shadowColor = 'rgba(0,0,0,0.08)';
+                ctx.shadowBlur = 30;
+                ctx.shadowOffsetY = 10;
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.roundRect(cardX, cardY, cardW, cardH, 30);
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+
+                // Badge
+                ctx.fillStyle = 'rgba(108,92,231,0.08)';
+                ctx.beginPath();
+                ctx.roundRect(cardX + 30, cardY + 30, 200, 40, 20);
+                ctx.fill();
+                ctx.fillStyle = '#6C5CE7';
+                ctx.font = '22px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧠 Fase 3: Consolidación', cardX + 50, cardY + 50);
+
+                // Hanzi
+                ctx.fillStyle = '#2D3436';
+                ctx.font = 'bold 56px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('你好世界', canvas.width / 2, cardY + 180);
+
+                // Pinyin
+                ctx.fillStyle = '#636E72';
+                ctx.font = '32px Arial';
+                ctx.fillText('Nǐ hǎo shìjiè', canvas.width / 2, cardY + 250);
+
+                // Traducción
+                ctx.fillStyle = '#6C5CE7';
+                ctx.font = 'bold 36px Arial';
+                ctx.fillText('Hola Mundo', canvas.width / 2, cardY + 340);
+
+                // Progreso
+                ctx.fillStyle = '#636E72';
+                ctx.font = '24px Arial';
+                ctx.fillText('RCN: 3.2 🟢 • Consolidación: 65%', canvas.width / 2, cardY + 430);
+
+                // Barra de consolidación
+                const barX = cardX + 50;
+                const barY = cardY + 470;
+                ctx.fillStyle = '#DFE6E9';
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, cardW - 100, 12, 6);
+                ctx.fill();
+                ctx.fillStyle = 'linear-gradient(90deg, #6C5CE7, #00CEC9)';
+                const gradBar = ctx.createLinearGradient(barX, 0, barX + cardW - 100, 0);
+                gradBar.addColorStop(0, '#6C5CE7');
+                gradBar.addColorStop(1, '#00CEC9');
+                ctx.fillStyle = gradBar;
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, (cardW - 100) * 0.65, 12, 6);
+                ctx.fill();
+
+                // Botones de acción
+                const btnY = cardY + cardH + 40;
+                const btnW = (cardW - 60) / 4;
+                const colores = ['#FF7675', '#FDCB6E', '#74B9FF', '#00B894'];
+                const iconos = ['✕', '?', '−', '✓'];
+                const labels = ['Fallo', 'Duda', 'Parcial', 'Correcto'];
+                
+                for (let i = 0; i < 4; i++) {
+                    const x = cardX + 30 + i * (btnW + 10);
+                    ctx.fillStyle = colores[i];
+                    ctx.beginPath();
+                    ctx.roundRect(x, btnY, btnW, 80, 16);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '28px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(iconos[i], x + btnW/2, btnY + 35);
+                    ctx.font = '18px Arial';
+                    ctx.fillText(labels[i], x + btnW/2, btnY + 65);
+                }
+
+                // Stats neuro en la parte inferior
+                const neuroY = canvas.height - 120;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.roundRect(60, neuroY, canvas.width - 120, 80, 20);
+                ctx.fill();
+                
+                ctx.fillStyle = '#636E72';
+                ctx.font = '18px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const stats = ['RCN: 3.2', 'RG: 45', '🧠 65%', 'Fase 3'];
+                for (let i = 0; i < stats.length; i++) {
+                    ctx.fillText(stats[i], 150 + i * 220, neuroY + 40);
+                }
+
+            } else if (tipo === 'grammar') {
+                // Título
+                ctx.fillStyle = '#2D3436';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText('📚 Mapa Gramatical', 80, 130);
+                
+                ctx.fillStyle = '#636E72';
+                ctx.font = '24px Arial';
+                ctx.fillText('Familias de palabras', 80, 185);
+
+                // Estadísticas
+                const statsY = 240;
+                const stats = [
+                    { label: 'Total', value: '156', color: '#6C5CE7' },
+                    { label: 'Familias', value: '24', color: '#00CEC9' },
+                    { label: 'Dominadas', value: '67', color: '#00B894' },
+                    { label: 'Eficiencia', value: '76%', color: '#74B9FF' }
+                ];
+                
+                for (let i = 0; i < stats.length; i++) {
+                    const x = 80 + i * 230;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.shadowColor = 'rgba(0,0,0,0.04)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetY = 4;
+                    ctx.beginPath();
+                    ctx.roundRect(x, statsY, 180, 100, 16);
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+                    
+                    ctx.fillStyle = stats[i].color;
+                    ctx.font = 'bold 36px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(stats[i].value, x + 90, statsY + 40);
+                    ctx.fillStyle = '#636E72';
+                    ctx.font = '18px Arial';
+                    ctx.fillText(stats[i].label, x + 90, statsY + 78);
+                }
+
+                // Familias
+                const familias = [
+                    { name: 'VERBOS', count: 34, score: 72, color: '#6C5CE7' },
+                    { name: 'SUSTANTIVOS', count: 28, score: 68, color: '#00B894' },
+                    { name: 'ADJETIVOS', count: 22, score: 55, color: '#FDCB6E' },
+                    { name: 'ADVERBIOS', count: 18, score: 48, color: '#74B9FF' },
+                    { name: 'PREPOSICIONES', count: 14, score: 42, color: '#FF7675' },
+                    { name: 'CONJUNCIONES', count: 10, score: 38, color: '#A29BFE' }
+                ];
+
+                let y = statsY + 140;
+                for (const f of familias) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.shadowColor = 'rgba(0,0,0,0.04)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetY = 4;
+                    ctx.beginPath();
+                    ctx.roundRect(80, y, canvas.width - 160, 80, 16);
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+
+                    // Color de familia
+                    ctx.fillStyle = f.color;
+                    ctx.beginPath();
+                    ctx.roundRect(80, y, 6, 80, 3);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#2D3436';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(f.name, 120, y + 30);
+                    
+                    ctx.fillStyle = '#636E72';
+                    ctx.font = '20px Arial';
+                    ctx.fillText(`${f.count} palabras`, 120, y + 58);
+
+                    // Barra de neuroScore
+                    const barX = 380;
+                    const barW = 300;
+                    ctx.fillStyle = '#DFE6E9';
+                    ctx.beginPath();
+                    ctx.roundRect(barX, y + 30, barW, 20, 10);
+                    ctx.fill();
+                    
+                    const gradBar = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+                    gradBar.addColorStop(0, f.color);
+                    gradBar.addColorStop(1, f.color + '88');
+                    ctx.fillStyle = gradBar;
+                    ctx.beginPath();
+                    ctx.roundRect(barX, y + 30, barW * (f.score / 100), 20, 10);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#636E72';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${f.score}%`, barX + barW + 20, y + 40);
+
+                    y += 100;
+                }
+            }
+
+            return canvas;
+        }
+
+        function generarScreenshots() {
+            const grid = document.getElementById('screenshotGrid');
+            grid.innerHTML = '';
+            screenshotDataUrls = {};
+
+            SCREENSHOTS.forEach(({ name, label, filename, desc }) => {
+                const canvas = dibujarScreenshot(name);
+                const dataUrl = canvas.toDataURL('image/png');
+                screenshotDataUrls[filename] = dataUrl;
+
+                const card = document.createElement('div');
+                card.className = 'screenshot-card';
+                card.innerHTML = `
+                    <canvas width="300" height="533" style="width:300px;height:533px;"></canvas>
+                    <div class="label">${label}</div>
+                    <div style="font-size:13px;color:#636E72;margin:4px 0;">${desc}</div>
+                    <div class="filename">${filename}</div>
+                    <button class="btn-download" style="margin-top:10px;padding:10px;font-size:14px;" onclick="descargarIndividual('${filename}')">
+                        ⬇️ Descargar
+                    </button>
+                `;
+                
+                const previewCanvas = card.querySelector('canvas');
+                const ctx = previewCanvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, 300, 533);
+                    ctx.drawImage(img, 0, 0, 300, 533);
+                };
+                img.src = dataUrl;
+
+                grid.appendChild(card);
+            });
+
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').textContent = '✅ Screenshots generadas correctamente';
+        }
+
+        function descargarIndividual(filename) {
+            const dataUrl = screenshotDataUrls[filename];
+            if (!dataUrl) return;
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            link.click();
+        }
+
+        function descargarScreenshots() {
+            const zip = new JSZip();
+            const folder = zip.folder('screenshots');
+            
+            for (const [filename, dataUrl] of Object.entries(screenshotDataUrls)) {
+                const byteString = atob(dataUrl.split(',')[1]);
+                const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
+                folder.file(filename, blob);
+            }
+
+            zip.generateAsync({ type: 'blob' })
+                .then(content => {
+                    saveAs(content, 'pipeline-screenshots.zip');
+                    document.getElementById('status').className = 'status success';
+                    document.getElementById('status').textContent = '✅ Screenshots descargadas correctamente';
+                })
+                .catch(err => {
+                    document.getElementById('status').className = 'status info';
+                    document.getElementById('status').textContent = '❌ Error: ' + err.message;
+                });
+        }
+
+        // Polyfill para roundRect
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+                const r = typeof radii === 'number' ? radii : (radii || 0);
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                return this;
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', generarScreenshots);
+    </script>
+</body>
+</html>

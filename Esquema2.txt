@@ -1,0 +1,14 @@
+js/
+├── core/
+│   ├── modoInverso.js      (NUEVO)
+│   └── gestorIdiomas.js    (NUEVO)
+├── database.js             (MODIFICADO)
+├── pipeline.js             (MODIFICADO)
+├── vigia.js                (MODIFICADO)
+├── app.js                  (MODIFICADO)
+└── ui/
+    ├── ui.core.js          (MODIFICADO)
+    ├── ui.study.js         (MODIFICADO)
+    ├── ui.chat.js          (MODIFICADO)
+    ├── ui.config.js        (MODIFICADO)
+    └── ui.temas.js         (MODIFICADO)

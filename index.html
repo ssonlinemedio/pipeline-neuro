@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pipeline Neuro v22.0 - Libro de Lectura</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Animaciones para el tutor */
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        #tutorPanel {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-light) var(--bg);
+        }
+        
+        #tutorPanel::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        #tutorPanel::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 2px;
+        }
+        
+        #tutorPanel::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 2px;
+        }
+
+        .tutor-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--primary)15;
+            color: var(--primary);
+            border: 1px solid var(--primary)30;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tutor-badge:hover {
+            background: var(--primary)25;
+            transform: scale(1.05);
+        }
+        
+        .tutor-badge.has-intervencion {
+            background: var(--warning)15;
+            border-color: var(--warning);
+            color: var(--warning);
+            animation: pulse-badge 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-badge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        #dashNeuroContainer {
+            transition: all 0.3s ease;
+            cursor: default !important;
+        }
+
+        #dashNeuroContainer:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        #dashNeuroContainer .dash-card-icon {
+            transition: all 0.3s ease;
+        }
+
+        #dashNeuroContainer:hover .dash-card-icon {
+            transform: scale(1.05);
+        }
+
+        #dashNeuroContainer .dash-card-content h3 {
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+
+        #dashNeuroContainer .dash-card-meta {
+            font-size: 11px !important;
+            margin: 2px 0 4px !important;
+        }
+
+        #dashNeuroContainer .dash-progress-bar {
+            height: 4px !important;
+        }
+
+        .neuro-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .neuro-toggle-btn:hover {
+            background: var(--bg);
+            color: var(--primary);
+        }
+
+        .neuro-panel-expandido {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--light);
+            animation: fadeUp 0.3s ease;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .neuro-metric-bar {
+            height: 4px;
+            background: var(--bg);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        .neuro-metric-bar .fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 1s ease;
+        }
+
+        .neuro-stat-card {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+        .neuro-stat-card .value {
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .neuro-stat-card .label {
+            font-size: 8px;
+            color: var(--gray);
+            text-transform: uppercase;
+        }
+
+        .neuro-medallas {
+            background: linear-gradient(135deg, var(--primary)06, var(--secondary)06);
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+
+        .neuro-recomendacion {
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 8px 12px;
+            border-left: 3px solid var(--primary);
+        }
+        .neuro-recomendacion .label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--gray);
+            text-transform: uppercase;
+        }
+        .neuro-recomendacion .texto {
+            font-size: 12px;
+            color: var(--dark);
+        }
+
+        .modal-espacio {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-espacio-content {
+            background-color: var(--white, #fff);
+            margin: auto;
+            padding: 30px 35px;
+            border-radius: 20px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: scaleIn 0.3s ease;
+            position: relative;
+        }
+        .modal-espacio-close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            color: var(--gray, #aaa);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .modal-espacio-close:hover,
+        .modal-espacio-close:focus {
+            color: var(--danger, #FF7675);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #modalUnificadoOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        #modalUnificadoOverlay .modal-unificado-content {
+            background: var(--white, #ffffff);
+            border-radius: 20px;
+            padding: 28px 24px;
+            max-width: 750px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            animation: scaleIn 0.3s ease;
+            position: relative;
+        }
+        #modalUnificadoOverlay .modal-unificado-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 0 8px;
+        }
+        #modalUnificadoOverlay .modal-unificado-close:hover {
+            color: var(--danger);
+        }
+        #modalUnificadoOverlay .modal-unificado-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 12px;
+        }
+        #modalUnificadoOverlay .modal-unificado-tab {
+            padding: 6px 20px;
+            font-size: 13px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        #modalUnificadoOverlay .modal-unificado-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        #modalUnificadoOverlay .modal-unificado-tab.inactive {
+            background: var(--white);
+            color: var(--dark);
+            border: 2px solid var(--light);
+        }
+        #modalUnificadoOverlay .modal-unificado-tab.inactive:hover {
+            border-color: var(--primary);
+        }
+        #modalUnificadoOverlay .modal-unificado-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid var(--light);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: var(--font);
+            resize: vertical;
+            transition: all 0.3s;
+        }
+        #modalUnificadoOverlay .modal-unificado-textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        #modalUnificadoOverlay .modal-unificado-textarea.json {
+            font-family: monospace;
+            font-size: 13px;
+            min-height: 100px;
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-primary {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #6C5CE7, #A29BFE);
+            color: white;
+            transition: all 0.3s;
+            min-width: 140px;
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(108,92,231,0.3);
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-success {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #00B894, #55EFC4);
+            color: white;
+            transition: all 0.3s;
+            min-width: 140px;
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,184,148,0.3);
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-secondary {
+            padding: 12px 20px;
+            font-size: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: var(--light);
+            color: var(--gray);
+            transition: all 0.3s;
+        }
+        #modalUnificadoOverlay .modal-unificado-btn-secondary:hover {
+            background: var(--gray-light);
+        }
+        #modalUnificadoOverlay .modal-unificado-resultado {
+            margin-top: 16px;
+            display: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        #modalUnificadoOverlay .modal-unificado-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        #modalUnificadoOverlay .modal-unificado-content::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 3px;
+        }
+        #modalUnificadoOverlay .modal-unificado-content::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 3px;
+        }
+        #modalUnificadoOverlay .modal-unificado-content::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        .familia-badge-semantica {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .familia-badge-gramatical {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .ejercicio-option {
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--light);
+            background: var(--white);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .ejercicio-option:hover {
+            border-color: var(--primary);
+            background: var(--primary)04;
+            transform: translateY(-2px);
+        }
+        .ejercicio-option.selected {
+            border-color: var(--primary);
+            background: var(--primary)08;
+        }
+        .ejercicio-option .icon {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .ejercicio-option .label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .ejercicio-option .desc {
+            font-size: 10px;
+            color: var(--gray-light);
+        }
+
+        @media (max-width: 600px) {
+            #modalUnificadoOverlay .modal-unificado-content {
+                padding: 20px 16px;
+                max-width: 100%;
+                margin: 10px;
+            }
+            #modalUnificadoOverlay .modal-unificado-tabs {
+                gap: 4px;
+            }
+            #modalUnificadoOverlay .modal-unificado-tab {
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+            #modalUnificadoOverlay .modal-unificado-btn-primary,
+            #modalUnificadoOverlay .modal-unificado-btn-success {
+                font-size: 13px;
+                padding: 10px 16px;
+                min-width: 100px;
+            }
+            .ejercicio-option {
+                padding: 8px 12px;
+            }
+            .ejercicio-option .icon {
+                font-size: 20px;
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .grammar-tab {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: var(--font);
+            transition: all 0.3s;
+            background: transparent;
+            color: var(--gray);
+        }
+        .grammar-tab:hover {
+            background: var(--bg);
+        }
+        .grammar-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .chat-gramatical-container {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border: 2px solid var(--primary)20;
+        }
+        
+        .chat-gramatical-messages {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 12px;
+            height: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        
+        .chat-gramatical-messages .msg-usuario {
+            align-self: flex-end;
+            background: var(--primary)10;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .chat-gramatical-messages .msg-vigia {
+            align-self: flex-start;
+            background: var(--bg);
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .chat-gramatical-messages .msg {
+            margin-bottom: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            max-width: 85%;
+        }
+        
+        .chat-gramatical-messages .msg .rol {
+            font-size: 13px;
+            color: var(--gray);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .chat-gramatical-messages .msg .texto {
+            font-size: 14px;
+            color: var(--dark);
+            white-space: pre-wrap;
+        }
+        
+        .chat-gramatical-input-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-gramatical-input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid var(--light);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: var(--font);
+        }
+        
+        .chat-gramatical-input-row input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        
+        .chat-gramatical-sugerencias {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: var(--gray-light);
+        }
+        
+        .chat-gramatical-sugerencias button {
+            padding: 2px 10px;
+            font-size: 10px;
+            background: transparent;
+            border: 1px solid var(--light);
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: var(--font);
+            color: var(--gray);
+            transition: all 0.3s;
+        }
+        
+        .chat-gramatical-sugerencias:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary)05;
+        }
+
+        .vigia-gramatical-progress {
+            background: linear-gradient(135deg, var(--primary)08, var(--secondary)08);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--primary)20;
+        }
+        
+        .vigia-gramatical-progress .edad-emoji {
+            font-size: 36px;
+        }
+        
+        .vigia-gramatical-progress .edad-nombre {
+            font-size: 14px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .vigia-gramatical-progress .barra-edad {
+            position: relative;
+            height: 24px;
+            background: var(--bg);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        
+        .vigia-gramatical-progress .barra-edad .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6C5CE7, #00CEC9, #00B894);
+            border-radius: 12px;
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .vigia-gramatical-progress .marcadores-edad {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: var(--gray-light);
+            margin-top: 2px;
+        }
+
+        .frase-gramatical-card {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 12px 14px;
+            border: 1px solid var(--light);
+        }
+        
+        .frase-gramatical-card .frase-original {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .frase-gramatical-card .frase-traduccion {
+            font-size: 14px;
+            color: var(--gray);
+        }
+        
+        .frase-gramatical-card .frase-regla {
+            font-size: 11px;
+            color: var(--gray-light);
+            margin-top: 4px;
+            padding: 4px 8px;
+            background: var(--white);
+            border-radius: 4px;
+        }
+        
+        .frase-gramatical-card .frase-regla strong {
+            color: var(--primary);
+        }
+
+        .knowledge-center-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 2px solid var(--primary)20;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .knowledge-center-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(108,92,231,0.15);
+            border-color: var(--primary);
+        }
+
+        .tema-completado-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            background: var(--bg);
+            border: 1px solid var(--light);
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--gray);
+            transition: all 0.3s;
+        }
+        .tema-completado-checkbox:hover {
+            border-color: var(--success);
+            background: var(--success)08;
+        }
+        .tema-completado-checkbox.checked {
+            background: var(--success)15;
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .nivel-bloqueado {
+            opacity: 0.6;
+            filter: grayscale(0.8);
+            position: relative;
+        }
+        .nivel-bloqueado::after {
+            content: '🔒';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            z-index: 10;
+        }
+
+        .dash-card[data-module="competiciones"] {
+            border: 2px solid #FDCB6E;
+            background: linear-gradient(135deg, #FDCB6E08, #E1705508);
+        }
+        .dash-card[data-module="competiciones"] .dash-card-icon {
+            background: linear-gradient(135deg, #FDCB6E, #E17055);
+        }
+        .dash-card[data-module="competiciones"] .dash-progress-fill {
+            background: linear-gradient(90deg, #FDCB6E, #E17055);
+        }
+
+        .npc-card {
+            transition: all 0.3s ease;
+        }
+        .npc-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        .npc-card.selected {
+            border-color: var(--primary) !important;
+            background: var(--primary)04 !important;
+        }
+        .npc-card .npc-habilidad-bar {
+            height: 3px;
+            border-radius: 2px;
+            background: var(--bg);
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        .npc-card .npc-habilidad-bar .fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        #areaJuego {
+            animation: fadeIn 0.3s ease;
+        }
+        #areaJuego .ronda-header {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+        }
+        #areaJuego .ronda-frase {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            padding: 20px;
+            background: var(--bg);
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        #areaJuego .ronda-frase .pinyin {
+            font-size: 16px;
+            color: var(--gray-light);
+            font-weight: 400;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+        #areaJuego .feedback-competicion {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+            display: none;
+        }
+        #areaJuego .feedback-competicion.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        #areaJuego .feedback-competicion.correcto {
+            background: var(--success)10;
+            border: 1px solid var(--success);
+        }
+        #areaJuego .feedback-competicion.parcial {
+            background: var(--warning)10;
+            border: 1px solid var(--warning);
+        }
+        #areaJuego .feedback-competicion.incorrecto {
+            background: var(--danger)10;
+            border: 1px solid var(--danger);
+        }
+
+        .historial-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--light);
+            font-size: 12px;
+        }
+        .historial-item.victoria {
+            border-left: 3px solid var(--success);
+        }
+        .historial-item.empate {
+            border-left: 3px solid var(--warning);
+        }
+        .historial-item.derrota {
+            border-left: 3px solid var(--danger);
+        }
+
+        #areaJuego .scrollable {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #areaJuego .scrollable::-webkit-scrollbar {
+            width: 4px;
+        }
+        #areaJuego .scrollable::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 2px;
+        }
+        #areaJuego .scrollable::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 2px;
+        }
+
+        .btn-modo {
+            transition: all 0.3s ease;
+        }
+        .btn-modo:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .btn-modo:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-modo.active {
+            border-color: var(--primary) !important;
+            background: var(--primary)08 !important;
+        }
+
+        .tutor-modo-option {
+            transition: all 0.3s ease;
+        }
+        
+        .tutor-modo-option.selected {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px var(--primary)20 !important;
+            background: var(--primary)04 !important;
+        }
+        
+        .tutor-modo-option .modo-check {
+            display: none;
+            font-size: 18px;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+        
+        .tutor-modo-option.selected .modo-check {
+            display: block;
+        }
+
+        .transcripcion-fonetica {
+            font-size: 15px;
+            color: var(--gray-light);
+            margin-top: 4px;
+            letter-spacing: 1px;
+            font-weight: 400;
+            padding: 4px 12px;
+            background: var(--bg);
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid var(--light);
+            font-family: var(--font);
+        }
+        
+        .transcripcion-estudio {
+            font-size: 16px;
+            margin-top: 6px;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            padding: 6px 16px;
+            border-radius: 10px;
+            display: inline-block;
+            font-family: var(--font);
+        }
+        .transcripcion-estudio.jeroglifico {
+            color: var(--primary);
+            background: var(--primary)08;
+            border: 1px solid var(--primary)30;
+        }
+        .transcripcion-estudio.alfabetico {
+            color: var(--secondary);
+            background: var(--secondary)08;
+            border: 1px solid var(--secondary)30;
+        }
+
+        /* Estilo para el botón de Libro de Lectura */
+        #btnLibroLectura {
+            transition: all 0.3s ease;
+        }
+        #btnLibroLectura:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(108,92,231,0.3);
+        }
+
+        /* Estilo para la barra de fiabilidad del generador */
+        .fiabilidad-bar {
+            transition: width 1s ease;
+        }
+        .fiabilidad-bar.excelente { background: #6C5CE7; }
+        .fiabilidad-bar.bueno { background: #00B894; }
+        .fiabilidad-bar.aceptable { background: #FDCB6E; }
+        .fiabilidad-bar.bajo { background: #E17055; }
+        .fiabilidad-bar.insuficiente { background: #FF7675; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- PANTALLA DE REGISTRO -->
+    <!-- ============================================================ -->
+    <div id="registroScreen" class="screen active">
+        <div class="container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h1>Pipeline Neuro</h1>
+                <p>v22.0 · Libro de Lectura y Generador IA</p>
+            </div>
+
+            <form id="registroForm">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Tu Nombre</label>
+                    <input type="text" id="nombre" placeholder="Ej: Juan" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-flag"></i> Idioma Nativo</label>
+                    <input type="text" id="idiomaNativo" placeholder="Ej: Español" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-bullseye"></i> Idiomas a Aprender</label>
+                    <div id="idiomasContainer">
+                        <div class="idioma-row">
+                            <input type="text" class="idioma-input" placeholder="Ej: Chino, English" required>
+                            <select class="nivel-select" required>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="B1" selected>B1</option>
+                                <option value="B2">B2</option>
+                                <option value="C1">C1</option>
+                                <option value="C2">C2</option>
+                            </select>
+                            <button type="button" class="btn-remove-idioma" onclick="ui.eliminarIdioma(this)" style="display:none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-idioma" onclick="ui.agregarIdioma()">
+                        <i class="fas fa-plus"></i> Añadir
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-key"></i> API Key Groq</label>
+                    <input type="password" id="apiKey" placeholder="gsk_..." required>
+                    <small>Obtén tu clave en console.groq.com</small>
+                </div>
+
+                <!-- SELECCIÓN DE MODO DEL TUTOR -->
+                <div class="form-group" style="margin-top:12px;border-top:2px solid var(--light);padding-top:12px;">
+                    <label style="font-size:14px;font-weight:600;color:var(--dark);display:block;margin-bottom:8px;">
+                        <i class="fas fa-brain"></i> ¿Cómo quieres que te guíe el Tutor Neuro?
+                    </label>
+                    <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">
+                        Elige el estilo de aprendizaje que mejor se adapte a ti. Puedes cambiarlo más tarde en Configuración.
+                    </p>
+                    
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+                        <div class="tutor-modo-option" data-modo="guiado" 
+                             style="background:var(--white);border-radius:12px;padding:12px 14px;border:3px solid var(--light);cursor:pointer;transition:all 0.3s;text-align:center;"
+                             onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.1)'" 
+                             onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'"
+                             onclick="window._seleccionarModoTutorRegistro('guiado')">
+                            <div style="font-size:32px;display:block;margin-bottom:2px;">🚀</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--dark);">Modo Guiado</div>
+                            <div style="font-size:10px;color:var(--gray);margin-top:2px;line-height:1.2;">
+                                El tutor decide el camino
+                            </div>
+                            <div style="font-size:9px;color:var(--gray-light);margin-top:2px;">
+                                🔒 No puedes ignorar
+                            </div>
+                            <div class="modo-check">✅</div>
+                        </div>
+
+                        <div class="tutor-modo-option selected" data-modo="flexible" 
+                             style="background:var(--primary)04;border-radius:12px;padding:12px 14px;border:3px solid var(--primary);cursor:pointer;transition:all 0.3s;text-align:center;box-shadow:0 0 0 3px var(--primary)20;"
+                             onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.1)'" 
+                             onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'"
+                             onclick="window._seleccionarModoTutorRegistro('flexible')">
+                            <div style="font-size:32px;display:block;margin-bottom:2px;">🧠</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--dark);">Modo Flexible</div>
+                            <div style="font-size:10px;color:var(--gray);margin-top:2px;line-height:1.2;">
+                                El tutor sugiere, tú decides
+                            </div>
+                            <div style="font-size:9px;color:var(--success);margin-top:2px;">
+                                ⭐ Recomendado
+                            </div>
+                            <div class="modo-check">✅</div>
+                        </div>
+
+                        <div class="tutor-modo-option" data-modo="libre" 
+                             style="background:var(--white);border-radius:12px;padding:12px 14px;border:3px solid var(--light);cursor:pointer;transition:all 0.3s;text-align:center;"
+                             onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.1)'" 
+                             onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'"
+                             onclick="window._seleccionarModoTutorRegistro('libre')">
+                            <div style="font-size:32px;display:block;margin-bottom:2px;">📴</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--dark);">Modo Libre</div>
+                            <div style="font-size:10px;color:var(--gray);margin-top:2px;line-height:1.2;">
+                                El tutor no interviene
+                            </div>
+                            <div style="font-size:9px;color:var(--gray-light);margin-top:2px;">
+                                ❌ Sin intervenciones
+                            </div>
+                            <div class="modo-check">✅</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:8px;font-size:11px;color:var(--gray-light);text-align:center;">
+                        💡 Puedes cambiar el modo más tarde en <strong>Configuración &gt; Tutor</strong>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-rocket"></i> Iniciar Curso
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PANTALLA PRINCIPAL - DASHBOARD PRO -->
+    <!-- ============================================================ -->
+    <div id="mainScreen" class="screen">
+        
+        <!-- HEADER -->
+        <header>
+            <div class="header-content">
+                <div class="brand">
+                    <i class="fas fa-brain"></i>
+                    <span>Pipeline Neuro</span>
+                </div>
+                <div class="header-right">
+                    <div class="user-badge" id="userBadge">
+                        <span class="user-name" id="userName">Usuario</span>
+                        <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                    </div>
+                    <button id="themeToggle" class="icon-btn">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Barra de progreso global -->
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                <span class="progress-label" id="progressLabel">0%</span>
+            </div>
+            
+            <!-- Neuro Stats -->
+            <div class="neuro-stats">
+                <div class="neuro-stat">
+                    <span class="stat-icon">🧠</span>
+                    <span class="stat-value" id="neuroRCN">0.0</span>
+                    <span class="stat-label">RCN</span>
+                </div>
+                <div class="neuro-stat">
+                    <span class="stat-icon">📈</span>
+                    <span class="stat-value" id="neuroProgress">0%</span>
+                    <span class="stat-label">Progreso</span>
+                </div>
+                <div class="neuro-stat">
+                    <span class="stat-icon">⚡</span>
+                    <span class="stat-value" id="neuroEficiencia">0%</span>
+                    <span class="stat-label">Eficiencia</span>
+                </div>
+                <div class="neuro-stat">
+                    <span class="stat-icon">🎯</span>
+                    <span class="stat-value" id="neuroFase">1</span>
+                    <span class="stat-label">Fase</span>
+                </div>
+                <div class="neuro-stat" id="neuroNivelStat" style="cursor:pointer;" onclick="ui.irAModulo('config')">
+                    <span class="stat-icon">🏆</span>
+                    <span class="stat-value" id="neuroNivel">A1</span>
+                    <span class="stat-label">Nivel</span>
+                </div>
+            </div>
+
+            <!-- ACTIVIDAD DINÁMICA -->
+            <div class="activity-container" id="activityContainer">
+                <div class="activity-bar-wrapper">
+                    <div class="activity-label">
+                        <span>
+                            <span class="activity-status-dot" id="vigiaActivityDot"></span>
+                            <span class="activity-icon">👁️</span> Vigía
+                        </span>
+                        <span class="activity-value" id="vigiaActivityValue">0%</span>
+                    </div>
+                    <div class="activity-bar-track">
+                        <div class="activity-bar-fill vigia" id="vigiaActivityBar" style="width:0%"></div>
+                    </div>
+                    <div class="activity-tooltip" id="vigiaTooltip">Esperando actividad...</div>
+                </div>
+
+                <div class="activity-bar-wrapper">
+                    <div class="activity-label">
+                        <span>
+                            <span class="activity-status-dot" id="centinelaActivityDot"></span>
+                            <span class="activity-icon">🛡️</span> Centinela
+                        </span>
+                        <span class="activity-value" id="centinelaActivityValue">0%</span>
+                    </div>
+                    <div class="activity-bar-track">
+                        <div class="activity-bar-fill centinela" id="centinelaActivityBar" style="width:0%"></div>
+                    </div>
+                    <div class="activity-tooltip" id="centinelaTooltip">Sistema estable</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main id="mainContent">
+            
+            <!-- ===== DASHBOARD ===== -->
+            <div id="dashboardView" class="view active">
+                <div class="dashboard-header">
+                    <h2>📊 Panel de Control</h2>
+                    <p id="dashboardSubtitle">Bienvenido de vuelta, <span id="dashUserName">Usuario</span></p>
+                </div>
+                
+                <div class="dashboard-grid" id="dashboardGrid">
+                    <!-- Tarjeta: Estudiar -->
+                    <div class="dash-card" data-module="study">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>Estudiar</h3>
+                            <p class="dash-card-meta" id="dashStudyMeta">0 frases · 0%</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashStudyProgress" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Gramática -->
+                    <div class="dash-card" data-module="grammar">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#00CEC9,#81ECEC);">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>Gramática</h3>
+                            <p class="dash-card-meta" id="dashGrammarMeta">0 palabras · 0 familias</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashGrammarProgress" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: TEMAS -->
+                    <div class="dash-card" data-module="temas">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#F9CA24);">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>📚 Temas</h3>
+                            <p class="dash-card-meta" id="dashTemasMeta">0 temas</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashTemasProgress" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Vigía -->
+                    <div class="dash-card" data-module="vigia">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#74B9FF,#0984E3);">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>Vigía IA</h3>
+                            <p class="dash-card-meta" id="dashVigiaMeta">● Offline</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashVigiaProgress" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA: NEURO DASHBOARD -->
+                    <div class="dash-card" id="dashNeuroContainer" style="border:2px solid var(--primary);cursor:default;">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="dash-card-content" style="flex:1;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h3 style="font-size:14px;margin:0;">🧠 Estado Neuro</h3>
+                                <button class="neuro-toggle-btn" onclick="window.UIDashboard._togglePanelNeuro()">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <p class="dash-card-meta" style="font-size:11px;color:var(--gray);margin:2px 0 4px;">
+                                ⚡ Cargando...
+                            </p>
+                            <div class="dash-card-progress" style="margin-top:4px;">
+                                <div class="dash-progress-bar" style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;">
+                                    <div class="dash-progress-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#6C5CE7,#00CEC9);border-radius:2px;transition:width 0.5s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size:10px;color:var(--gray-light);margin-top:3px;">
+                                💡 Haz clic en la flecha para ver detalles
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Mi Espacio -->
+                    <div class="dash-card" data-module="espacio" style="border:2px solid var(--secondary);">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#A29BFE,#6C5CE7);">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>⭐ Mi Espacio</h3>
+                            <p class="dash-card-meta" id="dashEspacioMeta">0 frases · 0 palabras</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashEspacioProgress" style="width:0%;background:linear-gradient(90deg,#A29BFE,#6C5CE7);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Competiciones -->
+                    <div class="dash-card" data-module="competiciones" style="border:2px solid #FDCB6E;">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#E17055);">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>🏆 Ligas</h3>
+                            <p class="dash-card-meta" id="dashCompeticionesMeta">0 partidas · 0 victorias</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashCompeticionesProgress" style="width:0%;background:linear-gradient(90deg,#FDCB6E,#E17055);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Configuración -->
+                    <div class="dash-card" data-module="config">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#F9CA24);">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>⚙️ Configuración</h3>
+                            <p class="dash-card-meta">Nivel · Perfil · Preferencias</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" style="width:100%;background:var(--gray);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: Herramientas -->
+                    <div class="dash-card" data-module="tools">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#636E72,#2D3436);">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>Herramientas</h3>
+                            <p class="dash-card-meta">Backup · Checkpoints · Diagnóstico</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" style="width:100%;background:var(--gray);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta: CARACTERES -->
+                    <div class="dash-card" data-module="caracteres" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);display:none;">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#00CEC9);">
+                            <i class="fas fa-characters"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>🀄 Caracteres</h3>
+                            <p class="dash-card-meta" id="dashCaracteresMeta">0 familias · 0 palabras</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashCaracteresProgress" style="width:0%;background:linear-gradient(90deg,#6C5CE7,#00CEC9);"></div>
+                                </div>
+                            </div>
+                            <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">
+                                🧠 Supervisado por Vigía Gramatical
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA: FONÉTICA -->
+                    <div class="dash-card" data-module="fonetica" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);">
+                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#00B894,#55EFC4);">
+                            <i class="fas fa-microphone-alt"></i>
+                        </div>
+                        <div class="dash-card-content">
+                            <h3>🎤 Fonética</h3>
+                            <p class="dash-card-meta" id="dashFoneticaMeta">0 elementos · 0%</p>
+                            <div class="dash-card-progress">
+                                <div class="dash-progress-bar">
+                                    <div class="dash-progress-fill" id="dashFoneticaProgress" style="width:0%;background:linear-gradient(90deg,#00B894,#55EFC4);"></div>
+                                </div>
+                            </div>
+                            <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">
+                                🔊 Práctica de pronunciación
+                            </div>
+                        </div>
+                        <div class="dash-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: ESTUDIAR ===== -->
+            <div id="studyModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📖 Estudiar</h2>
+                        <span class="module-breadcrumb">Dashboard / Estudiar</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="cardContainer" class="card-container">
+                        <!-- Tarjetas renderizadas por pipeline -->
+                    </div>
+                    <div class="study-controls">
+                        <div class="study-actions">
+                            <button id="btnFail" class="action-btn danger">
+                                <i class="fas fa-times"></i>
+                                <span>Fallo</span>
+                            </button>
+                            <button id="btnDoubt" class="action-btn warning">
+                                <i class="fas fa-question"></i>
+                                <span>Duda</span>
+                            </button>
+                            <button id="btnPartial" class="action-btn info">
+                                <i class="fas fa-minus"></i>
+                                <span>Parcial</span>
+                            </button>
+                            <button id="btnCorrect" class="action-btn success">
+                                <i class="fas fa-check"></i>
+                                <span>Correcto</span>
+                            </button>
+                        </div>
+                        <div class="navigation-controls">
+                            <button id="prevCard" class="nav-btn">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span id="cardCounter" class="counter">0 / 0</span>
+                            <button id="nextCard" class="nav-btn">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: GRAMÁTICA ===== -->
+            <div id="grammarModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📚 Gramática</h2>
+                        <span class="module-breadcrumb">Dashboard / Gramática</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="grammarContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: TEMAS ===== -->
+            <div id="temasModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📚 Temas</h2>
+                        <span class="module-breadcrumb">Dashboard / Temas</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="temasContent" class="temas-grid"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: VIGÍA ===== -->
+            <div id="vigiaModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🔭 Vigía IA</h2>
+                        <span class="module-breadcrumb">Dashboard / Vigía</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="vigiaChatProContainer">
+                        <!-- El chat PRO se renderiza aquí -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: ESTADÍSTICAS ===== -->
+            <div id="statsModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📊 Estadísticas</h2>
+                        <span class="module-breadcrumb">Dashboard / Estadísticas</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="statsContent" class="stats-grid"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: MI ESPACIO ===== -->
+            <div id="espacioModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>⭐ Mi Espacio</h2>
+                        <span class="module-breadcrumb">Dashboard / Mi Espacio</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="espacioContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: COMPETICIONES ===== -->
+            <div id="competicionesModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🏆 Liga Neuro</h2>
+                        <span class="module-breadcrumb">Dashboard / Competiciones</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="competicionesContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: CARACTERES ===== -->
+            <div id="caracteresModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🀄 Estudio de Caracteres</h2>
+                        <span class="module-breadcrumb">Dashboard / Caracteres</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="caracteresContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: FONÉTICA ===== -->
+            <div id="foneticaModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🎤 Fonética</h2>
+                        <span class="module-breadcrumb">Dashboard / Fonética</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="foneticaContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: CONFIGURACIÓN ===== -->
+            <div id="configModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>⚙️ Configuración</h2>
+                        <span class="module-breadcrumb">Dashboard / Configuración</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="configContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MÓDULO: HERRAMIENTAS ===== -->
+            <div id="toolsModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>⚙️ Herramientas</h2>
+                        <span class="module-breadcrumb">Dashboard / Herramientas</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="toolsContent">
+                        <div class="tools-grid">
+                            <button class="tool-card" onclick="ui._handleBackup()">
+                                <i class="fas fa-database"></i>
+                                <span>Backup</span>
+                                <small>Exportar/Importar</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleCheckpoints()">
+                                <i class="fas fa-flag"></i>
+                                <span>Checkpoints</span>
+                                <small>Restaurar puntos</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleGenerarCheckpoint()">
+                                <i class="fas fa-save"></i>
+                                <span>Guardar Checkpoint</span>
+                                <small>Crear punto manual</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleDiagnostic()">
+                                <i class="fas fa-stethoscope"></i>
+                                <span>Diagnóstico</span>
+                                <small>Estado del sistema</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleEstadoSistema()">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Estado</span>
+                                <small>Resumen rápido</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleReconectarVigia()">
+                                <i class="fas fa-wifi"></i>
+                                <span>Reconectar Vigía</span>
+                                <small>Forzar reconexión</small>
+                            </button>
+                            <button class="tool-card" onclick="pipeline.toggleModoSimplificado()">
+                                <i class="fas fa-bolt"></i>
+                                <span>Modo Simplificado</span>
+                                <small id="toolSimplifiedStatus">Inactivo</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleReiniciarFase()">
+                                <i class="fas fa-redo"></i>
+                                <span>Reiniciar Fase</span>
+                                <small>Reiniciar progreso</small>
+                            </button>
+                            <button class="tool-card" onclick="ui._handleReset()">
+                                <i class="fas fa-trash"></i>
+                                <span>Limpiar Datos</span>
+                                <small>Eliminar todo</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BREADCRUMB NAVIGATION -->
+        <nav class="breadcrumb-nav" id="breadcrumbNav">
+            <span class="breadcrumb-item active" data-module="dashboard" onclick="ui.volverDashboard()">
+                <i class="fas fa-th-large"></i> Dashboard
+            </span>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-item" id="breadcrumbModule">Módulo</span>
+        </nav>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODALES -->
+    <!-- ============================================================ -->
+    
+    <!-- Modal JSON -->
+    <div id="jsonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="jsonModalTitle">JSON</h3>
+                <button id="jsonModalClose" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="jsonTextarea" class="json-textarea" readonly></textarea>
+                <div class="modal-actions">
+                    <button id="jsonCopy" class="btn-primary">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                    <button id="jsonImport" class="btn-success">
+                        <i class="fas fa-file-import"></i> Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GUARDAR PALABRA EN MI ESPACIO -->
+    <div id="modalGuardarPalabra" class="modal-espacio">
+        <div class="modal-espacio-content">
+            <span class="modal-espacio-close" id="cerrarModalGuardarPalabra">&times;</span>
+            <div id="modalGuardarPalabraBody">
+                <!-- El contenido se llenará dinámicamente desde JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner Offline -->
+    <div id="offlineBanner" class="offline-banner" style="display:none;">
+        <i class="fas fa-wifi"></i>
+        <span id="offlineMessage">Modo offline</span>
+        <span id="offlineTimer"></span>
+    </div>
+
+<!-- ============================================================ -->
+<!-- SCRIPTS - ORDEN CORRECTO DE CARGA -->
+<!-- ============================================================ -->
+
+<!-- 1. FUNCIONES GLOBALES PARA REGISTRO -->
+<script>
+window._seleccionarModoTutorRegistro = function(modo) {
+    document.querySelectorAll('.tutor-modo-option').forEach(el => {
+        el.classList.remove('selected');
+        el.style.border = '3px solid var(--light)';
+        el.style.boxShadow = 'none';
+        el.style.background = 'var(--white)';
+    });
+    
+    const selected = document.querySelector(`.tutor-modo-option[data-modo="${modo}"]`);
+    if (selected) {
+        selected.classList.add('selected');
+        selected.style.border = '3px solid var(--primary)';
+        selected.style.boxShadow = '0 0 0 3px var(--primary)20';
+        selected.style.background = 'var(--primary)04';
+    }
+    
+    localStorage.setItem('pipeline_tutor_modo', modo);
+    
+    const nombres = {
+        'guiado': '🚀 Modo Guiado',
+        'flexible': '🧠 Modo Flexible',
+        'libre': '📴 Modo Libre'
+    };
+    
+    if (window.uiCore && window.uiCore.mostrarToast) {
+        window.uiCore.mostrarToast(`✅ Modo seleccionado: ${nombres[modo] || modo}`, 'success');
+    } else {
+        console.log(`✅ Modo seleccionado: ${nombres[modo] || modo}`);
+    }
+    
+    if (window.tutorNeuro) {
+        try {
+            window.tutorNeuro.setModo(modo);
+            console.log(`🧠 Modo Tutor actualizado a: ${modo}`);
+        } catch (e) {
+            console.warn('⚠️ Error actualizando modo del tutor:', e);
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modoGuardado = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
+    setTimeout(function() {
+        const opcion = document.querySelector(`.tutor-modo-option[data-modo="${modoGuardado}"]`);
+        if (opcion) {
+            window._seleccionarModoTutorRegistro(modoGuardado);
+        }
+    }, 300);
+});
+</script>
+
+<!-- 2. MÓDULOS CORE -->
+<script src="js/core/modoInverso.js"></script>
+<script src="js/core/gestorIdiomas.js"></script>
+<script src="js/core/gestorNiveles.js"></script>
+
+<!-- 3. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
+<script src="js/database.js"></script>
+<script src="js/vigia.js"></script>
+<script src="js/centinela.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/gramatica.js"></script>
+
+<!-- 4. MÓDULOS CORE QUE DEPENDEN DE DB -->
+<script src="js/core/gestorFavoritos.js"></script>
+<script src="js/core/toastEducativo.js"></script>
+
+<!-- 5. VIGÍA GENERATOR (NUEVO) -->
+<script src="js/vigiaGenerator.js"></script>
+
+<!-- 6. FONÉTICA -->
+<script src="js/fonetica.js"></script>
+
+<!-- 7. UI - MÓDULOS BASE -->
+<script src="js/ui/ui.dialogs.js"></script>
+<script src="js/ui/ui.core.js"></script>
+<script src="js/ui/ui.dashboard.js"></script>
+<script src="js/ui/ui.study.js"></script>
+<script src="js/ui/ui.grammar.js"></script>
+<script src="js/ui/ui.chat.js"></script>
+<script src="js/ui/ui.config.js"></script>
+<script src="js/ui/ui.tools.js"></script>
+<script src="js/ui/ui.json.js"></script>
+
+<!-- 8. UI - BACKUP -->
+<script src="js/ui/ui.backup.js"></script>
+
+<!-- 9. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
+<script src="js/ui/ui.temas.core.js"></script>
+<script src="js/ui/ui.temas.render.js"></script>
+<script src="js/ui/ui.temas.actions.js"></script>
+<script src="js/ui/ui.espacio.core.js"></script>
+<script src="js/ui/ui.espacio.render.js"></script>
+<script src="js/ui/ui.espacio.actions.js"></script>
+<script src="js/ui/ui.caracteres.core.js"></script>
+<script src="js/ui/ui.caracteres.render.js"></script>
+<script src="js/ui/ui.caracteres.actions.js"></script>
+
+<!-- 10. UI - FONÉTICA -->
+<script src="js/ui/ui.fonetica.js"></script>
+
+<!-- 11. PROXY UI -->
+<script src="js/ui.js"></script>
+
+<!-- 12. COMPETICIONES -->
+<script src="js/competiciones.js"></script>
+
+<!-- 13. TUTOR NEURO -->
+<script src="js/tutorNeuro.js"></script>
+
+<!-- 14. LEARNING PATH -->
+<script src="js/learningPath.js"></script>
+
+<!-- 15. APP (INICIALIZACIÓN PRINCIPAL) -->
+<script src="js/app.js"></script>
+
+</body>
+</html>
