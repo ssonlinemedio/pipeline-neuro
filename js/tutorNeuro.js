@@ -1,5 +1,5 @@
 // ============================================================
-// TUTOR NEURO V4.1 - COMPLETO CORREGIDO CON MODO GUIADO REAL
+// TUTOR NEURO V4.2 - CON CONTROL DE ANÁLISIS Y SEGUIMIENTO DE PROMESAS
 // ============================================================
 
 class TutorNeuro extends Vigia {
@@ -121,6 +121,12 @@ class TutorNeuro extends Vigia {
         this._tiempoCacheAnalisis = 60000;
         this._historialRespuestas = [];
         this._erroresRegistrados = [];
+        
+        // 🔥 CONTROL DE ANÁLISIS - PREVENIR EJECUCIONES CONCURRENTES
+        this._analizando = false;
+        this._analisisPendiente = false;
+        this._ultimoAnalisis = 0;
+        this._intervaloAnalisis = 30000;
         
         this._PALABRAS_CLAVE = {
             'A1': ['familia', 'casa', 'comida', 'agua', 'perro', 'gato', 'hola', 'adiós', 'gracias', 'por favor', 'sí', 'no', 'yo', 'tú', 'él', 'ella', 'nosotros', 'vosotros', 'ellos'],
@@ -713,7 +719,7 @@ class TutorNeuro extends Vigia {
     async initTutor() {
         if (this._tutorInitDone) return this;
         
-        console.log('🧠 Inicializando Tutor de Aprendizaje NeuroAdaptativo v4.1...');
+        console.log('🧠 Inicializando Tutor de Aprendizaje NeuroAdaptativo v4.2...');
         
         try {
             if (!this._initDone) {
@@ -757,7 +763,7 @@ class TutorNeuro extends Vigia {
             }
             
             this._tutorInitDone = true;
-            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.1 inicializado correctamente');
+            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado correctamente');
             
             setTimeout(() => {
                 this._mostrarBienvenida();
@@ -1105,12 +1111,23 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // ANÁLISIS DE RESPUESTAS
+    // ANÁLISIS DE RESPUESTAS - CON CONTROL DE CONCURRENCIA
     // ============================================================
 
     async _analizarRespuesta(detalle) {
+        // 🔥 PREVENIR EJECUCIONES CONCURRENTES
+        if (this._analizando) {
+            console.log('⏳ Análisis en curso, encolando...');
+            this._analisisPendiente = true;
+            return;
+        }
+
         try {
+            this._analizando = true;
+            this._analisisPendiente = false;
+            
             if (this._contadorIntervencionesSesion >= this._configuracion.maxIntervencionesPorSesion) {
+                console.log('⏳ Límite de intervenciones alcanzado');
                 return;
             }
             
@@ -1132,6 +1149,17 @@ class TutorNeuro extends Vigia {
             
         } catch (error) {
             console.warn('⚠️ Error en análisis de respuesta:', error);
+        } finally {
+            this._analizando = false;
+            
+            // Si hay un análisis pendiente, ejecutarlo
+            if (this._analisisPendiente) {
+                console.log('🔄 Ejecutando análisis pendiente...');
+                this._analisisPendiente = false;
+                setTimeout(() => {
+                    this._analizarRespuesta(detalle);
+                }, 100);
+            }
         }
     }
 
@@ -2499,16 +2527,29 @@ class TutorNeuro extends Vigia {
     // ============================================================
 
     _iniciarCicloAnalisis() {
-        setInterval(() => {
-            if (this._sesionActiva) {
-                this._analizarEstadoGeneral();
+        // 🔥 USAR setTimeout RECURSIVO EN VEZ DE setInterval
+        const ejecutarAnalisis = async () => {
+            if (this._sesionActiva && !this._analizando) {
+                await this._analizarEstadoGeneral();
             }
-        }, 30000);
+            // Programar la siguiente ejecución
+            setTimeout(ejecutarAnalisis, this._intervaloAnalisis);
+        };
+        
+        // Iniciar el ciclo
+        setTimeout(ejecutarAnalisis, 30000);
         console.log('🔄 Ciclo de análisis del Tutor Neuro iniciado (cada 30s)');
     }
 
     async _analizarEstadoGeneral() {
+        // 🔥 PREVENIR EJECUCIONES CONCURRENTES
+        if (this._analizando) {
+            console.log('⏳ Análisis general en curso, omitiendo...');
+            return;
+        }
+
         try {
+            this._analizando = true;
             await this._actualizarContextoUsuario();
             
             if (this._contextoUsuario.racha >= 3) {
@@ -2536,6 +2577,8 @@ class TutorNeuro extends Vigia {
             
         } catch (error) {
             console.warn('⚠️ Error en análisis de estado general:', error);
+        } finally {
+            this._analizando = false;
         }
     }
 
@@ -2644,14 +2687,14 @@ window.tutorNeuro = new TutorNeuro();
     try {
         if (window.vigia && window.vigia._initDone) {
             await window.tutorNeuro.initTutor();
-            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.1 inicializado automáticamente');
+            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado automáticamente');
         } else {
             console.log('⏳ Esperando a que Vigía esté listo...');
             const checkInterval = setInterval(async () => {
                 if (window.vigia && window.vigia._initDone) {
                     clearInterval(checkInterval);
                     await window.tutorNeuro.initTutor();
-                    console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.1 inicializado');
+                    console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado');
                 }
             }, 1000);
             
@@ -2669,16 +2712,9 @@ window.tutorNeuro = new TutorNeuro();
     }
 })();
 
-console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.1 - COMPLETO CON MODO GUIADO REAL');
-console.log('  🔒 MODO GUIADO: Bloqueo de navegación a módulos no permitidos');
-console.log('  🔒 MODO GUIADO: Bloqueo de selección manual de temas');
-console.log('  🔒 MODO GUIADO: Bloqueo de cambio de modo de estudio');
-console.log('  🔒 MODO GUIADO: Bloqueo de respuestas fuera del paso actual');
-console.log('  🔓 MODO FLEXIBLE: Total libertad con sugerencias');
-console.log('  📴 MODO LIBRE: Sin intervenciones automáticas');
-console.log('  🔘 PAGINACIÓN: 10 pasos por página en el modal "Ver Ruta"');
-console.log('  🔍 BUSCADOR: Búsqueda en tiempo real por nombre, descripción y nivel');
-console.log('  🎨 MODOS DEL TUTOR: Colores distintivos para cada modo');
-console.log('  📊 INDICADOR DE INTERVENCIONES: Contador en el badge del Tutor');
-console.log('  ⚡ EJECUCIÓN DIRECTA: Intervenciones ejecutables desde el dashboard');
-console.log('  🔄 INTEGRACIÓN COMPLETA: Con Learning Path y mapa de aprendizaje');
+console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 - CON CONTROL DE ANÁLISIS');
+console.log('  🔥 Control de ejecuciones concurrentes en análisis');
+console.log('  🔥 Uso de setTimeout recursivo en lugar de setInterval');
+console.log('  🔥 Prevención de acumulación de llamadas');
+console.log('  🔥 Cola de análisis pendientes');
+console.log('  🎯 Todas las funcionalidades originales preservadas');

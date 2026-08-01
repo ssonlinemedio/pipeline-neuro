@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.7 - CON SOPORTE PARA VERSIONES DE ESTÁNDAR (COMPLETO)
+// UI TEMAS ACTIONS v2.10 - INDEPENDIENTE POR IDIOMA
 // ============================================================
 
 class UITemasActions {
@@ -247,7 +247,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // GENERAR TEMA PREDEFINIDO (CON VERSIÓN)
+    // GENERAR TEMA PREDEFINIDO (CON IDIOMA CORRECTO)
     // ============================================================
 
     static async generarTemaPredefinido(temaId, temaNombre, nivel) {
@@ -259,16 +259,24 @@ class UITemasActions {
         const nombreVersion = window.UITemas._obtenerNombreVersion(idiomaActivo, versionEstandar);
         const palabrasRequeridas = window.gestorIdiomas?._obtenerPalabrasPorVersion?.(idiomaActivo, versionEstandar, nivel) || 2000;
 
-        let dbId = window.UITemas._temaPredefinidoIdMap[temaId];
-        let temaGuardado = null;
-
-        if (dbId) {
-            temaGuardado = await db.obtenerTema(dbId);
+        let numTemasRecomendados = 8;
+        try {
+            if (typeof window.UITemas._calcularNumeroTemas === 'function') {
+                numTemasRecomendados = window.UITemas._calcularNumeroTemas(versionEstandar, nivel);
+            } else {
+                const temasPorNivel = { 'A1': 8, 'A2': 8, 'B1': 8, 'B2': 8, 'C1': 5, 'C2': 4 };
+                numTemasRecomendados = temasPorNivel[nivel] || 8;
+                console.log('📌 Usando fallback para numTemasRecomendados:', numTemasRecomendados);
+            }
+        } catch (e) {
+            console.warn('⚠️ Error calculando número de temas, usando fallback:', e);
+            numTemasRecomendados = 8;
         }
 
-        if (!temaGuardado) {
-            temaGuardado = await window.UITemas._guardarTemaPredefinidoEnDB(temaId);
-        }
+        // 🔥 USAR LA NUEVA FUNCIÓN PARA OBTENER/CREAR EL TEMA CON EL IDIOMA CORRECTO
+        const temaConIdioma = await window.UITemas._obtenerOCrearTemaPredefinidoPorIdioma(temaId, idiomaActivo);
+        const dbId = temaConIdioma ? temaConIdioma.id : null;
+        let temaGuardado = temaConIdioma;
 
         if (!temaGuardado) {
             core?.mostrarToast('❌ Error al guardar el tema predefinido', 'error');
@@ -333,7 +341,7 @@ class UITemasActions {
                 "version_estandar": versionEstandar,
                 "nombre_version": nombreVersion,
                 "palabras_requeridas": palabrasRequeridas,
-                "num_temas_recomendados": window.UITemas._calcularNumeroTemas(versionEstandar, nivel) || 8,
+                "num_temas_recomendados": numTemasRecomendados,
                 "instrucciones": [
                     "1. Genera " + numHistorias + " mini-historias sobre \"" + temaNombre + "\"",
                     "2. Cada historia debe tener " + numFrases + " frases en " + idiomaActivo,
@@ -516,84 +524,12 @@ class UITemasActions {
 
             UITemasActions._actualizarLoading(10, '📂 Preparando tema...', 'Creando estructura del tema');
 
-            let dbId = window.UITemas._temaPredefinidoIdMap[temaId];
-            let temaGuardado = null;
-
-            if (dbId) {
-                temaGuardado = await db.obtenerTema(dbId);
-                if (temaGuardado) {
-                    console.log(`📂 Tema encontrado por mapa con ID: ${dbId}`);
-                } else {
-                    console.warn(`⚠️ Tema con ID ${dbId} no encontrado, limpiando mapa...`);
-                    delete window.UITemas._temaPredefinidoIdMap[temaId];
-                    dbId = null;
-                }
-            }
+            // 🔥 USAR LA NUEVA FUNCIÓN CON IDIOMA
+            const temaConIdioma = await window.UITemas._obtenerOCrearTemaPredefinidoPorIdioma(temaId, idioma);
+            let temaGuardado = temaConIdioma;
 
             if (!temaGuardado) {
-                const todosLosTemas = await db.obtenerTemas();
-                temaGuardado = todosLosTemas.find(t => 
-                    t.nombre === temaNombre && 
-                    (t._esPredefinido === true || t._esImportado === true)
-                );
-                if (temaGuardado) {
-                    console.log(`📂 Tema encontrado por nombre: "${temaNombre}" con ID: ${temaGuardado.id}`);
-                    window.UITemas._temaPredefinidoIdMap[temaId] = temaGuardado.id;
-                }
-            }
-
-            if (!temaGuardado) {
-                console.log(`📝 Creando nuevo tema: "${temaNombre}"`);
-                
-                const nuevoTema = {
-                    nombre: temaNombre,
-                    descripcion: data.meta?.descripcion || `Tema importado: ${temaNombre}`,
-                    idioma: idioma,
-                    nivel: nivel,
-                    icono: data.meta?.icono || '📁',
-                    fechaCreacion: new Date().toISOString(),
-                    estado: 'en_curso',
-                    historiasIds: [],
-                    palabrasClave: [],
-                    _esPredefinido: true,
-                    _esImportado: true,
-                    origen: 'importado',
-                    _temaOriginalId: temaId,
-                    _tieneContenido: false,
-                    _caracteresSincronizados: false,
-                    _fechaSincronizacion: null,
-                    _caracteresSincronizadosCount: 0,
-                    _version_estandar: versionEstandar,
-                    _nombre_version: nombreVersion
-                };
-
-                console.log('📝 Datos del nuevo tema:', JSON.stringify(nuevoTema, null, 2));
-                
-                let idGuardado = await db.add('temas', nuevoTema);
-                
-                if (!idGuardado) {
-                    console.warn('⚠️ db.add falló, intentando con db.guardarTema...');
-                    idGuardado = await db.guardarTema(nuevoTema);
-                }
-                
-                console.log(`📝 ID guardado: ${idGuardado}`);
-                
-                if (!idGuardado) {
-                    console.warn('⚠️ Ambos métodos fallaron, intentando emergencia...');
-                    temaGuardado = await window.UITemas._crearTemaDeEmergencia(temaId);
-                    if (temaGuardado) {
-                        console.log(`✅ Tema de emergencia creado: ${temaGuardado.id}`);
-                    } else {
-                        throw new Error('No se pudo guardar el tema (todos los métodos fallaron)');
-                    }
-                } else {
-                    temaGuardado = await db.obtenerTema(idGuardado);
-                    if (!temaGuardado) {
-                        throw new Error(`No se pudo recuperar el tema guardado con ID: ${idGuardado}`);
-                    }
-                    window.UITemas._temaPredefinidoIdMap[temaId] = idGuardado;
-                    console.log(`✅ Tema "${temaNombre}" creado con ID: ${idGuardado}`);
-                }
+                throw new Error('No se pudo crear/obtener el tema con el idioma correcto');
             }
 
             const temaIdReal = temaGuardado.id;
@@ -996,7 +932,8 @@ class UITemasActions {
                     _fechaSincronizacion: temaGuardado._fechaSincronizacion || null,
                     _caracteresSincronizadosCount: temaGuardado._caracteresSincronizadosCount || 0,
                     _version_estandar: versionEstandar,
-                    _nombre_version: nombreVersion
+                    _nombre_version: nombreVersion,
+                    _idioma_original: idioma
                 });
             }
 
@@ -1054,6 +991,7 @@ class UITemasActions {
                     `\n🀄 Caracteres sincronizados: ${caracteresImportados}\n` +
                     `📝 Palabras derivadas añadidas: ${palabrasDerivadasGuardadas}` : '') +
                 `\n📌 Versión: ${nombreVersion}\n` +
+                `\n🌍 Idioma: ${idioma}\n` +
                 `\n💡 Los caracteres están disponibles en el módulo "Caracteres" y las palabras en "Mi Espacio"`;
 
             window.UITemas._core?.alert(mensaje, '✅ Importación Completada');
@@ -2028,8 +1966,4 @@ class UITemasActions {
 // ============================================================
 
 window.UITemasActions = UITemasActions;
-console.log('✅ UITemas Actions v2.7 - CON SOPORTE PARA VERSIONES DE ESTÁNDAR (COMPLETO)');
-console.log('  📌 Exportación/Importación con versión');
-console.log('  🔄 Sincronización de caracteres con versión');
-console.log('  📊 Generación de temas adaptada a la versión');
-console.log('  🎯 Todas las funcionalidades originales preservadas');
+console.log('✅ UITemas Actions v2.10 - INDEPENDIENTE POR IDIOMA');

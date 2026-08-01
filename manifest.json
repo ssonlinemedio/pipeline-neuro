@@ -14,52 +14,32 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
-      "src": "icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-192.png",
+      "src": "icons/android-icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-384.png",
-      "sizes": "384x384",
+      "src": "icons/android-icon-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
+      "src": "icons/apple-touch-icon-180x180.png",
+      "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "apple touch icon"
+    },
+    {
+      "src": "icons/favicon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
     }
   ],
   "screenshots": [
@@ -82,28 +62,28 @@
       "short_name": "Estudiar",
       "description": "Ir a la pantalla de estudio",
       "url": "/?action=study",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/favicon-128x128.png", "sizes": "128x128" }]
     },
     {
       "name": "Gramática",
       "short_name": "Gramática",
       "description": "Ver mapa gramatical",
       "url": "/?action=grammar",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/favicon-128x128.png", "sizes": "128x128" }]
     },
     {
       "name": "Historias",
       "short_name": "Historias",
       "description": "Ver tus historias",
       "url": "/?action=stories",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/favicon-128x128.png", "sizes": "128x128" }]
     },
     {
       "name": "Vigía",
       "short_name": "Vigía",
       "description": "Consultar a Vigía IA",
       "url": "/?action=vigia",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/favicon-128x128.png", "sizes": "128x128" }]
     }
   ],
   "related_applications": [],

@@ -1,5 +1,5 @@
 // ============================================================
-// UI TOOLS v22.8 - CÁLCULO REAL DE ALMACENAMIENTO CON EXPORTAR
+// UI TOOLS v22.9 - COMPLETO CON BALANCEADOR DE CARGA GROQ
 // ============================================================
 
 class UITools {
@@ -63,7 +63,7 @@ class UITools {
     }
 
     // ============================================================
-    // 🔥 CALCULAR TAMAÑO REAL USANDO EXPORTAR BACKUP
+    // CALCULAR TAMAÑO REAL USANDO EXPORTAR BACKUP
     // ============================================================
 
     async _calcularTamanioReal() {
@@ -163,7 +163,7 @@ class UITools {
     }
 
     // ============================================================
-    // 🔥 ACTUALIZAR INDICADOR DE ALMACENAMIENTO
+    // ACTUALIZAR INDICADOR DE ALMACENAMIENTO
     // ============================================================
 
     async _actualizarIndicadorStorage() {
@@ -181,7 +181,7 @@ class UITools {
     }
 
     // ============================================================
-    // 🔥 ACTUALIZAR BARRAS DE PROGRESO EN LA UI
+    // ACTUALIZAR BARRAS DE PROGRESO EN LA UI
     // ============================================================
 
     _actualizarBarrasStorage() {
@@ -245,7 +245,7 @@ class UITools {
     }
 
     // ============================================================
-    // 🔥 OBTENER COLOR SEGÚN PORCENTAJE
+    // OBTENER COLOR SEGÚN PORCENTAJE
     // ============================================================
 
     _getColorPorcentaje(porcentaje) {
@@ -256,7 +256,7 @@ class UITools {
     }
 
     // ============================================================
-    // RENDERIZAR PANEL PRINCIPAL
+    // RENDERIZAR PANEL PRINCIPAL CON BALANCEADOR
     // ============================================================
 
     _renderizarPanelConBackupMultiCapa() {
@@ -269,6 +269,24 @@ class UITools {
 
         const vigiaEstado = window.vigia?.getEstado?.() || { enLinea: false, modelo: 'openai/gpt-oss-120b' };
         const vigiaOnline = vigiaEstado.enLinea;
+
+        // Obtener estado del balanceador para el header
+        let balanceadorEstado = '⏳ Cargando...';
+        let balanceadorColor = 'var(--gray)';
+        let modeloActivo = 'N/A';
+        try {
+            if (window.balanceadorGroq) {
+                const estado = window.balanceadorGroq.getEstado();
+                modeloActivo = estado.modeloActivo || 'N/A';
+                const modelosDisponibles = estado.modelosDisponibles || 0;
+                const totalModelos = estado.modelosTotal || 0;
+                const usaPrioritario = estado.usaPrioritario;
+                balanceadorEstado = usaPrioritario ? 
+                    `🟢 ${modeloActivo} (prioritario)` : 
+                    `🟡 ${modeloActivo} (${modelosDisponibles}/${totalModelos})`;
+                balanceadorColor = usaPrioritario ? 'var(--success)' : 'var(--warning)';
+            }
+        } catch (e) {}
 
         const idbData = this._storageData.indexedDB;
         const localData = this._storageData.localStorage;
@@ -290,10 +308,13 @@ class UITools {
                         <span style="font-size:11px;color:${vigiaOnline ? 'var(--success)' : 'var(--danger)'};background:var(--bg);padding:4px 12px;border-radius:12px;">
                             ${vigiaOnline ? '🟢 Vigía Online' : '🔴 Vigía Offline'}
                         </span>
+                        <span style="font-size:11px;color:${balanceadorColor};background:var(--bg);padding:4px 12px;border-radius:12px;border:1px solid ${balanceadorColor};">
+                            ⚖️ ${balanceadorEstado}
+                        </span>
                     </div>
                 </div>
 
-                <!-- 🔥 INDICADOR DE ALMACENAMIENTO -->
+                <!-- INDICADOR DE ALMACENAMIENTO -->
                 <div style="background:var(--white);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow);border:2px solid var(--primary)20;margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
                         <h3 style="font-size:14px;font-weight:700;color:var(--dark);margin:0;">
@@ -347,7 +368,7 @@ class UITools {
                     </div>
                 </div>
 
-                <!-- GRID 3 COLUMNAS -->
+                <!-- GRID DE HERRAMIENTAS -->
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;width:100%;box-sizing:border-box;">
 
                     <!-- 1. BACKUP NEURO -->
@@ -539,7 +560,34 @@ class UITools {
                         </div>
                     </div>
 
-                    <!-- 9. LIMPIAR DATOS -->
+                    <!-- 9. BALANCEADOR GROQ (NUEVO) -->
+                    <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--primary);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;border:2px solid var(--primary);"
+                         onclick="window.UITools._mostrarEstadoBalanceador()"
+                         onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(108,92,231,0.15)'" 
+                         onmouseout="this.style.transform='none';this.style.boxShadow='var(--shadow)'">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);display:flex;align-items:center;justify-content:center;font-size:18px;color:white;flex-shrink:0;">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <div>
+                                <h3 style="font-size:14px;font-weight:700;color:var(--dark);margin:0;">⚖️ Balanceador Groq</h3>
+                                <span style="font-size:11px;color:var(--gray-light);" id="balanceadorToolStatus">${balanceadorEstado}</span>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
+                            Gestiona automáticamente los modelos de Groq y su disponibilidad
+                        </p>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">🔄 Balanceo</span>
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">📊 Estado</span>
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">🎯 Prioridad OSS</span>
+                        </div>
+                        <div style="margin-top:6px;font-size:10px;color:${balanceadorColor};" id="balanceadorEstadoMini">
+                            ${balanceadorEstado}
+                        </div>
+                    </div>
+
+                    <!-- 10. LIMPIAR DATOS -->
                     <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;"
                          onclick="window.UITools._reset()"
                          onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)'" 
@@ -572,8 +620,9 @@ class UITools {
                         <span>📌 Checkpoints: ${checkpoints}</span>
                         <span>${vigiaOnline ? '🟢' : '🔴'} Vigía: ${vigiaOnline ? 'Online' : 'Offline'}</span>
                         <span id="storageFooter">💾 Almacenamiento: ${this._storageData.total.porcentaje || 0}%</span>
+                        <span>⚖️ ${modeloActivo}</span>
                     </div>
-                    <div><span>⚙️ Tools v22.8</span></div>
+                    <div><span>⚙️ Tools v22.9</span></div>
                 </div>
             </div>
         `;
@@ -687,7 +736,6 @@ class UITools {
             const usuario = await db.getUsuario();
             const nivel = usuario?.idiomasObjetivo?.[0]?.nivel || 'A1';
             
-            // Actualizar almacenamiento antes del diagnóstico
             await this._actualizarIndicadorStorage();
             
             let mensaje = '🩺 DIAGNÓSTICO NEUROADAPTATIVO\n\n';
@@ -725,7 +773,15 @@ class UITools {
             const estadoPipeline = pipeline.getEstado ? pipeline.getEstado() : { faseActual: 1, progreso: 0 };
             const nivel = usuario?.idiomasObjetivo?.[0]?.nivel || 'A1';
             
-            // Actualizar almacenamiento antes del estado
+            // Obtener estado del balanceador
+            let balanceadorInfo = 'No disponible';
+            try {
+                if (window.balanceadorGroq) {
+                    const estado = window.balanceadorGroq.getEstado();
+                    balanceadorInfo = `${estado.modeloActivo} (${estado.modelosDisponibles}/${estado.modelosTotal})`;
+                }
+            } catch (e) {}
+            
             await this._actualizarIndicadorStorage();
             
             let mensaje = '📊 ESTADO DEL SISTEMA\n';
@@ -741,7 +797,8 @@ class UITools {
             mensaje += '🎯 Fase Actual: ' + estadoPipeline.faseActual + '\n';
             mensaje += '🟢 Vigía: ' + (estadoVigia.enLinea ? 'Online' : 'Offline') + '\n';
             mensaje += '📡 Modelo: ' + (estadoVigia.modelo || 'openai/gpt-oss-120b') + '\n';
-            mensaje += '🧩 Versión: 22.8\n';
+            mensaje += '⚖️ Balanceador: ' + balanceadorInfo + '\n';
+            mensaje += '🧩 Versión: 22.9\n';
             
             mensaje += '\n💾 ALMACENAMIENTO:\n';
             mensaje += `- IndexedDB: ${(this._storageData.indexedDB.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.indexedDB.porcentaje || 0}%) - ${this._storageData.indexedDB.items || 0} registros\n`;
@@ -828,6 +885,73 @@ class UITools {
     }
 
     // ============================================================
+    // MOSTRAR ESTADO DEL BALANCEADOR DE CARGA
+    // ============================================================
+
+    async _mostrarEstadoBalanceador() {
+        const core = this._core;
+        
+        try {
+            // Verificar que el balanceador exista
+            if (!window.balanceadorGroq) {
+                await core.alert(
+                    '❌ El balanceador de carga no está disponible.\n\n' +
+                    'Asegúrate de que el script "balanceadorGroq.js" esté cargado correctamente.',
+                    '⚠️ Balanceador no disponible'
+                );
+                return;
+            }
+
+            const estado = window.balanceadorGroq.getEstado();
+            const modeloActivo = estado.modeloActivo || 'N/A';
+            const modeloPrioritario = estado.modeloPrioritario || 'openai/gpt-oss-120b';
+            const modelosDisponibles = estado.modelosDisponibles || 0;
+            const modelosTotal = estado.modelosTotal || 0;
+            const usaPrioritario = estado.usaPrioritario;
+
+            // Obtener información detallada de cada modelo
+            let detallesModelos = '';
+            if (window.balanceadorGroq._modelos) {
+                for (const modelo of window.balanceadorGroq._modelos) {
+                    const info = window.balanceadorGroq.getEstadoModelo(modelo);
+                    if (info) {
+                        const disponible = info.disponible ? '🟢' : '🔴';
+                        const tokens = info.tokensDisponibles || 0;
+                        const fallos = info.fallosConsecutivos || 0;
+                        const esActivo = modelo === modeloActivo ? ' ✅ ACTUAL' : '';
+                        const esPrioritario = modelo === modeloPrioritario ? ' ⭐ PRIORITARIO' : '';
+                        detallesModelos += `  ${disponible} ${modelo}${esActivo}${esPrioritario}\n`;
+                        detallesModelos += `     Tokens: ${tokens} · Fallos: ${fallos}\n`;
+                    }
+                }
+            }
+
+            const mensaje = `⚖️ **ESTADO DEL BALANCEADOR GROQ**\n\n` +
+                `📌 **Modelo activo:** ${modeloActivo}\n` +
+                `⭐ **Modelo prioritario:** ${modeloPrioritario}\n` +
+                `📊 **Disponibles:** ${modelosDisponibles}/${modelosTotal} modelos\n` +
+                `🎯 **Usando prioritario:** ${usaPrioritario ? '✅ Sí' : '🔴 No (balanceado)'}\n\n` +
+                `📋 **Detalle de modelos:**\n${detallesModelos || '  No hay información de modelos'}\n\n` +
+                `💡 **Funcionamiento:**\n` +
+                `• Siempre intenta usar el modelo prioritario (OSS)\n` +
+                `• Si está agotado, cambia automáticamente a otro modelo\n` +
+                `• Vuelve al prioritario tan pronto como esté disponible\n` +
+                `• Verifica el estado de los modelos cada 30 segundos\n` +
+                `• Reintenta el prioritario cada 60 segundos\n\n` +
+                `🔧 **Recomendaciones:**\n` +
+                `• Si ves un modelo con 🔴, puede estar agotado o con errores\n` +
+                `• El balanceador cambiará automáticamente al siguiente disponible\n` +
+                `• Puedes forzar una reconexión desde "Reconectar Vigía"`;
+
+            await core.alert(mensaje, '⚖️ Balanceador de Carga Groq');
+
+        } catch (error) {
+            console.error('❌ Error mostrando estado del balanceador:', error);
+            core.mostrarToast('❌ Error al obtener el estado del balanceador', 'error');
+        }
+    }
+
+    // ============================================================
     // MÉTODOS LEGACY
     // ============================================================
 
@@ -856,7 +980,10 @@ class UITools {
 // ============================================================
 
 window.UITools = new UITools();
-console.log('✅ UITools v22.8 - CÁLCULO REAL DE ALMACENAMIENTO CON EXPORTAR');
-console.log('  💾 Usa db.exportarBackup() para calcular el tamaño real');
+console.log('✅ UITools v22.9 - COMPLETO CON BALANCEADOR DE CARGA GROQ');
+console.log('  ⚖️ Tarjeta "Balanceador Groq" en Herramientas');
+console.log('  📊 Método _mostrarEstadoBalanceador()');
+console.log('  💾 Cálculo real de almacenamiento con exportar');
 console.log('  📊 Muestra número de registros/items');
 console.log('  🔄 Actualización en tiempo real cada 10 segundos');
+console.log('  🎯 Todas las funcionalidades originales preservadas');

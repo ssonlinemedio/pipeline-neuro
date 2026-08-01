@@ -1,5 +1,5 @@
 // ============================================================
-// GESTOR DE FAVORITOS v1.8 - ESTRUCTURA JERÁRQUICA POR NIVEL + FAMILIA
+// GESTOR DE FAVORITOS v1.9 - CON LIMPIEZA DE IDS HUÉRFANOS
 // ============================================================
 
 class GestorFavoritos {
@@ -24,12 +24,12 @@ class GestorFavoritos {
     async init() {
         if (this._initDone && Date.now() - this._ultimaRecarga < 5000) return this;
         
-        console.log('📚 Gestor de Favoritos v1.8: Inicializando...');
+        console.log('📚 Gestor de Favoritos v1.9: Inicializando...');
         await this._cargarFavoritos();
         await this._cargarGrupos();
         this._initDone = true;
         this._ultimaRecarga = Date.now();
-        console.log('✅ Gestor de Favoritos v1.8 inicializado');
+        console.log('✅ Gestor de Favoritos v1.9 inicializado');
         console.log(`   📂 Grupos: ${Object.keys(this._grupos).length}`);
         console.log(`   📚 Frases: ${this._favoritos.frases.length}`);
         console.log(`   📝 Palabras: ${this._favoritos.palabras.length}`);
@@ -400,7 +400,7 @@ class GestorFavoritos {
     }
 
     // ============================================================
-    // MÉTODOS DE FAVORITOS (mantenidos)
+    // MÉTODOS DE FAVORITOS
     // ============================================================
 
     async añadirFrase(fraseId) {
@@ -489,41 +489,83 @@ class GestorFavoritos {
         return false;
     }
 
+    // ============================================================
+    // 🔥 OBTENER FRASES FAVORITAS CON LIMPIEZA DE IDS HUÉRFANOS
+    // ============================================================
+
     async obtenerFrasesFavoritas() {
-        try {
-            const frases = [];
-            for (const id of this._favoritos.frases) {
-                try {
-                    const frase = await db.get('frases', id);
-                    if (frase) frases.push(frase);
-                } catch (e) {
-                    console.warn('⚠️ Error obteniendo frase:', id);
+        const frasesValidas = [];
+        const idsHuérfanos = [];
+        
+        for (const id of this._favoritos.frases) {
+            try {
+                const frase = await db.get('frases', id);
+                if (frase) {
+                    frasesValidas.push(frase);
+                } else {
+                    idsHuérfanos.push(id);
                 }
+            } catch (e) {
+                console.warn('⚠️ Error obteniendo frase:', id);
+                idsHuérfanos.push(id);
             }
-            return frases;
-        } catch (e) {
-            console.warn('⚠️ Error obteniendo frases favoritas:', e);
-            return [];
         }
+        
+        // 🔥 LIMPIAR IDS HUÉRFANOS
+        if (idsHuérfanos.length > 0) {
+            console.log(`🧹 Eliminando ${idsHuérfanos.length} IDs de frases huérfanos...`);
+            this._favoritos.frases = this._favoritos.frases.filter(id => !idsHuérfanos.includes(id));
+            // También limpiar grupos
+            for (const [nombre, grupo] of Object.entries(this._grupos)) {
+                grupo.frases = grupo.frases.filter(id => !idsHuérfanos.includes(id));
+            }
+            await this.guardarFavoritos();
+            await this._guardarGrupos();
+        }
+        
+        return frasesValidas;
     }
 
+    // ============================================================
+    // 🔥 OBTENER PALABRAS FAVORITAS CON LIMPIEZA DE IDS HUÉRFANOS
+    // ============================================================
+
     async obtenerPalabrasFavoritas() {
-        try {
-            const palabras = [];
-            for (const id of this._favoritos.palabras) {
-                try {
-                    const palabra = await db.get('palabras', id);
-                    if (palabra) palabras.push(palabra);
-                } catch (e) {
-                    console.warn('⚠️ Error obteniendo palabra:', id);
+        const palabrasValidas = [];
+        const idsHuérfanos = [];
+        
+        for (const id of this._favoritos.palabras) {
+            try {
+                const palabra = await db.get('palabras', id);
+                if (palabra) {
+                    palabrasValidas.push(palabra);
+                } else {
+                    idsHuérfanos.push(id);
                 }
+            } catch (e) {
+                console.warn('⚠️ Error obteniendo palabra:', id);
+                idsHuérfanos.push(id);
             }
-            return palabras;
-        } catch (e) {
-            console.warn('⚠️ Error obteniendo palabras favoritas:', e);
-            return [];
         }
+        
+        // 🔥 LIMPIAR IDS HUÉRFANOS
+        if (idsHuérfanos.length > 0) {
+            console.log(`🧹 Eliminando ${idsHuérfanos.length} IDs de palabras huérfanos...`);
+            this._favoritos.palabras = this._favoritos.palabras.filter(id => !idsHuérfanos.includes(id));
+            // También limpiar grupos
+            for (const [nombre, grupo] of Object.entries(this._grupos)) {
+                grupo.palabras = grupo.palabras.filter(id => !idsHuérfanos.includes(id));
+            }
+            await this.guardarFavoritos();
+            await this._guardarGrupos();
+        }
+        
+        return palabrasValidas;
     }
+
+    // ============================================================
+    // OTROS MÉTODOS (MANTENIDOS)
+    // ============================================================
 
     async estaEnFavoritos(tipo, id) {
         if (tipo === 'frase') {
@@ -573,7 +615,6 @@ class GestorFavoritos {
     }
 
     async generarGruposConVigia(idioma) {
-        // Mantenido igual
         if (window.vigia && window.vigia.enLinea) {
             const frases = await this.obtenerFrasesFavoritas();
             const palabras = await this.obtenerPalabrasFavoritas();
@@ -642,5 +683,5 @@ Ejemplo:
 
 if (!window.gestorFavoritos) {
     window.gestorFavoritos = new GestorFavoritos();
-    console.log('✅ Gestor de Favoritos v1.8 - Estructura jerárquica por NIVEL + FAMILIA');
+    console.log('✅ Gestor de Favoritos v1.9 - CON LIMPIEZA DE IDS HUÉRFANOS');
 }

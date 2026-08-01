@@ -1,5 +1,5 @@
 // ============================================================
-// UI JSON v22.0 - CON SOPORTE PARA VERSIONES DE ESTÁNDAR
+// UI JSON v22.2 - CORREGIDO: GENERADOR NEURO → MIS TEMAS
 // ============================================================
 
 class UIJSON {
@@ -13,11 +13,9 @@ class UIJSON {
         this._familiaGenerada = null;
         this._idiomaNativo = 'es';
         
-        // ============================================================
-        // 🔥 NUEVO: TEMAS POR VERSIÓN
-        // ============================================================
+        // TEMAS POR VERSIÓN
         this._TEMAS_POR_VERSION = {
-            'v2.0': { // HSK 2.0
+            'v2.0': {
                 'A1': 8,
                 'A2': 8,
                 'B1': 8,
@@ -25,7 +23,7 @@ class UIJSON {
                 'C1': 5,
                 'C2': 4
             },
-            'v3.0': { // HSK 3.0
+            'v3.0': {
                 'A1': 12,
                 'A2': 12,
                 'B1': 10,
@@ -53,6 +51,11 @@ class UIJSON {
         ];
         
         this._CARACTERES_COMUNES = ['的', '了', '在', '是', '有', '和', '与', '这', '那', '一', '不', '也', '都', '很', '我', '你', '他', '她', '们', '个', '就', '过', '着', '把', '被', '让', '给', '去', '来', '上', '下', '中', '大', '小', '多', '少', '人', '日', '月', '年', '时', '分', '点', '到', '对', '会', '可', '以', '为', '要', '能', '得', '所', '之', '而', '但', '却', '只', '还', '才', '更', '最', '等', '又', '也', '就', '说', '看', '听', '走', '跑', '坐', '站', '吃', '喝', '睡', '想', '要', '用', '出', '入', '回', '开', '关', '见', '问', '答', '知', '道', '觉', '得', '感', '觉', '认', '为', '觉', '得', '希', '望', '喜', '欢', '爱'];
+        
+        // ============================================================
+        // NIVELES PARA VALIDACIÓN
+        // ============================================================
+        this.NIVELES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
     }
 
     _esJeroglifico(idioma) {
@@ -102,15 +105,11 @@ class UIJSON {
         return nombres[idioma] || idioma;
     }
 
-    // ============================================================
-    // 🔥 NUEVO: OBTENER VERSIÓN DEL ESTÁNDAR
-    // ============================================================
-
     _obtenerVersionEstandar(idioma) {
         if (window.gestorIdiomas && typeof window.gestorIdiomas.obtenerVersionActiva === 'function') {
             return window.gestorIdiomas.obtenerVersionActiva(idioma);
         }
-        return 'v3.0'; // Por defecto usar la última versión
+        return 'v3.0';
     }
 
     _obtenerNombreVersion(idioma, version) {
@@ -124,7 +123,6 @@ class UIJSON {
         if (window.gestorIdiomas && typeof window.gestorIdiomas.obtenerPalabrasRequeridas === 'function') {
             return window.gestorIdiomas.obtenerPalabrasRequeridas(idioma, version, nivel);
         }
-        // Fallback: usar la tabla de palabras por nivel
         const palabrasPorNivel = {
             'A1': 500, 'A2': 1000, 'B1': 2000, 'B2': 4000, 'C1': 8000, 'C2': 16000
         };
@@ -135,10 +133,6 @@ class UIJSON {
         const versionData = this._TEMAS_POR_VERSION[version] || this._TEMAS_POR_VERSION['default'];
         return versionData[nivel] || versionData['A1'];
     }
-
-    // ============================================================
-    // INIT
-    // ============================================================
 
     async init(core) {
         this._core = core;
@@ -185,10 +179,6 @@ class UIJSON {
         }
     }
 
-    // ============================================================
-    // GENERAR JSON DESDE DASHBOARD (CON VERSIÓN)
-    // ============================================================
-
     async generarJSONDesdeDashboard() {
         const temaInput = document.getElementById('jsonTemaInput');
         const numInput = document.getElementById('jsonNumInput');
@@ -199,7 +189,6 @@ class UIJSON {
         const nombreIdioma = this._getNombreIdioma(idiomaActivo);
         const nombreNativo = this._getNombreIdioma(this._idiomaNativo);
         
-        // 🔥 OBTENER VERSIÓN DEL ESTÁNDAR
         const versionEstandar = this._obtenerVersionEstandar(idiomaActivo);
         const nombreVersion = this._obtenerNombreVersion(idiomaActivo, versionEstandar);
         const palabrasRequeridas = this._obtenerPalabrasRequeridas(idiomaActivo, versionEstandar, nivel);
@@ -223,7 +212,6 @@ class UIJSON {
             await this._core?.alert('⚠️ El número máximo de historias es ' + this.MAX_HISTORIAS + '. Se ha ajustado automáticamente.', 'Límite');
         }
 
-        // 🔥 Si el usuario no especificó número, usar el recomendado para la versión
         if (!num || num === '3') {
             numInt = numTemasRecomendados;
             if (numInput) numInput.value = numInt;
@@ -316,7 +304,6 @@ class UIJSON {
                     "es_jeroglifico": esJeroglifico,
                     "idioma_nativo": this._idiomaNativo,
                     "nombre_nativo": nombreNativo,
-                    // 🔥 NUEVO: CAMPOS DE VERSIÓN
                     "version_estandar": versionEstandar,
                     "nombre_version": nombreVersion,
                     "palabras_requeridas": palabrasRequeridas,
@@ -364,7 +351,6 @@ class UIJSON {
                     "requiere_pinyin": esJeroglifico,
                     "requiere_transcripcion": !esJeroglifico,
                     "sistema_tonos": esJeroglifico ? "números (ma1, ma2, ma3, ma4) o diacríticos (mā, má, mǎ, mà)" : null,
-                    // 🔥 NUEVO: VERSIÓN EN META
                     "version_estandar": versionEstandar,
                     "nombre_version": nombreVersion,
                     "palabras_requeridas": palabrasRequeridas,
@@ -378,7 +364,6 @@ class UIJSON {
                 "historias": []
             };
 
-            // Crear historias con placeholders
             for (let i = 1; i <= numInt; i++) {
                 const historia = { 
                     id: i, 
@@ -493,10 +478,6 @@ class UIJSON {
         }
     }
 
-    // ============================================================
-    // GENERAR FAMILIA DE CARACTERES DESDE DASHBOARD
-    // ============================================================
-
     async generarFamiliaCaracteresDesdeDashboard() {
         const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
         const esJeroglifico = this._esJeroglifico(idioma);
@@ -512,7 +493,6 @@ class UIJSON {
             return;
         }
         
-        // 🔥 OBTENER VERSIÓN
         const versionEstandar = this._obtenerVersionEstandar(idioma);
         const nombreVersion = this._obtenerNombreVersion(idioma, versionEstandar);
         
@@ -688,10 +668,6 @@ class UIJSON {
         this._core?.mostrarToast(`🀄 Tutor Neuroadaptativo: Plantilla generada para "${caracterSugerido}" con ${nombreVersion}`, 'success');
     }
 
-    // ============================================================
-    // GENERAR PLANTILLA DE FAMILIA DE CARACTERES (CON VERSIÓN)
-    // ============================================================
-
     _generarPlantillaFamiliaCaracteres(caracter, tema, idioma, nivel, idiomaNativo, nombreIdioma, numPalabras, nombreNativo, versionEstandar, nombreVersion) {
         const familiasSemanticasList = this._FAMILIAS_SEMANTICAS.join(', ');
         const palabrasRequeridas = this._obtenerPalabrasRequeridas(idioma, versionEstandar, nivel);
@@ -709,7 +685,6 @@ class UIJSON {
                 "nombre_nativo": nombreNativo,
                 "num_palabras": numPalabras,
                 "es_jeroglifico": true,
-                // 🔥 NUEVO: VERSIÓN
                 "version_estandar": versionEstandar,
                 "nombre_version": nombreVersion,
                 "palabras_requeridas": palabrasRequeridas,
@@ -745,7 +720,6 @@ class UIJSON {
                 "idioma_nativo": idiomaNativo,
                 "nombre_nativo": nombreNativo,
                 "num_palabras": numPalabras,
-                // 🔥 NUEVO: VERSIÓN
                 "version_estandar": versionEstandar,
                 "nombre_version": nombreVersion,
                 "palabras_requeridas": palabrasRequeridas,
@@ -798,17 +772,12 @@ class UIJSON {
         };
     }
 
-    // ============================================================
-    // ABRIR GENERADOR JSON (CON VERSIÓN)
-    // ============================================================
-
     async abrirGeneradorJSON() {
         const { idioma: idiomaActivo, nivel } = this._actualizarIdiomaYNivel();
         const nombreIdioma = this._getNombreIdioma(idiomaActivo);
         const nombreNativo = this._getNombreIdioma(this._idiomaNativo);
         const esJeroglifico = this._esJeroglifico(idiomaActivo);
         
-        // 🔥 OBTENER VERSIÓN
         const versionEstandar = this._obtenerVersionEstandar(idiomaActivo);
         const nombreVersion = this._obtenerNombreVersion(idiomaActivo, versionEstandar);
         const palabrasRequeridas = this._obtenerPalabrasRequeridas(idiomaActivo, versionEstandar, nivel);
@@ -884,7 +853,6 @@ class UIJSON {
                     "es_jeroglifico": esJeroglifico,
                     "idioma_nativo": this._idiomaNativo,
                     "nombre_nativo": nombreNativo,
-                    // 🔥 NUEVO: VERSIÓN
                     "version_estandar": versionEstandar,
                     "nombre_version": nombreVersion,
                     "palabras_requeridas": palabrasRequeridas,
@@ -923,7 +891,6 @@ class UIJSON {
                     "requiere_pinyin": esJeroglifico,
                     "requiere_transcripcion": !esJeroglifico,
                     "sistema_tonos": esJeroglifico ? "números (ma1, ma2, ma3, ma4) o diacríticos (mā, má, mǎ, mà)" : null,
-                    // 🔥 NUEVO: VERSIÓN
                     "version_estandar": versionEstandar,
                     "nombre_version": nombreVersion,
                     "palabras_requeridas": palabrasRequeridas,
@@ -1105,7 +1072,7 @@ class UIJSON {
     }
 
     // ============================================================
-    // HANDLE IMPORT JSON (COMPLETO CON VERSIÓN)
+    // 🔥 HANDLE IMPORT JSON - CORREGIDO (MIS TEMAS vs TEMAS IMPORTADOS)
     // ============================================================
 
     async _handleImportJSON() {
@@ -1139,7 +1106,6 @@ class UIJSON {
             const esJeroglifico = data.meta.es_jeroglifico || this._esJeroglifico(data.meta.idioma);
             const idiomaNativo = data.meta.idioma_nativo || this._idiomaNativo;
             
-            // 🔥 VERIFICAR VERSIÓN
             const versionEstandar = data.meta.version_estandar || this._obtenerVersionEstandar(data.meta.idioma);
             const nombreVersion = data.meta.nombre_version || this._obtenerNombreVersion(data.meta.idioma, versionEstandar);
             
@@ -1190,7 +1156,8 @@ class UIJSON {
             const palabrasExistentes = await db.obtenerPalabras();
             const historiasExistentes = await db.obtenerHistorias();
             
-            const idioma = data.meta.idioma || 'es';
+            // 🔥 CRUCIAL: Usar el idioma del JSON o el idioma activo
+            const idioma = data.meta.idioma || gestorIdiomas?.getIdiomaActivo() || 'es';
             const nivel = data.meta.nivel || 'B1';
             
             let temaId = data.meta?.tema_id || null;
@@ -1210,20 +1177,21 @@ class UIJSON {
             
             if (!temaGuardado) {
                 const temasExistentes = await db.obtenerTemas();
-                temaGuardado = temasExistentes.find(t => t.nombre === data.meta.tema);
+                temaGuardado = temasExistentes.find(t => t.nombre === data.meta.tema && t.idioma === idioma);
                 if (temaGuardado) {
                     temaIdReal = temaGuardado.id;
-                    console.log(`📂 Tema encontrado por nombre: ${temaGuardado.nombre} -> ${temaIdReal}`);
+                    console.log(`📂 Tema encontrado por nombre e idioma: ${temaGuardado.nombre} -> ${temaIdReal}`);
                 }
             }
             
             if (!temaGuardado) {
                 let temasExistentes = await db.obtenerTemas();
+                const temasDelIdioma = temasExistentes.filter(t => t.idioma === idioma);
                 
-                if (temasExistentes.length > 0) {
+                if (temasDelIdioma.length > 0) {
                     let opciones = '0. Crear nuevo tema\n';
-                    for (let ti = 0; ti < temasExistentes.length; ti++) {
-                        const t = temasExistentes[ti];
+                    for (let ti = 0; ti < temasDelIdioma.length; ti++) {
+                        const t = temasDelIdioma[ti];
                         const historiasTema = await db.obtenerHistoriasPorTema(t.id);
                         opciones += (ti + 1) + '. ' + (t.icono || '📁') + ' ' + t.nombre + ' (' + historiasTema.length + ' historias)\n';
                     }
@@ -1244,6 +1212,7 @@ class UIJSON {
                     if (idx === 0) {
                         const nombre = await this._core?.prompt('📝 Nombre del nuevo tema:', data.meta.tema || 'Mi nuevo tema', '', 'Nuevo tema');
                         if (nombre) {
+                            // 🔥 CORREGIDO: EL TEMA VA A "MIS TEMAS", NO A "TEMAS IMPORTADOS"
                             const nuevoTema = {
                                 nombre: nombre,
                                 descripcion: data.meta?.descripcion || '',
@@ -1254,16 +1223,17 @@ class UIJSON {
                                 estado: 'en_curso',
                                 historiasIds: [],
                                 palabrasClave: [],
-                                // 🔥 GUARDAR VERSIÓN EN EL TEMA
                                 _version_estandar: versionEstandar,
-                                _nombre_version: nombreVersion
+                                _nombre_version: nombreVersion,
+                                _esManual: true,           // ✅ VA A "MIS TEMAS"
+                                origen: 'manual'            // ✅ VA A "MIS TEMAS"
                             };
                             temaIdReal = await db.guardarTema(nuevoTema);
                             temaGuardado = await db.obtenerTema(temaIdReal);
-                            console.log(`📂 Nuevo tema manual creado con ID: ${temaIdReal}`);
+                            console.log(`📂 Nuevo tema manual creado con ID: ${temaIdReal} y idioma: ${idioma}`);
                         }
-                    } else if (idx > 0 && idx <= temasExistentes.length) {
-                        temaGuardado = temasExistentes[idx - 1];
+                    } else if (idx > 0 && idx <= temasDelIdioma.length) {
+                        temaGuardado = temasDelIdioma[idx - 1];
                         temaIdReal = temaGuardado.id;
                         console.log(`📂 Tema seleccionado: ${temaGuardado.nombre} -> ${temaIdReal}`);
                     }
@@ -1271,9 +1241,10 @@ class UIJSON {
                 
                 if (!temaGuardado) {
                     const nombre = data.meta.tema || 'Tema del generador JSON';
+                    // 🔥 CORREGIDO: EL TEMA VA A "MIS TEMAS", NO A "TEMAS IMPORTADOS"
                     const nuevoTema = {
                         nombre: nombre,
-                        descripcion: data.meta?.descripcion || 'Tema creado desde el Tutor Neuroadaptativo',
+                        descripcion: data.meta?.descripcion || 'Tema creado desde el Generador NeuroAdaptativo',
                         idioma: idioma,
                         nivel: nivel,
                         icono: '📁',
@@ -1282,16 +1253,19 @@ class UIJSON {
                         historiasIds: [],
                         palabrasClave: [],
                         _version_estandar: versionEstandar,
-                        _nombre_version: nombreVersion
+                        _nombre_version: nombreVersion,
+                        _esManual: true,           // ✅ VA A "MIS TEMAS"
+                        origen: 'manual'            // ✅ VA A "MIS TEMAS"
                     };
                     temaIdReal = await db.guardarTema(nuevoTema);
                     temaGuardado = await db.obtenerTema(temaIdReal);
-                    console.log(`📂 Nuevo tema manual creado automáticamente con ID: ${temaIdReal}`);
+                    console.log(`📂 Nuevo tema manual creado automáticamente con ID: ${temaIdReal} y idioma: ${idioma}`);
                 }
             }
             
             console.log(`📂 USANDO ID REAL DEL TEMA: ${temaIdReal} (${temaGuardado?.nombre})`);
             console.log(`📌 Versión del tema: ${temaGuardado?._nombre_version || nombreVersion}`);
+            console.log(`🌍 Idioma del tema: ${temaGuardado?.idioma || idioma}`);
             
             const duplicados = { historias: [], frases: [], palabras: [] };
 
@@ -1529,7 +1503,7 @@ class UIJSON {
             }
 
             // ============================================================
-            // IMPORTAR CARACTERES DESTACADOS (CON VERSIÓN)
+            // IMPORTAR CARACTERES DESTACADOS
             // ============================================================
             let caracteresImportados = { importados: 0, duplicados: 0, errores: 0 };
             if (data.caracteres_destacados) {
@@ -1542,8 +1516,14 @@ class UIJSON {
                 temaGuardado.historiasIds = ids;
                 temaGuardado.frases = (temaGuardado.frases || 0) + importados.frases;
                 temaGuardado._tieneContenido = true;
+                temaGuardado.idioma = idioma;
+                // 🔥 ASEGURAR QUE EL TEMA SEA MANUAL (MIS TEMAS)
+                temaGuardado._esManual = true;
+                temaGuardado.origen = 'manual';
+                // ELIMINAR CUALQUIER MARCA DE IMPORTADO
+                delete temaGuardado._esImportado;
                 await db.update('temas', temaGuardado);
-                console.log(`✅ Tema "${temaGuardado.nombre}" actualizado con ${ids.length} historias`);
+                console.log(`✅ Tema "${temaGuardado.nombre}" actualizado con ${ids.length} historias (idioma: ${idioma}) - EN MIS TEMAS`);
                 if (caracteresImportados.importados > 0) {
                     console.log(`   🀄 ${caracteresImportados.importados} caracteres raíz importados`);
                 }
@@ -1602,10 +1582,15 @@ class UIJSON {
                 resumen += '🀄 Caracteres duplicados: ' + caracteresImportados.duplicados + '\n';
             }
             if (temaGuardado) {
-                resumen += '\n📂 Tema: ' + temaGuardado.nombre + ' (ID: ' + temaGuardado.id + ')';
+                resumen += '\n📂 Tema: ' + temaGuardado.nombre + ' (ID: ' + temaGuardado.id + ')' + ' 🌍 ' + idioma;
+                // 🔥 DETECTAR TIPO DE TEMA CORRECTAMENTE
+                const esManual = temaGuardado._esManual === true || temaGuardado.origen === 'manual';
                 const esPredefinido = temaGuardado._esPredefinido === true;
                 const esImportado = temaGuardado._esImportado === true || temaGuardado.origen === 'importado';
-                if (esPredefinido) {
+                
+                if (esManual) {
+                    resumen += '\n📍 Ubicación: Mis Temas ✅';
+                } else if (esPredefinido) {
                     resumen += '\n📍 Ubicación: Temas Predefinidos por Nivel';
                 } else if (esImportado) {
                     resumen += '\n📍 Ubicación: Temas Importados';
@@ -1638,10 +1623,6 @@ class UIJSON {
             console.error('❌ Error importando JSON:', error);
         }
     }
-
-    // ============================================================
-    // IMPORTAR CARACTERES DESTACADOS (CON VERSIÓN)
-    // ============================================================
 
     async _importarCaracteresDestacados(data, idioma, nivel, versionEstandar) {
         if (!data.caracteres_destacados || !data.caracteres_destacados.lista) {
@@ -1825,10 +1806,6 @@ class UIJSON {
         return 'simple';
     }
 
-    // ============================================================
-    // IMPORTAR FAMILIA DE CARACTERES (CON VERSIÓN)
-    // ============================================================
-
     async _importarFamiliaCaracteres(data) {
         console.log('🀄 Importando Familia de Caracteres:', data.meta?.tema);
 
@@ -1849,7 +1826,6 @@ class UIJSON {
         const idioma = meta.idioma || data.idioma || this._idiomaActual || 'zh';
         const nivel = meta.nivel || data.nivel || this._nivelActual || 'A1';
         
-        // 🔥 OBTENER VERSIÓN
         const versionEstandar = meta.version_estandar || this._obtenerVersionEstandar(idioma);
         const nombreVersion = meta.nombre_version || this._obtenerNombreVersion(idioma, versionEstandar);
 
@@ -1999,7 +1975,8 @@ class UIJSON {
         resumen += `📌 Carácter raíz: **${caracterRaiz.simbolo}** (${caracterRaiz.significado_base || 'Sin significado'})\n`;
         resumen += `📚 Tema: ${meta.tema || 'General'}\n`;
         resumen += `🎯 Nivel: ${nivel}\n`;
-        resumen += `📌 Versión: ${nombreVersion}\n\n`;
+        resumen += `📌 Versión: ${nombreVersion}\n`;
+        resumen += `🌍 Idioma: ${idioma}\n\n`;
         resumen += `📝 Palabras importadas: ${importados}\n`;
         resumen += `⏭️ Palabras duplicadas: ${duplicados}\n`;
         resumen += `❌ Errores: ${errores}\n\n`;
@@ -2037,10 +2014,15 @@ class UIJSON {
     }
 }
 
+// ============================================================
+// INSTANCIA GLOBAL
+// ============================================================
+
 window.UIJSON = new UIJSON();
 
-console.log('✅ UIJSON v22.0 - CON SOPORTE PARA VERSIONES DE ESTÁNDAR');
-console.log('  📌 HSK 3.0 soportado con 500 palabras para A1');
-console.log('  📊 Palabras requeridas visibles en la generación');
-console.log('  🔄 Temas recomendados según la versión');
-console.log('  🎯 Número de historias sugerido automáticamente');
+console.log('✅ UIJSON v22.2 - CORREGIDO: GENERADOR NEURO → MIS TEMAS');
+console.log('  🔥 Temas creados desde el Generador NeuroAdaptativo van a "Mis Temas"');
+console.log('  🔥 _esManual: true y origen: "manual"');
+console.log('  🔥 Eliminado _esImportado para evitar que vaya a "Temas Importados"');
+console.log('  🔥 Temas Importados (JSON importado) siguen yendo a "Temas Importados"');
+console.log('  🔥 Todas las funcionalidades originales preservadas');

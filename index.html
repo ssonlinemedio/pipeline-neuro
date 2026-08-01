@@ -3,18 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pipeline Neuro v22.0 - Libro de Lectura</title>
+    <title>Pipeline Neuro v22.2 - Balanceador de Carga Groq</title>
+    
+    <!-- ============================================================ -->
+    <!-- FAVICON Y ICONOS PARA TODOS LOS DISPOSITIVOS -->
+    <!-- ============================================================ -->
+    
+    <!-- Favicon estándar (todos los navegadores) -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    
+    <!-- Favicon PNG para navegadores modernos -->
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64x64.png">
+    <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128x128.png">
+    
+    <!-- Apple Touch Icon (iOS, Safari) -->
+    <link rel="apple-touch-icon" sizes="57x57" href="icons/apple-touch-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="icons/apple-touch-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="icons/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="icons/apple-touch-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="icons/apple-touch-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="icons/apple-touch-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="icons/apple-touch-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
+    
+    <!-- Android Chrome -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/android-icon-512x512.png">
+    
+    <!-- Microsoft Windows -->
+    <meta name="msapplication-TileColor" content="#6C5CE7">
+    <meta name="msapplication-TileImage" content="icons/mstile-150x150.png">
+    <meta name="msapplication-config" content="browserconfig.xml">
+    
+    <!-- Color de la barra de navegación en móviles -->
+    <meta name="theme-color" content="#6C5CE7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- ============================================================ -->
+    <!-- META TAGS PARA COMPARTIR EN REDES SOCIALES -->
+    <!-- ============================================================ -->
+    <meta property="og:title" content="Pipeline Neuro - Aprendizaje de Idiomas con IA">
+    <meta property="og:description" content="Sistema de aprendizaje de idiomas con neurociencia y balanceador de carga Groq">
+    <meta property="og:image" content="icons/og-image.png">
+    <meta property="og:url" content="https://pipeline-neuro.com">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Pipeline Neuro">
+    <meta name="twitter:description" content="Aprende idiomas con neurociencia e IA">
+    <meta name="twitter:image" content="icons/og-image.png">
+    
+    <!-- ============================================================ -->
+    <!-- ESTILOS -->
+    <!-- ============================================================ -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* Animaciones para el tutor */
+        /* ============================================================
+           ANIMACIONES Y ESTILOS COMPLETOS
+           ============================================================ */
+        
         @keyframes slideInRight {
             from { opacity: 0; transform: translateX(50px); }
             to { opacity: 1; transform: translateX(0); }
         }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes pulse-badge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes loadingProgress {
+            0% { width: 10%; margin-left: 0%; }
+            50% { width: 70%; margin-left: 15%; }
+            100% { width: 10%; margin-left: 80%; }
+        }
+        
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           INDICADOR DEL BALANCEADOR DE CARGA
+           ============================================================ */
+        
+        #balanceadorModeloIndicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            padding: 3px 12px;
+            border-radius: 8px;
+            background: var(--bg);
+            border: 1px solid var(--light);
+            margin-top: 2px;
+            transition: all 0.5s ease;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            transition: all 0.5s ease;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-dot.prioritario {
+            background: #00B894;
+            box-shadow: 0 0 12px rgba(0,184,148,0.4);
+        }
+        
+        #balanceadorModeloIndicator .balanceador-dot.alternativo {
+            background: #FDCB6E;
+            box-shadow: 0 0 12px rgba(253,203,110,0.4);
+        }
+        
+        #balanceadorModeloIndicator .balanceador-dot.error {
+            background: #FF7675;
+            box-shadow: 0 0 12px rgba(255,118,117,0.4);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-dot.offline {
+            background: #636E72;
+            box-shadow: none;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-nombre {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-nombre.prioritario {
+            color: #00B894;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-nombre.alternativo {
+            color: #E17055;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-estado {
+            font-size: 10px;
+            color: var(--gray);
+            white-space: nowrap;
+            margin-left: auto;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-estado.prioritario {
+            color: #00B894;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-estado.alternativo {
+            color: #E17055;
+        }
+        
+        #balanceadorModeloIndicator .balanceador-estado.error {
+            color: #FF7675;
+        }
+
+        /* ============================================================
+           TUTOR
+           ============================================================ */
         
         #tutorPanel {
             scrollbar-width: thin;
@@ -61,11 +248,10 @@
             color: var(--warning);
             animation: pulse-badge 2s ease-in-out infinite;
         }
-        
-        @keyframes pulse-badge {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
+
+        /* ============================================================
+           DASHBOARD NEURO
+           ============================================================ */
 
         #dashNeuroContainer {
             transition: all 0.3s ease;
@@ -121,11 +307,6 @@
             animation: fadeUp 0.3s ease;
         }
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         .neuro-metric-bar {
             height: 4px;
             background: var(--bg);
@@ -178,6 +359,10 @@
             color: var(--dark);
         }
 
+        /* ============================================================
+           MODALES
+           ============================================================ */
+
         .modal-espacio {
             position: fixed;
             z-index: 1000;
@@ -217,14 +402,6 @@
         .modal-espacio-close:hover,
         .modal-espacio-close:focus {
             color: var(--danger, #FF7675);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
         }
 
         #modalUnificadoOverlay {
@@ -455,15 +632,6 @@
             .ejercicio-option .icon {
                 font-size: 20px;
             }
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .spinner {
-            display: inline-block;
-            animation: spin 1s linear infinite;
         }
 
         .grammar-tab {
@@ -906,7 +1074,6 @@
             border: 1px solid var(--secondary)30;
         }
 
-        /* Estilo para el botón de Libro de Lectura */
         #btnLibroLectura {
             transition: all 0.3s ease;
         }
@@ -915,7 +1082,6 @@
             box-shadow: 0 4px 20px rgba(108,92,231,0.3);
         }
 
-        /* Estilo para la barra de fiabilidad del generador */
         .fiabilidad-bar {
             transition: width 1s ease;
         }
@@ -924,6 +1090,42 @@
         .fiabilidad-bar.aceptable { background: #FDCB6E; }
         .fiabilidad-bar.bajo { background: #E17055; }
         .fiabilidad-bar.insuficiente { background: #FF7675; }
+
+        .spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        /* OFFline banner */
+        .offline-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--danger);
+            color: white;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            z-index: 9999;
+            font-family: var(--font, sans-serif);
+            box-shadow: 0 -4px 20px rgba(255,118,117,0.3);
+        }
+        
+        .offline-banner i {
+            font-size: 16px;
+        }
+        
+        .offline-banner #offlineTimer {
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -938,7 +1140,7 @@
                     <i class="fas fa-brain"></i>
                 </div>
                 <h1>Pipeline Neuro</h1>
-                <p>v22.0 · Libro de Lectura y Generador IA</p>
+                <p>v22.2 · Balanceador de Carga Groq</p>
             </div>
 
             <form id="registroForm">
@@ -1075,6 +1277,9 @@
                 </div>
             </div>
             
+            <!-- CONTENEDOR VIGÍA+CENTINELA+BALANCEADOR -->
+            <div id="vigiaCentinelaContainer"></div>
+            
             <!-- Barra de progreso global -->
             <div class="progress-bar">
                 <div id="progressFill" class="progress-fill" style="width: 0%"></div>
@@ -1147,6 +1352,9 @@
             
             <!-- ===== DASHBOARD ===== -->
             <div id="dashboardView" class="view active">
+                <!-- ============================================================
+                     HEADER DEL DASHBOARD - TÍTULO ÚNICO (SOLO UNA VEZ)
+                     ============================================================ -->
                 <div class="dashboard-header">
                     <h2>📊 Panel de Control</h2>
                     <p id="dashboardSubtitle">Bienvenido de vuelta, <span id="dashUserName">Usuario</span></p>
@@ -1335,7 +1543,7 @@
                     </div>
 
                     <!-- Tarjeta: CARACTERES -->
-                    <div class="dash-card" data-module="caracteres" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);display:none;">
+                    <div class="dash-card" data-module="caracteres" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);">
                         <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#00CEC9);">
                             <i class="fas fa-characters"></i>
                         </div>
@@ -1632,6 +1840,12 @@
                                 <span>Limpiar Datos</span>
                                 <small>Eliminar todo</small>
                             </button>
+                            <!-- Tarjeta especial: Balanceador de Carga -->
+                            <button class="tool-card" style="border:2px solid var(--primary);background:linear-gradient(135deg, var(--primary)08, var(--secondary)08);" onclick="ui._mostrarEstadoBalanceador()">
+                                <i class="fas fa-balance-scale"></i>
+                                <span>⚖️ Balanceador Groq</span>
+                                <small id="balanceadorToolStatus">Activo</small>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1696,7 +1910,13 @@
 <!-- SCRIPTS - ORDEN CORRECTO DE CARGA -->
 <!-- ============================================================ -->
 
-<!-- 1. FUNCIONES GLOBALES PARA REGISTRO -->
+<!-- 0. BALANCEADOR DE CARGA GROQ (NUEVO) -->
+<script src="js/core/balanceadorGroq.js"></script>
+
+<!-- 1. VALIDADOR DE IDIOMAS (NUEVO - CRUCIAL) -->
+<script src="js/core/validadorIdiomas.js"></script>
+
+<!-- 2. FUNCIONES GLOBALES PARA REGISTRO -->
 <script>
 window._seleccionarModoTutorRegistro = function(modo) {
     document.querySelectorAll('.tutor-modo-option').forEach(el => {
@@ -1749,29 +1969,29 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- 2. MÓDULOS CORE -->
+<!-- 3. MÓDULOS CORE -->
 <script src="js/core/modoInverso.js"></script>
 <script src="js/core/gestorIdiomas.js"></script>
 <script src="js/core/gestorNiveles.js"></script>
 
-<!-- 3. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
+<!-- 4. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
 <script src="js/database.js"></script>
 <script src="js/vigia.js"></script>
 <script src="js/centinela.js"></script>
 <script src="js/pipeline.js"></script>
 <script src="js/gramatica.js"></script>
 
-<!-- 4. MÓDULOS CORE QUE DEPENDEN DE DB -->
+<!-- 5. MÓDULOS CORE QUE DEPENDEN DE DB -->
 <script src="js/core/gestorFavoritos.js"></script>
 <script src="js/core/toastEducativo.js"></script>
 
-<!-- 5. VIGÍA GENERATOR (NUEVO) -->
+<!-- 6. VIGÍA GENERATOR (NUEVO) -->
 <script src="js/vigiaGenerator.js"></script>
 
-<!-- 6. FONÉTICA -->
+<!-- 7. FONÉTICA -->
 <script src="js/fonetica.js"></script>
 
-<!-- 7. UI - MÓDULOS BASE -->
+<!-- 8. UI - MÓDULOS BASE -->
 <script src="js/ui/ui.dialogs.js"></script>
 <script src="js/ui/ui.core.js"></script>
 <script src="js/ui/ui.dashboard.js"></script>
@@ -1782,10 +2002,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ui/ui.tools.js"></script>
 <script src="js/ui/ui.json.js"></script>
 
-<!-- 8. UI - BACKUP -->
+<!-- 9. UI - BACKUP -->
 <script src="js/ui/ui.backup.js"></script>
 
-<!-- 9. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
+<!-- 10. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
 <script src="js/ui/ui.temas.core.js"></script>
 <script src="js/ui/ui.temas.render.js"></script>
 <script src="js/ui/ui.temas.actions.js"></script>
@@ -1796,22 +2016,22 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ui/ui.caracteres.render.js"></script>
 <script src="js/ui/ui.caracteres.actions.js"></script>
 
-<!-- 10. UI - FONÉTICA -->
+<!-- 11. UI - FONÉTICA -->
 <script src="js/ui/ui.fonetica.js"></script>
 
-<!-- 11. PROXY UI -->
+<!-- 12. PROXY UI -->
 <script src="js/ui.js"></script>
 
-<!-- 12. COMPETICIONES -->
+<!-- 13. COMPETICIONES -->
 <script src="js/competiciones.js"></script>
 
-<!-- 13. TUTOR NEURO -->
+<!-- 14. TUTOR NEURO -->
 <script src="js/tutorNeuro.js"></script>
 
-<!-- 14. LEARNING PATH -->
+<!-- 15. LEARNING PATH -->
 <script src="js/learningPath.js"></script>
 
-<!-- 15. APP (INICIALIZACIÓN PRINCIPAL) -->
+<!-- 16. APP (INICIALIZACIÓN PRINCIPAL) -->
 <script src="js/app.js"></script>
 
 </body>

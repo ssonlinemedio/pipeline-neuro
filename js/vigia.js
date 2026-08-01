@@ -1,5 +1,5 @@
 // ============================================================
-// VIGÍA v20.8 - CON GENERACIÓN DE TRANSCRIPCIÓN FONÉTICA
+// VIGÍA v22.0 - CON BALANCEADOR DE CARGA Y MONITOREO DE TOKENS
 // ============================================================
 
 class Vigia {
@@ -38,6 +38,34 @@ class Vigia {
         this._patronesUsuarios = [];
         this._confianza = 0.5;
         this._usuarioId = null;
+        
+        // ============================================================
+        // BALANCEADOR DE CARGA GROQ
+        // ============================================================
+        this._balanceador = window.balanceadorGroq || null;
+        this._usandoBalanceador = false;
+        this._modeloUsadoEnPeticion = null;
+        this._balanceadorFallback = false;
+        
+        // ============================================================
+        // 🔥 NUEVO: MONITOREO DE TOKENS
+        // ============================================================
+        this._limitesTokens = {
+            diario: 150000, // Límite diario de tokens (ajustable)
+            porMinuto: 20000, // Límite por minuto
+            peticionesPorMinuto: 20 // Límite de peticiones por minuto
+        };
+        this._tokensUsados = {
+            diario: 0,
+            porMinuto: 0,
+            ultimoResetMinuto: Date.now(),
+            peticionesMinuto: 0,
+            ultimoResetPeticiones: Date.now()
+        };
+        this._ultimoResetDiario = new Date().toDateString();
+        this._alertaLimiteMostrada = false;
+        this._alertaPeticionesMostrada = false;
+        this._tokensRestantesMostrados = 0;
         
         // ============================================================
         // IDIOMAS Y TRANSCRIPCIÓN
@@ -91,6 +119,10 @@ class Vigia {
         this._IDIOMAS_JEROGLIFICOS = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean', 'mandarin', 'mandarín'];
     }
 
+    // ============================================================
+    // VERIFICAR SI ES JEROGLÍFICO
+    // ============================================================
+
     _esJeroglifico(idioma) {
         if (!idioma) return false;
         const idiomaLower = idioma.toLowerCase().trim();
@@ -130,9 +162,18 @@ class Vigia {
 
     async init() {
         if (this._initDone) return this;
-        console.log('🔄 Vigía v20.8 (openai/gpt-oss-120b): Inicializando...');
+        console.log('🔄 Vigía v22.0: Inicializando con balanceador de carga y monitoreo de tokens...');
         
         try {
+            // Inicializar balanceador si está disponible
+            if (window.balanceadorGroq) {
+                this._balanceador = window.balanceadorGroq;
+                if (!this._balanceador._initDone) {
+                    await this._balanceador.init();
+                }
+                console.log('⚖️ Vigía: Balanceador de carga integrado');
+            }
+
             this.apiKey = localStorage.getItem('pipeline_api_key');
             if (!this.apiKey && db) {
                 try {
@@ -141,9 +182,16 @@ class Vigia {
                 } catch (e) { console.warn('⚠️ Error obteniendo API Key de DB:', e); }
             }
             
+            // Cargar límites de tokens desde configuración
+            this._cargarLimitesTokens();
+            
             if (this.apiKey) {
                 this._apiKeyValidada = await this._validarApiKey();
                 this.enLinea = this._apiKeyValidada;
+                if (this.enLinea) {
+                    // Inicializar contador de tokens con el día actual
+                    this._ultimoResetDiario = new Date().toDateString();
+                }
             } else {
                 console.warn('⚠️ Vigía: No hay API Key');
                 this.enLinea = false;
@@ -159,8 +207,13 @@ class Vigia {
         this._iniciarHealthCheck();
         this._iniciarFeedbackProactivo();
         
-        console.log('📡 Vigía:', this.enLinea ? '🟢 Conectado (openai/gpt-oss-120b)' : '🔴 Desconectado');
+        // Registrar eventos del balanceador
+        this._registrarEventosBalanceador();
+        
+        console.log('📡 Vigía:', this.enLinea ? '🟢 Conectado' : '🔴 Desconectado');
         console.log(`   🌍 Nativo: ${this._idiomaNativo}`);
+        console.log(`   ⚖️ Modelo activo: ${this._balanceador?.getModeloActivo() || this.modelo}`);
+        console.log(`   🪙 Límite diario: ${this._limitesTokens.diario} tokens`);
         if (this.enLinea) {
             this._ultimaPeticionExitosa = Date.now();
             this._offlineDesde = 0;
@@ -169,6 +222,60 @@ class Vigia {
         }
         return this;
     }
+
+    // ============================================================
+    // CARGAR LÍMITES DE TOKENS DESDE CONFIGURACIÓN
+    // ============================================================
+
+    _cargarLimitesTokens() {
+        try {
+            const config = localStorage.getItem('pipeline_token_limits');
+            if (config) {
+                const parsed = JSON.parse(config);
+                if (parsed.diario) this._limitesTokens.diario = parsed.diario;
+                if (parsed.porMinuto) this._limitesTokens.porMinuto = parsed.porMinuto;
+                if (parsed.peticionesPorMinuto) this._limitesTokens.peticionesPorMinuto = parsed.peticionesPorMinuto;
+            }
+        } catch (e) {
+            console.warn('⚠️ Error cargando límites de tokens:', e);
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR EVENTOS DEL BALANCEADOR
+    // ============================================================
+
+    _registrarEventosBalanceador() {
+        if (!this._balanceador) return;
+        
+        this._balanceador.onCambioModelo((modelo) => {
+            console.log(`📡 Vigía: Modelo cambiado a ${modelo}`);
+            this.modelo = modelo;
+            this._modeloUsadoEnPeticion = modelo;
+            
+            // Notificar al usuario
+            if (window.uiCore) {
+                const esPrioritario = modelo === this._balanceador.getModeloPrioritario();
+                window.uiCore.mostrarToast(
+                    esPrioritario ? 
+                        `🟢 Modelo prioritario restaurado: ${modelo}` : 
+                        `🟡 Modelo alternativo: ${modelo}`,
+                    esPrioritario ? 'success' : 'warning'
+                );
+            }
+        });
+        
+        this._balanceador.onEstadoActualizado((estado) => {
+            // Actualizar indicadores si está disponible
+            if (window.uiCore && window.uiCore._actualizarIndicadorBalanceador) {
+                window.uiCore._actualizarIndicadorBalanceador();
+            }
+        });
+    }
+
+    // ============================================================
+    // VALIDAR API KEY
+    // ============================================================
 
     async _validarApiKey() {
         if (!this.apiKey) return false;
@@ -204,10 +311,233 @@ class Vigia {
     }
 
     // ============================================================
-    // CONSULTAR GROQ (CORREGIDO - PARSEO ROBUSTO)
+    // 🔥 REGISTRAR CONSUMO DE TOKENS
+    // ============================================================
+
+    registrarConsumoTokens(tokensUsados) {
+        if (!tokensUsados || tokensUsados <= 0) return;
+        
+        const ahora = Date.now();
+        
+        // Resetear contador por minuto
+        if (ahora - this._tokensUsados.ultimoResetMinuto > 60000) {
+            this._tokensUsados.porMinuto = 0;
+            this._tokensUsados.ultimoResetMinuto = ahora;
+            this._tokensUsados.peticionesMinuto = 0;
+        }
+        
+        // Resetear contador de peticiones por minuto
+        if (ahora - this._tokensUsados.ultimoResetPeticiones > 60000) {
+            this._tokensUsados.peticionesMinuto = 0;
+            this._tokensUsados.ultimoResetPeticiones = ahora;
+        }
+        
+        // Resetear contador diario si es un nuevo día
+        const hoy = new Date().toDateString();
+        if (this._ultimoResetDiario !== hoy) {
+            this._tokensUsados.diario = 0;
+            this._ultimoResetDiario = hoy;
+            this._alertaLimiteMostrada = false;
+            this._tokensRestantesMostrados = 0;
+            // Resetear también el límite de peticiones diarias del Centinela
+            if (centinela && typeof centinela.resetearContadorDiario === 'function') {
+                centinela.resetearContadorDiario();
+            }
+            console.log('🔄 Contador diario de tokens reseteados');
+        }
+        
+        // Actualizar consumo
+        this._tokensUsados.diario += tokensUsados;
+        this._tokensUsados.porMinuto += tokensUsados;
+        this._tokensUsados.peticionesMinuto++;
+        
+        // Verificar alertas
+        this._verificarAlertasTokens();
+        
+        // Disparar evento de actualización
+        window.dispatchEvent(new CustomEvent('tokensActualizados', {
+            detail: this.obtenerEstadoTokens()
+        }));
+        
+        // También actualizar la UI
+        if (window.uiCore && typeof window.uiCore._actualizarIndicadorTokens === 'function') {
+            window.uiCore._actualizarIndicadorTokens(this.obtenerEstadoTokens());
+        }
+    }
+
+    // ============================================================
+    // 🔥 VERIFICAR ALERTAS DE TOKENS
+    // ============================================================
+
+    _verificarAlertasTokens() {
+        const pctDiario = this._calcularPorcentajeDiario();
+        const pctMinuto = this._calcularPorcentajeMinuto();
+        
+        // 🔥 ALERTA CRÍTICA: Cuando queda 2% o menos
+        if (pctDiario >= 98 && !this._alertaLimiteMostrada) {
+            this._alertaLimiteMostrada = true;
+            const tokensRestantes = Math.round((this._limitesTokens.diario - this._tokensUsados.diario) / 1000);
+            
+            if (window.uiCore) {
+                window.uiCore.mostrarToast(
+                    `⚠️ ¡Cuidado! Te quedan ${tokensRestantes}K tokens (${Math.round(100 - pctDiario)}%). \n` +
+                    `💡 Cambia a modo "Flashcard" offline o reduce el uso de ejercicios con Groq.`,
+                    'warning'
+                );
+            }
+        }
+        
+        // 🔥 ALERTA DE PETICIONES POR MINUTO
+        if (this._tokensUsados.peticionesMinuto >= this._limitesTokens.peticionesPorMinuto * 0.9) {
+            if (!this._alertaPeticionesMostrada) {
+                this._alertaPeticionesMostrada = true;
+                if (window.uiCore) {
+                    window.uiCore.mostrarToast(
+                        `⏱️ Has hecho ${this._tokensUsados.peticionesMinuto} peticiones en el último minuto. \n` +
+                        `Límite: ${this._limitesTokens.peticionesPorMinuto}. Reduce el ritmo.`,
+                        'warning'
+                    );
+                }
+            }
+        } else {
+            this._alertaPeticionesMostrada = false;
+        }
+        
+        // 🔥 ALERTA DE TOKENS POR MINUTO
+        if (pctMinuto >= 90) {
+            if (window.uiCore && Date.now() - this._ultimoFeedback > 30000) {
+                window.uiCore.mostrarToast(
+                    `⚡ Consumo alto por minuto: ${Math.round(this._tokensUsados.porMinuto / 1000)}K tokens. \n` +
+                    `Considera usar ejercicios sin Groq (Flashcard).`,
+                    'info'
+                );
+                this._ultimoFeedback = Date.now();
+            }
+        }
+        
+        // Si baja del 95%, resetear alerta de límite
+        if (pctDiario < 95) {
+            this._alertaLimiteMostrada = false;
+        }
+        
+        // Mostrar token restante cada 10%
+        const pctRedondeado = Math.floor(pctDiario / 10) * 10;
+        if (pctRedondeado > 0 && pctRedondeado !== this._tokensRestantesMostrados) {
+            this._tokensRestantesMostrados = pctRedondeado;
+            const tokensRestantes = Math.round((this._limitesTokens.diario - this._tokensUsados.diario) / 1000);
+            if (pctRedondeado > 60 && pctRedondeado < 95) {
+                // Solo notificar cambios significativos
+                if (window.uiCore && Date.now() - this._ultimoFeedback > 60000) {
+                    window.uiCore.mostrarToast(
+                        `🪙 Tokens restantes: ${tokensRestantes}K (${Math.round(100 - pctDiario)}%)`,
+                        'info'
+                    );
+                    this._ultimoFeedback = Date.now();
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // 🔥 CALCULAR PORCENTAJES DE TOKENS
+    // ============================================================
+
+    _calcularPorcentajeDiario() {
+        if (this._limitesTokens.diario <= 0) return 0;
+        return Math.min(100, (this._tokensUsados.diario / this._limitesTokens.diario) * 100);
+    }
+
+    _calcularPorcentajeMinuto() {
+        if (this._limitesTokens.porMinuto <= 0) return 0;
+        return Math.min(100, (this._tokensUsados.porMinuto / this._limitesTokens.porMinuto) * 100);
+    }
+
+    _calcularTiempoReinicio() {
+        const ahora = new Date();
+        const manana = new Date(ahora);
+        manana.setDate(manana.getDate() + 1);
+        manana.setHours(0, 0, 0, 0);
+        const diff = manana - ahora;
+        if (diff <= 0) return '0h 0m';
+        const horas = Math.floor(diff / 3600000);
+        const minutos = Math.floor((diff % 3600000) / 60000);
+        return `${horas}h ${minutos}m`;
+    }
+
+    // ============================================================
+    // 🔥 OBTENER ESTADO DE TOKENS
+    // ============================================================
+
+    obtenerEstadoTokens() {
+        const pctDiario = this._calcularPorcentajeDiario();
+        const pctMinuto = this._calcularPorcentajeMinuto();
+        
+        let estado = 'normal';
+        let color = 'var(--success)';
+        let emoji = '🟢';
+        let label = 'Normal';
+        
+        if (pctDiario >= 95) {
+            estado = 'critico';
+            color = 'var(--danger)';
+            emoji = '🔴';
+            label = '⚠️ Crítico';
+        } else if (pctDiario >= 80) {
+            estado = 'alto';
+            color = 'var(--warning)';
+            emoji = '🟠';
+            label = '⚠️ Alto';
+        } else if (pctDiario >= 60) {
+            estado = 'medio';
+            color = '#FDCB6E';
+            emoji = '🟡';
+            label = '📊 Medio';
+        } else if (pctDiario >= 30) {
+            estado = 'normal';
+            color = 'var(--success)';
+            emoji = '🟢';
+            label = '✅ Normal';
+        } else {
+            estado = 'bajo';
+            color = '#00B894';
+            emoji = '🟢';
+            label = '✅ Bajo';
+        }
+        
+        return {
+            diario: {
+                usado: this._tokensUsados.diario,
+                limite: this._limitesTokens.diario,
+                porcentaje: Math.round(pctDiario),
+                tokensRestantes: this._limitesTokens.diario - this._tokensUsados.diario,
+                label: `${Math.round(this._tokensUsados.diario / 1000)}K / ${Math.round(this._limitesTokens.diario / 1000)}K`
+            },
+            porMinuto: {
+                usado: this._tokensUsados.porMinuto,
+                limite: this._limitesTokens.porMinuto,
+                porcentaje: Math.round(pctMinuto),
+                label: `${Math.round(this._tokensUsados.porMinuto / 1000)}K / ${Math.round(this._limitesTokens.porMinuto / 1000)}K`
+            },
+            peticionesMinuto: {
+                actual: this._tokensUsados.peticionesMinuto,
+                limite: this._limitesTokens.peticionesPorMinuto,
+                porcentaje: Math.min(100, Math.round((this._tokensUsados.peticionesMinuto / this._limitesTokens.peticionesPorMinuto) * 100))
+            },
+            estado: estado,
+            color: color,
+            emoji: emoji,
+            label: label,
+            tiempoReinicio: this._calcularTiempoReinicio(),
+            timestamp: Date.now()
+        };
+    }
+
+    // ============================================================
+    // 🔥 CONSULTAR GROQ CON BALANCEADOR Y REGISTRO DE TOKENS
     // ============================================================
 
     async _consultarGroq(prompt, formato) {
+        // Verificar conexión
         if (!this.enLinea || !this.apiKey || !this._apiKeyValidada) {
             console.warn('⚠️ Vigía: Offline o API Key inválida');
             if (!this._reconectando && this._reconexionIntentos < this._maxReconexionIntentos) {
@@ -216,14 +546,56 @@ class Vigia {
             throw new Error('Vigía offline o API Key inválida');
         }
 
+        // ============================================================
+        // OBTENER MODELO DEL BALANCEADOR
+        // ============================================================
+        let modelo = this.modelo;
+        let modeloUsado = null;
+        let usandoBalanceador = false;
+
+        if (this._balanceador && this._balanceador._initDone) {
+            try {
+                modeloUsado = await this._balanceador.obtenerModeloParaPeticion();
+                if (modeloUsado) {
+                    modelo = modeloUsado;
+                    usandoBalanceador = true;
+                    this._modeloUsadoEnPeticion = modelo;
+                    console.log(`📡 Vigía: Petición usando modelo ${modelo} (balanceado)`);
+                }
+            } catch (e) {
+                console.warn('⚠️ Vigía: Error obteniendo modelo del balanceador:', e.message);
+                usandoBalanceador = false;
+            }
+        }
+
+        // Si no hay balanceador o falló, usar el modelo por defecto
+        if (!modelo) {
+            modelo = this.modelo;
+            console.warn(`📡 Vigía: Usando modelo por defecto ${modelo}`);
+        }
+
+        // Actualizar el modelo de Vigía
+        this.modelo = modelo;
+
+        // Verificar límite de peticiones por minuto
+        const estadoTokens = this.obtenerEstadoTokens();
+        if (estadoTokens.peticionesMinuto.porcentaje >= 100) {
+            const espera = 60 - (Date.now() - this._tokensUsados.ultimoResetPeticiones) / 1000;
+            throw new Error(`Límite de peticiones por minuto alcanzado. Espera ${Math.ceil(espera)}s.`);
+        }
+
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), this._fetchTimeout);
+            
             const response = await fetch(this.baseUrl, {
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + this.apiKey, 'Content-Type': 'application/json' },
+                headers: { 
+                    'Authorization': 'Bearer ' + this.apiKey, 
+                    'Content-Type': 'application/json' 
+                },
                 body: JSON.stringify({
-                    model: this.modelo,
+                    model: modelo,
                     messages: [
                         { role: 'system', content: 'Eres un asistente lingüístico neuroadaptativo experto. Responde SOLO con JSON válido, sin markdown, sin comentarios, sin texto adicional.' },
                         { role: 'user', content: prompt + (formato === 'json' ? ' Responde SOLO con JSON válido. No uses markdown, ni comillas triples, ni texto adicional.' : '') }
@@ -233,26 +605,79 @@ class Vigia {
                 }),
                 signal: controller.signal
             });
+            
             clearTimeout(timeoutId);
             this._ultimaPeticionExitosa = Date.now();
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    console.error('❌ Vigía: API Key inválida en consulta');
-                    localStorage.removeItem('pipeline_api_key');
-                    this.apiKey = null;
-                    this._apiKeyValidada = false;
-                    this.enLinea = false;
-                    throw new Error('API Key inválida');
+            
+            // ============================================================
+            // MANEJO DE ERRORES Y BALANCEO
+            // ============================================================
+            
+            if (response.status === 429) {
+                // Límite de tasa excedido - marcar modelo como agotado
+                console.warn(`⚠️ Vigía: Límite de tasa excedido en ${modelo}`);
+                if (usandoBalanceador && this._balanceador) {
+                    const estado = this._balanceador.getEstadoModelo(modelo);
+                    if (estado) {
+                        estado.disponible = false;
+                        estado.fallosConsecutivos = (estado.fallosConsecutivos || 0) + 1;
+                        estado.tokensDisponibles = 0;
+                        this._balanceador._notificarCambioEstado();
+                    }
+                    // Intentar con otro modelo automáticamente
+                    const nuevoModelo = await this._balanceador.obtenerModeloDisponible();
+                    if (nuevoModelo && nuevoModelo !== modelo) {
+                        console.log(`⚖️ Vigía: Reintentando con modelo ${nuevoModelo}`);
+                        this.modelo = nuevoModelo;
+                        // Reintentar la petición con el nuevo modelo
+                        return this._consultarGroq(prompt, formato);
+                    }
                 }
-                if (response.status === 429) {
-                    console.warn('⚠️ Vigía: Límite de tasa excedido');
-                    throw new Error('Límite de tasa excedido');
+                throw new Error('Límite de tasa excedido en todos los modelos');
+            }
+            
+            if (response.status === 401) {
+                console.error('❌ Vigía: API Key inválida en consulta');
+                localStorage.removeItem('pipeline_api_key');
+                this.apiKey = null;
+                this._apiKeyValidada = false;
+                this.enLinea = false;
+                throw new Error('API Key inválida');
+            }
+            
+            if (!response.ok) {
+                // Marcar modelo como no disponible
+                if (usandoBalanceador && this._balanceador) {
+                    const estado = this._balanceador.getEstadoModelo(modelo);
+                    if (estado) {
+                        estado.disponible = false;
+                        estado.fallosConsecutivos = (estado.fallosConsecutivos || 0) + 1;
+                        this._balanceador._notificarCambioEstado();
+                    }
                 }
                 throw new Error('HTTP ' + response.status);
             }
 
             const data = await response.json();
+            
+            // ============================================================
+            // REGISTRAR USO DE TOKENS EN EL BALANCEADOR Y EN VIGÍA
+            // ============================================================
+            if (data.usage) {
+                const tokensUsados = data.usage.total_tokens || 0;
+                
+                // Registrar en el balanceador
+                if (usandoBalanceador && this._balanceador) {
+                    this._balanceador.registrarUsoTokens(modelo, tokensUsados);
+                }
+                
+                // 🔥 REGISTRAR EN VIGÍA PARA MONITOREO
+                if (tokensUsados > 0) {
+                    this.registrarConsumoTokens(tokensUsados);
+                    console.log(`📊 Vigía: ${tokensUsados} tokens usados en ${modelo}`);
+                }
+            }
+            
             let contenido = data.choices?.[0]?.message?.content || '';
             
             if (formato === 'json') {
@@ -288,6 +713,7 @@ class Vigia {
                 }
             }
             return contenido;
+            
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.error('❌ Vigía: Timeout en consulta');
@@ -311,7 +737,7 @@ class Vigia {
     }
 
     // ============================================================
-    // 🔥 GENERAR JSON CON TRANSCRIPCIÓN FONÉTICA
+    // GENERAR JSON CON TRANSCRIPCIÓN FONÉTICA
     // ============================================================
 
     async generarJSON(tema, numHistorias, idioma) {
@@ -391,7 +817,7 @@ Devuelve el JSON con la estructura:
     }
 
     // ============================================================
-    // 🔥 GENERAR TRANSCRIPCIÓN PARA TEXTO EXISTENTE
+    // GENERAR TRANSCRIPCIÓN PARA TEXTO EXISTENTE
     // ============================================================
 
     async generarTranscripcionParaTexto(texto, idioma, nivel = 'A1') {
@@ -452,7 +878,7 @@ Responde SOLO con la transcripción fonética:`;
 
     async _probarConexion() {
         if (!this.apiKey || !this._apiKeyValidada) return false;
-        console.log('📡 Vigía: Enviando ping a Groq (openai/gpt-oss-120b)...');
+        console.log('📡 Vigía: Enviando ping a Groq...');
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), this._fetchTimeout);
@@ -465,7 +891,7 @@ Responde SOLO con la transcripción fonética:`;
             clearTimeout(timeoutId);
             if (response.ok) {
                 this._ultimaPeticionExitosa = Date.now();
-                console.log('✅ Vigía: Conexión EXITOSA con openai/gpt-oss-120b');
+                console.log('✅ Vigía: Conexión EXITOSA');
                 return true;
             }
             if (response.status === 401) {
@@ -473,6 +899,20 @@ Responde SOLO con la transcripción fonética:`;
                 localStorage.removeItem('pipeline_api_key');
                 this.apiKey = null;
                 this._apiKeyValidada = false;
+                return false;
+            }
+            if (response.status === 429) {
+                console.warn('⚠️ Vigía: Límite de tasa excedido');
+                // Marcar modelo como agotado en el balanceador
+                if (this._balanceador) {
+                    const estado = this._balanceador.getEstadoModelo(this.modelo);
+                    if (estado) {
+                        estado.disponible = false;
+                        estado.fallosConsecutivos = (estado.fallosConsecutivos || 0) + 1;
+                        estado.tokensDisponibles = 0;
+                        this._balanceador._notificarCambioEstado();
+                    }
+                }
                 return false;
             }
             console.warn('⚠️ Vigía: Error HTTP', response.status);
@@ -556,7 +996,7 @@ Responde SOLO con la transcripción fonética:`;
                 this._ultimaPeticionExitosa = Date.now();
                 this._offlineDesde = 0;
                 this._reconexionIntentos = 0;
-                console.log('✅ Vigía: RECONECTADO exitosamente con openai/gpt-oss-120b');
+                console.log('✅ Vigía: RECONECTADO exitosamente');
                 this._notificarCambioEstado('online', 'Reconexión exitosa');
             } else {
                 this._fallosConsecutivos++;
@@ -576,7 +1016,7 @@ Responde SOLO con la transcripción fonética:`;
         this.apiKey = localStorage.getItem('pipeline_api_key');
         if (!this.apiKey) return { exito: false, mensaje: 'No hay API Key guardada' };
         await this._intentarReconexion();
-        return { exito: this.enLinea, mensaje: this.enLinea ? '✅ Vigía reconectado exitosamente con openai/gpt-oss-120b' : '❌ No se pudo reconectar' };
+        return { exito: this.enLinea, mensaje: this.enLinea ? '✅ Vigía reconectado exitosamente' : '❌ No se pudo reconectar' };
     }
 
     _notificarCambioEstado(estado, razon) {
@@ -586,7 +1026,7 @@ Responde SOLO con la transcripción fonética:`;
         if (estado === 'offline' && window.uiCore?.mostrarToast && (this._offlineDesde === 0 || Date.now() - this._offlineDesde > 5000)) {
             window.uiCore.mostrarToast('🔴 Vigía: ' + (razon || 'Desconectado'), 'error');
         } else if (estado === 'online' && window.uiCore?.mostrarToast) {
-            window.uiCore.mostrarToast('🟢 Vigía: Reconectado con openai/gpt-oss-120b', 'success');
+            window.uiCore.mostrarToast('🟢 Vigía: Reconectado', 'success');
         }
     }
 
@@ -777,7 +1217,8 @@ Responde SOLO con la transcripción fonética:`;
             const stats = await this.getEstadisticasIdioma();
             const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
             const nivel = gestorIdiomas?.getInfoActivo()?.nivel || 'A1';
-            const prompt = `Eres Vigía, el asistente lingüístico de Pipeline Neuro (openai/gpt-oss-120b).\n\nContexto del usuario:\n- Nombre: ${usuario?.nombre || 'Anónimo'}\n- Idioma objetivo: ${idioma}\n- Nivel: ${nivel}\n- Vocabulario aprendido: ${stats?.palabrasAprendidas || 0} palabras\n- Cobertura del nivel: ${stats?.coberturaNivel || 0}%\n- Frases completadas: ${stats?.completadas || 0}\n\nResponde a la siguiente consulta del usuario de manera útil, amigable y didáctica:\n\n${mensaje}`;
+            const modeloActual = this._balanceador?.getModeloActivo() || this.modelo;
+            const prompt = `Eres Vigía, el asistente lingüístico de Pipeline Neuro.\n\nContexto del usuario:\n- Nombre: ${usuario?.nombre || 'Anónimo'}\n- Idioma objetivo: ${idioma}\n- Nivel: ${nivel}\n- Vocabulario aprendido: ${stats?.palabrasAprendidas || 0} palabras\n- Cobertura del nivel: ${stats?.coberturaNivel || 0}%\n- Frases completadas: ${stats?.completadas || 0}\n- Modelo actual: ${modeloActual}\n\nResponde a la siguiente consulta del usuario de manera útil, amigable y didáctica:\n\n${mensaje}`;
             return await this._consultarGroq(prompt, 'text') || 'Lo siento, no pude procesar tu consulta.';
         } catch (e) { return '❌ Error procesando tu mensaje. Intenta de nuevo.'; }
     }
@@ -793,7 +1234,22 @@ Responde SOLO con la transcripción fonética:`;
     }
 
     getEstado() {
-        return { enLinea: this.enLinea, modelo: this.modelo, apiKey: !!this.apiKey, confianza: Math.round(this._confianza * 100) };
+        const modeloActivo = this._balanceador?.getModeloActivo() || this.modelo;
+        const estadoBalanceador = this._balanceador?.getEstado() || null;
+        const tokens = this.obtenerEstadoTokens();
+        return { 
+            enLinea: this.enLinea, 
+            modelo: modeloActivo,
+            apiKey: !!this.apiKey, 
+            confianza: Math.round(this._confianza * 100),
+            tokens: tokens,
+            balanceador: estadoBalanceador ? {
+                activo: true,
+                modelosDisponibles: estadoBalanceador.modelosDisponibles,
+                modelosTotal: estadoBalanceador.modelosTotal,
+                usaPrioritario: estadoBalanceador.usaPrioritario
+            } : null
+        };
     }
 
     destroy() {
@@ -830,6 +1286,12 @@ Responde SOLO con la transcripción fonética:`;
             throw new Error('Vigía offline');
         }
 
+        // Verificar límite de tokens antes de hacer la petición
+        const estadoTokens = this.obtenerEstadoTokens();
+        if (estadoTokens.diario.porcentaje >= 98) {
+            throw new Error('Límite de tokens diario casi alcanzado. Usa validación offline.');
+        }
+
         try {
             let direccionTexto = '';
             let idiomaEsperado = '';
@@ -842,7 +1304,7 @@ Responde SOLO con la transcripción fonética:`;
                 idiomaEsperado = 'español';
             }
 
-            console.log(`🧠 Vigía validando traducción ${direccion} con Groq...`);
+            console.log(`🧠 Vigía validando traducción ${direccion}...`);
             if (centinela?.verificarLímites) {
                 const limite = centinela.verificarLímites(800);
                 if (!limite.permitido) throw new Error('Límite de peticiones');
@@ -980,7 +1442,7 @@ class VigiaGramatical extends Vigia {
 
     async initGramatical() {
         if (this._gramaticalInitDone) return this;
-        console.log('📚 Inicializando Vigía Gramatical v20.8 (openai/gpt-oss-120b)...');
+        console.log('📚 Inicializando Vigía Gramatical v22.0...');
         
         try {
             if (!this._initDone) await this.init();
@@ -1050,7 +1512,7 @@ class VigiaGramatical extends Vigia {
                 "nivel": nivel,
                 "num_reglas": numReglas,
                 "fecha_generacion": new Date().toISOString(),
-                "generado_por": "PipelineNeuro_v20.8"
+                "generado_por": "PipelineNeuro_v22.0"
             },
             "reglas": []
         };
@@ -1310,8 +1772,9 @@ class VigiaGramatical extends Vigia {
         const nivelUsuario = gestorIdiomas?.getInfoActivo()?.nivel || 'A1';
         const nivelVigia = this._getNivelDesdeEdad();
         const reglas = this._reglasConocidas.slice(0, 15);
+        const modeloActual = this._balanceador?.getModeloActivo() || this.modelo;
         
-        const contexto = `Eres el Vigía Gramatical, un asistente experto en gramática del idioma ${idioma} (openai/gpt-oss-120b).\n\n📊 DATOS IMPORTANTES:\n- Tu nivel de conocimiento: ${nivelVigia} (${this._edadGramatical}% de maestría)\n- El nivel del usuario: ${nivelUsuario}\n- Vas un paso por delante del usuario para guiarlo mejor\n- Conoces ${estadisticas.totalReglas} reglas gramaticales\n\n🎯 TU MISIÓN:\n1. Explica reglas del nivel del usuario (${nivelUsuario}) con claridad\n2. Si el usuario pregunta algo avanzado, indícalo pero responde\n3. Si el usuario demuestra dominio, sugiere conceptos del siguiente nivel\n4. Sé paciente, didáctico y usa ejemplos cotidianos\n5. Corrige con gentileza\n\nReglas que conoces (ejemplos):\n${reglas.map(r => `- ${r.regla}: ${r.explicacion.substring(0, 60)}...`).join('\n')}\n\nConsulta del usuario: "${mensaje}"\n\nResponde de forma útil, precisa y educativa.`;
+        const contexto = `Eres el Vigía Gramatical, un asistente experto en gramática del idioma ${idioma}.\n\n📊 DATOS IMPORTANTES:\n- Tu nivel de conocimiento: ${nivelVigia} (${this._edadGramatical}% de maestría)\n- El nivel del usuario: ${nivelUsuario}\n- Vas un paso por delante del usuario para guiarlo mejor\n- Conoces ${estadisticas.totalReglas} reglas gramaticales\n- Modelo actual: ${modeloActual}\n\n🎯 TU MISIÓN:\n1. Explica reglas del nivel del usuario (${nivelUsuario}) con claridad\n2. Si el usuario pregunta algo avanzado, indícalo pero responde\n3. Si el usuario demuestra dominio, sugiere conceptos del siguiente nivel\n4. Sé paciente, didáctico y usa ejemplos cotidianos\n5. Corrige con gentileza\n\nReglas que conoces (ejemplos):\n${reglas.map(r => `- ${r.regla}: ${r.explicacion.substring(0, 60)}...`).join('\n')}\n\nConsulta del usuario: "${mensaje}"\n\nResponde de forma útil, precisa y educativa.`;
 
         try {
             if (this.enLinea && this.apiKey && this._apiKeyValidada) {
@@ -1324,7 +1787,7 @@ class VigiaGramatical extends Vigia {
     }
 
     _respuestaOfflineGramatical(mensaje, idioma) {
-        return `📚 **Vigía Gramatical** (offline)\n\nEstoy en modo offline, pero puedo ayudarte con lo básico.\n\n🔍 **Sobre tu consulta:** "${mensaje}"\n\n💡 **Sugerencia:** Conecta Vigía (activa tu API Key) para respuestas más precisas con openai/gpt-oss-120b.\n\n📊 **Mi estado:**\n- Edad gramatical: ${this._getEdadNombre()} (${this._edadGramatical}%)\n- Reglas conocidas: ${this._reglasConocidas.length}\n- Reglas dominadas: ${this._reglasDominadas.size}\n\n🌍 **Idioma:** ${idioma}\n📚 **Nivel del usuario:** ${gestorIdiomas?.getInfoActivo()?.nivel || 'A1'}\n\n¿Tienes alguna frase específica que quieras analizar?`;
+        return `📚 **Vigía Gramatical** (offline)\n\nEstoy en modo offline, pero puedo ayudarte con lo básico.\n\n🔍 **Sobre tu consulta:** "${mensaje}"\n\n💡 **Sugerencia:** Conecta Vigía (activa tu API Key) para respuestas más precisas.\n\n📊 **Mi estado:**\n- Edad gramatical: ${this._getEdadNombre()} (${this._edadGramatical}%)\n- Reglas conocidas: ${this._reglasConocidas.length}\n- Reglas dominadas: ${this._reglasDominadas.size}\n\n🌍 **Idioma:** ${idioma}\n📚 **Nivel del usuario:** ${gestorIdiomas?.getInfoActivo()?.nivel || 'A1'}\n\n¿Tienes alguna frase específica que quieras analizar?`;
     }
 
     async analizarFraseGramatical(frase) {
@@ -1356,7 +1819,7 @@ class VigiaGramatical extends Vigia {
     _analisisGramaticalOffline(fraseObj) {
         return {
             frase: fraseObj,
-            mensaje: `📖 **Análisis gramatical de:** "${fraseObj.original}"\n\n⚠️ *Análisis en modo offline (limitado)*\n\n💡 Conecta Vigía con openai/gpt-oss-120b para un análisis completo.`
+            mensaje: `📖 **Análisis gramatical de:** "${fraseObj.original}"\n\n⚠️ *Análisis en modo offline (limitado)*\n\n💡 Conecta Vigía para un análisis completo.`
         };
     }
 
@@ -1465,7 +1928,7 @@ ${contextoHistorias ? `- Contexto de historias del usuario: ${contextoHistorias.
     "num_palabras": ${numPalabras},
     "idioma_nativo": "${idiomaNativo}",
     "fecha_generacion": "fecha_actual",
-    "version": "20.8",
+    "version": "22.0",
     "generado_por": "Vigía Gramatical"
   },
   "caracter_raiz": {
@@ -1547,7 +2010,7 @@ ${contextoHistorias ? `- Contexto de historias del usuario: ${contextoHistorias.
                     
                     if (resultado.meta) {
                         resultado.meta.fecha_generacion = new Date().toISOString();
-                        resultado.meta.version = '20.8';
+                        resultado.meta.version = '22.0';
                         resultado.meta.generado_por = 'Vigía Gramatical';
                     }
                     
@@ -2066,8 +2529,18 @@ Responde en JSON:
 var vigia = new Vigia();
 var vigiaGramatical = new VigiaGramatical();
 
-console.log('✅ Vigía v20.8 - CON GENERACIÓN DE TRANSCRIPCIÓN FONÉTICA');
-console.log('  🔥 Modelo: openai/gpt-oss-120b');
+console.log('✅ Vigía v22.0 - CON BALANCEADOR DE CARGA Y MONITOREO DE TOKENS');
+console.log('  ⚖️ Balanceador de carga integrado');
+console.log('  🔄 Prioridad: openai/gpt-oss-120b');
+console.log('  📊 Monitorización de modelos en tiempo real');
+console.log('  🚨 Reconexión automática en caso de agotamiento');
 console.log('  🔥 Transcripción fonética para idiomas alfabéticos');
 console.log('  🔥 Integración con idioma nativo del usuario');
-console.log('  🔥 Mismo sistema que pinyin para jeroglíficos');
+console.log('  🪙 MONITOREO DE TOKENS:');
+console.log('     📊 Límite diario: 150.000 tokens');
+console.log('     ⏱️ Límite por minuto: 20.000 tokens');
+console.log('     📈 Peticiones por minuto: 20');
+console.log('     🔔 Alerta al 98% de consumo');
+console.log('     🎯 Color dinámico según consumo');
+console.log('     🔄 Reinicio automático diario');
+console.log('  ✅ TODAS las funcionalidades originales preservadas');

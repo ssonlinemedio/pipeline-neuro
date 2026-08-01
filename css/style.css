@@ -2213,3 +2213,171 @@ main {
         font-size: 8px;
     }
 }
+
+/* ============================================================
+   HEADER RESPONSIVE
+   ============================================================ */
+
+/* Móvil muy pequeño (menos de 400px) */
+@media (max-width: 400px) {
+    .header-content {
+        gap: 3px 6px !important;
+        padding: 4px 6px !important;
+    }
+    
+    .brand {
+        font-size: 13px !important;
+        gap: 4px !important;
+    }
+    
+    .brand span {
+        font-size: 13px !important;
+    }
+    
+    .brand .vigia-indicator,
+    .brand .centinela-indicator {
+        font-size: 8px !important;
+        gap: 2px !important;
+    }
+    
+    .brand .vigia-label,
+    .brand .centinela-label {
+        display: none !important;
+    }
+    
+    .brand .vigia-status,
+    .brand .centinela-status {
+        font-size: 7px !important;
+    }
+    
+    .brand .vigia-dot,
+    .brand .centinela-dot {
+        width: 6px !important;
+        height: 6px !important;
+    }
+    
+    .header-right {
+        gap: 2px !important;
+    }
+    
+    .user-badge .user-name {
+        font-size: 11px !important;
+        max-width: 50px !important;
+    }
+    
+    .user-badge .user-avatar {
+        font-size: 16px !important;
+    }
+    
+    #vigiaCentinelaContainer {
+        min-width: 50px !important;
+        max-width: 100px !important;
+        padding: 2px 4px !important;
+        gap: 1px !important;
+    }
+    
+    #vigiaCentinelaContainer div:first-child {
+        font-size: 6px !important;
+    }
+    
+    #vigiaCentinelaContainer .activity-bar-wrapper {
+        font-size: 6px !important;
+    }
+    
+    #vigiaCentinelaContainer .activity-status-dot {
+        width: 5px !important;
+        height: 5px !important;
+    }
+    
+    #tokenIndicator {
+        padding: 1px 4px !important;
+        font-size: 9px !important;
+        border-radius: 6px !important;
+    }
+    
+    #modoInversoBtn {
+        font-size: 13px !important;
+        padding: 1px 3px !important;
+    }
+    
+    #balanceadorModeloIndicator {
+        padding: 1px 4px !important;
+        font-size: 7px !important;
+        gap: 2px !important;
+    }
+    
+    #balanceadorModeloIndicator .balanceador-dot {
+        width: 5px !important;
+        height: 5px !important;
+    }
+    
+    #balanceadorModeloIndicator .balanceador-nombre {
+        font-size: 7px !important;
+        max-width: 40px !important;
+    }
+    
+    #balanceadorModeloIndicator .balanceador-estado {
+        font-size: 6px !important;
+    }
+}
+
+/* Móvil mediano (400-640px) */
+@media (max-width: 640px) and (min-width: 401px) {
+    .header-content {
+        gap: 4px 8px !important;
+        padding: 5px 8px !important;
+    }
+    
+    .brand .vigia-label,
+    .brand .centinela-label {
+        font-size: 8px !important;
+    }
+    
+    #vigiaCentinelaContainer {
+        min-width: 60px !important;
+        max-width: 140px !important;
+        padding: 2px 5px !important;
+    }
+    
+    #vigiaCentinelaContainer div:first-child {
+        font-size: 7px !important;
+    }
+    
+    .user-badge .user-name {
+        font-size: 12px !important;
+        max-width: 60px !important;
+    }
+}
+
+/* Animación para estado crítico */
+@keyframes pulse-warning {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.token-indicator.critico {
+    animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+/* Estilos generales para el indicador de tokens */
+.token-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: clamp(9px, 2vw, 11px);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid var(--light);
+    background: var(--bg);
+    color: var(--gray);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.token-indicator:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}

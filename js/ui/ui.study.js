@@ -1,18 +1,18 @@
 // ============================================================
-// UI STUDY v21.2 - CORREGIDO: DESMARCAR CON RESETEO COMPLETO
+// UI STUDY v21.3 - CORREGIDO: RENDERIZADO CON requestAnimationFrame
 // ============================================================
 
 (function() {
     'use strict';
     
-    if (window.UIStudy && window.UIStudy._version === '21.2') {
+    if (window.UIStudy && window.UIStudy._version === '21.3') {
         console.log('⚠️ UIStudy ya está cargado, saltando...');
         return;
     }
 
     class UIStudy {
         constructor() {
-            this._version = '21.2';
+            this._version = '21.3';
             this._modoEstudio = 'flashcard';
             this._pistaActual = '';
             this._opcionesMultiple = [];
@@ -48,6 +48,9 @@
             this._temaCompletadoCallback = null;
             this._verificandoProgreso = false;
             this._progresoMostrado = 0;
+            
+            // 🔥 CONTROL DE RENDERIZADO
+            this._renderTimeout = null;
         }
 
         // ============================================================
@@ -830,7 +833,7 @@
         }
 
         // ============================================================
-        // 🔥 DESMARCAR TEMA Y REESTUDIAR (RESETEO COMPLETO - CORREGIDO)
+        // 🔥 DESMARCAR TEMA Y REESTUDIAR (RESETEO COMPLETO)
         // ============================================================
 
         async _desmarcarTemaYReiniciar() {
@@ -861,7 +864,7 @@
 
             this.core?.mostrarToast(`🔄 Reiniciando tema "${tema.nombre}"...`, 'info');
 
-            // 2. Desmarcar como completado en el sistema usando la función corregida
+            // 2. Desmarcar como completado en el sistema
             if (window.UITemas) {
                 const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
                 const temaOriginalId = tema._temaOriginalId || tema.id;
@@ -869,7 +872,7 @@
                 await window.UITemas._marcarTemaCompletado(idioma, temaOriginalId, false);
             }
 
-            // 3. Actualizar estado del tema en DB (por si acaso)
+            // 3. Actualizar estado del tema en DB
             try {
                 const temaActual = await db.obtenerTema(temaId);
                 if (temaActual) {
@@ -953,13 +956,19 @@
         }
 
         // ============================================================
-        // RENDERIZADO PRINCIPAL CON TRANSCRIPCIÓN
+        // 🔥 RENDERIZADO PRINCIPAL CON CORRECCIÓN DEL PROBLEMA
         // ============================================================
         
         async _renderizarFraseInteractiva() {
             if (this._renderizando) {
                 console.log('⏳ Renderizado en curso, saltando...');
                 return;
+            }
+            
+            // 🔥 CANCELAR TIMEOUT ANTERIOR
+            if (this._renderTimeout) {
+                clearTimeout(this._renderTimeout);
+                this._renderTimeout = null;
             }
             
             this._renderizando = true;
@@ -1198,11 +1207,24 @@
                 const counter = document.getElementById('cardCounter');
                 if (counter) counter.textContent = actual + ' / ' + total;
                 
+                // ============================================================
+                // 🔥 CORRECCIÓN PRINCIPAL: USAR requestAnimationFrame PARA ENLAZAR EVENTOS
+                // ============================================================
                 if (modo === 'escritura') {
-                    this._enlazarEventosEscritura();
+                    // Usamos requestAnimationFrame para asegurar que el DOM esté completamente renderizado
+                    requestAnimationFrame(() => {
+                        // También esperamos un micro-tick extra para estar seguros
+                        setTimeout(() => {
+                            this._enlazarEventosEscritura();
+                        }, 0);
+                    });
                 }
                 if (modo === 'multiple') {
-                    this._enlazarEventosMultiple();
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            this._enlazarEventosMultiple();
+                        }, 0);
+                    });
                 }
                 
                 await this._verificarProgresoTema();
@@ -1455,34 +1477,54 @@
             return html;
         }
 
+        // ============================================================
+        // 🔥 ENLAZAR EVENTOS DE ESCRITURA - CORREGIDO
+        // ============================================================
+
         _enlazarEventosEscritura() {
             const btnValidar = document.getElementById('btnValidarEscritura');
             const input = document.getElementById('respuestaEscritura');
             
-            if (btnValidar) {
-                const newBtn = btnValidar.cloneNode(true);
-                btnValidar.parentNode.replaceChild(newBtn, btnValidar);
-                
-                newBtn.addEventListener('click', (e) => {
+            // Si no existen, esperar un poco más
+            if (!btnValidar || !input) {
+                console.log('⏳ Elementos de escritura aún no disponibles, reintentando...');
+                setTimeout(() => {
+                    this._enlazarEventosEscritura();
+                }, 50);
+                return;
+            }
+            
+            // 🔥 CLONAR Y REEMPLAZAR EL BOTÓN PARA EVITAR DUPLICACIÓN DE EVENTOS
+            const newBtn = btnValidar.cloneNode(true);
+            btnValidar.parentNode.replaceChild(newBtn, btnValidar);
+            
+            // 🔥 CLONAR Y REEMPLAZAR EL INPUT PARA EVITAR DUPLICACIÓN DE EVENTOS
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+            
+            // Asignar evento click al botón
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this._validarRespuestaEscrita();
+            });
+            
+            // Asignar evento keydown al input
+            newInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
                     this._validarRespuestaEscrita();
-                });
-            }
+                }
+            });
             
-            if (input) {
-                const newInput = input.cloneNode(true);
-                input.parentNode.replaceChild(newInput, input);
-                
-                newInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this._validarRespuestaEscrita();
-                    }
-                });
-                setTimeout(() => newInput.focus(), 150);
-            }
+            // Enfocar el input después de un breve retraso
+            setTimeout(() => {
+                if (newInput && document.body.contains(newInput)) {
+                    newInput.focus();
+                    console.log('🔤 Input de escritura enfocado correctamente');
+                }
+            }, 100);
         }
 
         // ============================================================
@@ -1491,7 +1533,19 @@
         
         async _validarRespuestaEscrita() {
             const input = document.getElementById('respuestaEscritura');
-            if (!input) return;
+            if (!input) {
+                console.warn('⚠️ Input de escritura no encontrado, reintentando...');
+                // Intentar recuperar el input
+                const newInput = document.querySelector('#respuestaEscritura');
+                if (newInput) {
+                    console.log('✅ Input recuperado, continuando...');
+                    // Reenlazar eventos antes de continuar
+                    this._enlazarEventosEscritura();
+                    // Reintentar la validación después de un breve retraso
+                    setTimeout(() => this._validarRespuestaEscrita(), 100);
+                }
+                return;
+            }
             
             const respuesta = input.value.trim();
             if (!respuesta) {
@@ -1613,9 +1667,12 @@
             
             await this._verificarProgresoTema();
             
+            // Re-enfocar el input después de la validación
             setTimeout(() => {
                 const newInput = document.getElementById('respuestaEscritura');
-                if (newInput) newInput.focus();
+                if (newInput && document.body.contains(newInput)) {
+                    newInput.focus();
+                }
             }, 150);
         }
 
@@ -1817,8 +1874,23 @@
             return html;
         }
 
+        // ============================================================
+        // 🔥 ENLAZAR EVENTOS DE MÚLTIPLE - CORREGIDO
+        // ============================================================
+
         _enlazarEventosMultiple() {
-            document.querySelectorAll('.multiple-opcion').forEach(el => {
+            const opciones = document.querySelectorAll('.multiple-opcion');
+            
+            if (!opciones || opciones.length === 0) {
+                console.log('⏳ Opciones de múltiple aún no disponibles, reintentando...');
+                setTimeout(() => {
+                    this._enlazarEventosMultiple();
+                }, 50);
+                return;
+            }
+            
+            opciones.forEach(el => {
+                // 🔥 CLONAR Y REEMPLAZAR CADA OPCIÓN PARA EVITAR DUPLICACIÓN DE EVENTOS
                 const newEl = el.cloneNode(true);
                 el.parentNode.replaceChild(newEl, el);
                 
@@ -3464,10 +3536,9 @@ Responde SOLO en formato JSON:
     // ============================================================
 
     window.UIStudy = new UIStudy();
-    console.log('✅ UIStudy v21.2 - CORREGIDO: DESMARCAR CON RESETEO COMPLETO');
-    console.log('  🔥 Resetear RCN a 0 al desmarcar tema');
-    console.log('  🔥 Reiniciar todas las frases del tema');
-    console.log('  🔥 Volver a activar el botón Estudiar');
-    console.log('  🔥 Navegación automática a estudio después de desmarcar');
+    console.log('✅ UIStudy v21.3 - CORREGIDO: RENDERIZADO CON requestAnimationFrame');
+    console.log('  🔥 Enlace de eventos optimizado con requestAnimationFrame');
+    console.log('  🔥 Reintento automático si los elementos no están listos');
+    console.log('  🔥 Clonado de elementos para evitar duplicación de eventos');
     console.log('  📚 Todas las funcionalidades originales preservadas');
 })();

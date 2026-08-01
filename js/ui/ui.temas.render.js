@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS RENDER v2.16 - CORREGIDO: CHECKBOX UNIFICADO
+// UI TEMAS RENDER v2.21 - INDEPENDIENTE POR IDIOMA
 // ============================================================
 
 class UITemasRender {
@@ -20,36 +20,43 @@ class UITemasRender {
         const versionEstandar = uiTemas._obtenerVersionEstandar(idiomaActivo);
         const nombreVersion = uiTemas._obtenerNombreVersion(idiomaActivo, versionEstandar);
 
+        // OBTENER SOLO TEMAS DEL IDIOMA ACTIVO
         const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActivo);
         const usuario = await db.getUsuario();
         const nivelActual = usuario?.idiomasObjetivo?.find(i => i.idioma === idiomaActivo)?.nivel || 'A1';
         const idiomaNativo = uiTemas._obtenerIdiomaNativo();
 
         // ============================================================
-        // FILTRADO Y CLASIFICACIÓN DE TEMAS
+        // FILTRADO Y CLASIFICACIÓN DE TEMAS POR IDIOMA
         // ============================================================
         const temasManuales = todosLosTemas.filter(t =>
             t.origen !== 'importado' && !t._esPredefinido && !t._esImportado &&
-            (t.idioma === idiomaActivo || !t.idioma)
+            t.idioma === idiomaActivo
         );
 
         const temasImportados = todosLosTemas.filter(t =>
             (t.origen === 'importado' || t._esImportado === true ||
             (t._esPredefinido === true && t.historiasIds && t.historiasIds.length > 0)) &&
-            (t.idioma === idiomaActivo || !t.idioma)
+            t.idioma === idiomaActivo
         );
 
+        // TEMAS PREDEFINIDOS QUE YA ESTÁN GUARDADOS EN ESTE IDIOMA
         const temasPredefinidosGuardados = todosLosTemas.filter(t => 
             t._esPredefinido === true && 
-            (t.idioma === idiomaActivo || !t.idioma)
+            t.idioma === idiomaActivo
         );
 
+        // SET DE IDs DE TEMAS QUE YA ESTÁN GUARDADOS EN ESTE IDIOMA
+        const temasGuardadosIds = new Set(temasPredefinidosGuardados.map(t => t._temaOriginalId));
+
         const nombresTemasImportados = new Set(temasImportados.map(t => t.nombre));
-        const nombresTemasPredefinidos = new Set(temasPredefinidosGuardados.map(t => t.nombre));
 
         for (const tema of temasPredefinidosGuardados) {
-            if (tema._temaOriginalId) {
-                uiTemas._temaPredefinidoIdMap[tema._temaOriginalId] = tema.id;
+            if (tema._temaOriginalId && tema.idioma) {
+                if (!uiTemas._temaPredefinidoIdMap[tema.idioma]) {
+                    uiTemas._temaPredefinidoIdMap[tema.idioma] = {};
+                }
+                uiTemas._temaPredefinidoIdMap[tema.idioma][tema._temaOriginalId] = tema.id;
             }
         }
 
@@ -103,7 +110,7 @@ class UITemasRender {
         `;
 
         // ============================================================
-        // 🔥 SECCIÓN: MIS TEMAS
+        // SECCIÓN: MIS TEMAS
         // ============================================================
         html += `
             <div style="margin-bottom:24px;">
@@ -137,17 +144,14 @@ class UITemasRender {
                 const numCaracteres = tema._caracteresSincronizadosCount || 0;
                 const fechaSincro = tema._fechaSincronizacion ? new Date(tema._fechaSincronizacion).toLocaleDateString() : '';
                 
-                // 🔥 OBTENER ESTADO DE COMPLETADO USANDO LA FUNCIÓN CORRECTA
                 let estaCompletado = false;
                 if (tema._temaOriginalId) {
-                    // Si es importado/predefinido, usar _temaEstaCompletado
                     estaCompletado = await uiTemas._temaEstaCompletado(idiomaActivo, tema._temaOriginalId);
                 } else {
-                    // Si es manual, usar el estado del tema
                     estaCompletado = tema.estado === 'completado' || tema._completado === true;
                 }
                 
-                // 🔥 SIEMPRE USAR tema.id PARA EL CHECKBOX (ES EL ID DE LA DB)
+                // Para temas manuales, usar el ID de la DB
                 const temaIdParaCompletado = tema.id;
 
                 html += `
@@ -199,8 +203,6 @@ class UITemasRender {
                                 </button>
                             `}
                             <button class="btn-secondary" onclick="event.stopPropagation();window.UITemas._exportarTema(${tema.id})" style="padding:3px 10px;font-size:11px;"><i class="fas fa-download"></i> Exportar</button>
-                            
-                            <!-- 🔥 CHECKBOX UNIFICADO: SIEMPRE USA tema.id -->
                             <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                                    style="padding:2px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;"
                                    onclick="event.stopPropagation();">
@@ -228,7 +230,7 @@ class UITemasRender {
         html += `</div>`;
 
         // ============================================================
-        // 🔥 SECCIÓN: TEMAS IMPORTADOS
+        // SECCIÓN: TEMAS IMPORTADOS
         // ============================================================
         html += `
             <div style="margin-bottom:24px;border-top:2px solid var(--light);padding-top:16px;">
@@ -246,7 +248,7 @@ class UITemasRender {
                 <div style="text-align:center;padding:20px;color:var(--gray);background:var(--bg);border-radius:12px;border:2px dashed var(--light);">
                     <i class="fas fa-file-import" style="font-size:28px;color:var(--primary-light);margin-bottom:6px;display:block;"></i>
                     <p style="font-size:13px;margin:0;">No hay temas importados en ${uiTemas._getNombreIdioma(idiomaActivo)}</p>
-                    <p style="font-size:11px;color:var(--gray-light);">Usa "Importar Tema" para añadir contenido</p>
+                    <p style="font-size:11px;color:var(--gray-light);">Usa "Generar JSON" para crear contenido en este idioma</p>
                 </div>
             `;
         } else {
@@ -260,11 +262,18 @@ class UITemasRender {
                 if (temasMostradosSet.has(tema.id)) continue;
                 temasMostradosSet.add(tema.id);
 
-                // 🔥 OBTENER ESTADO DE COMPLETADO
+                // 🔥 CORREGIDO: Usar _temaOriginalId para temas predefinidos importados
+                const esPredefinido = tema._esPredefinido === true;
                 let estaCompletado = false;
-                if (tema._temaOriginalId) {
+                let temaIdParaCompletado;
+
+                if (esPredefinido && tema._temaOriginalId) {
+                    // Para temas predefinidos, usar _temaOriginalId
+                    temaIdParaCompletado = tema._temaOriginalId;
                     estaCompletado = await uiTemas._temaEstaCompletado(idiomaActivo, tema._temaOriginalId);
                 } else {
+                    // Para temas importados manuales, usar el ID de la DB
+                    temaIdParaCompletado = tema.id;
                     estaCompletado = tema.estado === 'completado' || tema._completado === true;
                 }
 
@@ -275,13 +284,12 @@ class UITemasRender {
                 const historias = await db.obtenerHistoriasPorTema(tema.id);
                 const progreso = await db.obtenerProgresoTema(tema.id);
                 const pctProgreso = progreso?.progreso || 0;
-                const esPredefinido = tema._esPredefinido === true;
                 const estaSincronizado = tema._caracteresSincronizados === true;
                 const numCaracteres = tema._caracteresSincronizadosCount || 0;
                 const fechaSincro = tema._fechaSincronizacion ? new Date(tema._fechaSincronizacion).toLocaleDateString() : '';
                 
-                // 🔥 SIEMPRE USAR tema.id PARA EL CHECKBOX
-                const temaIdParaCompletado = tema.id;
+                // Determinar el idioma correcto para mostrar
+                const idiomaMostrar = tema.idioma || idiomaActivo;
 
                 html += `
                     <div class="tema-card" style="background:${estaCompletado ? 'var(--success)05' : 'var(--white)'};border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid ${estaCompletado ? 'var(--success)' : (esPredefinido ? 'var(--primary)' : 'var(--secondary)')};cursor:pointer;transition:all 0.3s;" 
@@ -291,9 +299,9 @@ class UITemasRender {
                                 <span style="font-size:28px;">${tema.icono || '📦'}</span>
                                 <div>
                                     <h4 style="font-size:15px;font-weight:700;color:var(--dark);margin:0;">${tema.nombre}</h4>
-                                    <span style="font-size:11px;color:var(--gray);">${tema.idioma || idiomaActivo} · ${tema.nivel || nivelActual}</span>
+                                    <span style="font-size:11px;color:var(--gray);">${uiTemas._getNombreIdioma(idiomaMostrar)} · ${tema.nivel || nivelActual}</span>
                                     ${esPredefinido ? `<span style="font-size:10px;color:var(--primary);margin-left:6px;">📚 Predefinido</span>` : '<span style="font-size:10px;color:var(--secondary);margin-left:6px;">📥 Importado</span>'}
-                                    ${versionEstandar ? `<span style="font-size:9px;color:var(--secondary);margin-left:4px;">📌 ${versionEstandar}</span>` : ''}
+                                    ${tema._nombre_version ? `<span style="font-size:9px;color:var(--secondary);margin-left:4px;">📌 ${tema._nombre_version}</span>` : ''}
                                     ${estaCompletado ? ' <span style="font-size:10px;color:var(--success);">✅ Completado</span>' : ''}
                                     ${estaSincronizado ? `
                                         <span style="display:inline-block;font-size:9px;background:var(--success);color:white;padding:1px 10px;border-radius:12px;margin-left:4px;" 
@@ -330,7 +338,7 @@ class UITemasRender {
                             `}
                             <button class="btn-secondary" onclick="event.stopPropagation();window.UITemas._exportarTema(${tema.id})" style="padding:3px 10px;font-size:11px;"><i class="fas fa-download"></i> Exportar</button>
                             
-                            <!-- 🔥 CHECKBOX UNIFICADO: SIEMPRE USA tema.id -->
+                            <!-- CHECKBOX CORREGIDO -->
                             <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                                    style="padding:2px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;"
                                    onclick="event.stopPropagation();">
@@ -339,6 +347,7 @@ class UITemasRender {
                                        style="margin:0;width:14px;height:14px;cursor:pointer;">
                                 <span style="font-size:9px;color:${estaCompletado ? 'var(--success)' : 'var(--gray)'};">${estaCompletado ? '✅ Completado' : 'Completar'}</span>
                             </label>
+                            
                             <button class="btn-danger" onclick="event.stopPropagation();window.UITemas._eliminarTema(${tema.id})" style="padding:3px 10px;font-size:11px;background:#FF7675;color:white;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
@@ -359,7 +368,7 @@ class UITemasRender {
         html += `</div>`;
 
         // ============================================================
-        // SECCIÓN: TEMAS PREDEFINIDOS
+        // SECCIÓN: TEMAS PREDEFINIDOS (CON IDIOMA ACTIVO)
         // ============================================================
         html += `
             <div style="margin-top:8px;border-top:2px solid var(--light);padding-top:16px;">
@@ -367,7 +376,7 @@ class UITemasRender {
                     <div>
                         <h3 style="font-size:18px;font-weight:700;color:var(--dark);margin:0;">
                             🎯 Temas Predefinidos por Nivel
-                            <span style="font-size:13px;font-weight:400;color:var(--gray);">(MCER/DELE · ${uiTemas._getNombreIdioma(idiomaActivo)})</span>
+                            <span style="font-size:13px;font-weight:400;color:var(--gray);">(${uiTemas._getNombreIdioma(idiomaActivo)})</span>
                         </h3>
                         <span style="font-size:12px;color:var(--gray-light);">Nivel actual: <strong>${nivelActual}</strong></span>
                         <span style="font-size:11px;color:var(--gray-light);margin-left:8px;">🎤 ${uiTemas._getNombreIdioma(idiomaNativo)}</span>
@@ -449,24 +458,34 @@ class UITemasRender {
             for (const tema of temasNivel) {
                 const estaDisponible = !estaBloqueado || esActual;
                 
-                const dbId = uiTemas._temaPredefinidoIdMap[tema.id];
-                let temaEnDB = dbId ? await db.obtenerTema(dbId) : null;
+                // VERIFICAR SI YA ESTÁ GUARDADO EN ESTE IDIOMA
+                let estaGuardado = temasGuardadosIds.has(tema.id);
+                let temaEnDB = null;
+                let dbId = null;
+                let estaCompletado = false;
                 
-                if (temaEnDB && temaEnDB.idioma && temaEnDB.idioma !== idiomaActivo) {
-                    temaEnDB = null;
+                if (estaGuardado) {
+                    // Buscar el tema en la DB para obtener su ID real (ahora por idioma)
+                    const temaExistente = await uiTemas._obtenerTemaPredefinidoPorIdioma(tema.id, idiomaActivo);
+                    if (temaExistente) {
+                        temaEnDB = temaExistente;
+                        dbId = temaExistente.id;
+                        estaCompletado = temaExistente.estado === 'completado' || temaExistente._completado === true;
+                    } else {
+                        estaGuardado = false;
+                    }
                 }
-                
-                const estaImportado = nombresTemasImportados.has(tema.nombre);
-                const estaGuardadoEnDB = dbId ? true : false;
-                let estaCompletado = await uiTemas._temaEstaCompletado(idiomaActivo, tema.id);
-                
+
+                // Si no está guardado, verificar si está completado en caché
+                if (!estaGuardado) {
+                    estaCompletado = await uiTemas._temaEstaCompletado(idiomaActivo, tema.id);
+                }
+
                 if (estaCompletado && uiTemas._ocultarCompletados) {
                     continue;
                 }
 
-                if (!estaCompletado && temaEnDB) {
-                    estaCompletado = temaEnDB.estado === 'completado' || temaEnDB._completado === true;
-                }
+                const estaImportado = nombresTemasImportados.has(tema.nombre);
 
                 html += `
                     <div style="background:${estaDisponible ? (estaCompletado ? 'var(--success)05' : 'var(--white)') : 'var(--gray-light)'};border-radius:8px;padding:8px 12px;border:1px solid ${estaDisponible ? (estaCompletado ? 'var(--success)' : 'var(--light)') : 'transparent'};opacity:${estaDisponible ? '1' : '0.5'};">
@@ -475,7 +494,7 @@ class UITemasRender {
                                 <span style="font-size:16px;">${tema.icono}</span>
                                 <div style="font-size:12px;font-weight:600;color:${estaDisponible ? 'var(--dark)' : 'var(--gray)'};">${tema.nombre}</div>
                                 <div style="font-size:10px;color:var(--gray-light);">${tema.descripcion}</div>
-                                ${estaGuardadoEnDB ? '<span style="font-size:9px;color:var(--success);">📂 Guardado</span>' : ''}
+                                ${estaGuardado ? '<span style="font-size:9px;color:var(--success);">📂 Guardado</span>' : '<span style="font-size:9px;color:var(--gray-light);">📄 No importado</span>'}
                                 ${estaCompletado ? '<span style="font-size:9px;color:var(--success);">✅ Completado</span>' : ''}
                             </div>
                             ${estaCompletado ? '<span style="font-size:14px;">✅</span>' : ''}
@@ -483,7 +502,7 @@ class UITemasRender {
 
                         ${estaDisponible ? `
                             <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
-                                ${estaGuardadoEnDB && temaEnDB && temaEnDB.historiasIds && temaEnDB.historiasIds.length > 0 ? `
+                                ${estaGuardado && temaEnDB && temaEnDB.historiasIds && temaEnDB.historiasIds.length > 0 ? `
                                     ${!estaCompletado ? `
                                         <button class="btn-secondary" onclick="event.stopPropagation();window.UITemas._verTemaDetalle(${dbId})" style="padding:2px 10px;font-size:10px;background:var(--success);color:white;border:none;border-radius:4px;cursor:pointer;">
                                             <i class="fas fa-folder-open"></i> Ver
@@ -498,7 +517,7 @@ class UITemasRender {
                                         </button>
                                     `}
                                 ` : `
-                                    ${!estaCompletado ? `
+                                    ${!estaCompletado && estaDisponible ? `
                                         <button class="btn-secondary" onclick="window.UITemas._generarTemaPredefinido('${tema.id}', '${tema.nombre.replace(/'/g, "\\'")}', '${nivel}')" style="padding:2px 10px;font-size:10px;background:${estaImportado ? 'var(--success)' : 'var(--primary)'};color:white;border:none;border-radius:4px;cursor:pointer;">
                                             <i class="fas ${estaImportado ? 'fa-check-circle' : 'fa-code'}"></i> ${estaImportado ? 'Importado' : 'Generar JSON'}
                                         </button>
@@ -509,6 +528,8 @@ class UITemasRender {
                                         </button>
                                     `}
                                 `}
+                                
+                                <!-- CHECKBOX CORREGIDO -->
                                 <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                                        style="padding:2px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;"
                                        onclick="event.stopPropagation();">
@@ -675,14 +696,14 @@ class UITemasRender {
         if (seccionId === 'manuales') {
             const temasManuales = todosLosTemas.filter(t =>
                 t.origen !== 'importado' && !t._esPredefinido && !t._esImportado &&
-                (t.idioma === idiomaActivo || !t.idioma)
+                t.idioma === idiomaActivo
             );
             totalItems = temasManuales.length;
         } else if (seccionId === 'importados') {
             const temasImportados = todosLosTemas.filter(t =>
                 (t.origen === 'importado' || t._esImportado === true ||
                 (t._esPredefinido === true && t.historiasIds && t.historiasIds.length > 0)) &&
-                (t.idioma === idiomaActivo || !t.idioma)
+                t.idioma === idiomaActivo
             );
             totalItems = temasImportados.length;
         } else {
@@ -710,6 +731,7 @@ class UITemasRender {
         }
 
         const idiomaActivo = gestorIdiomas.getIdiomaActivo() || 'es';
+        
         if (tema.idioma && tema.idioma !== idiomaActivo) {
             uiTemas._core?.mostrarToast('⚠️ Este tema es de "' + tema.idioma + '", no de "' + idiomaActivo + '"', 'warning');
             uiTemas._volverTemas();
@@ -729,9 +751,8 @@ class UITemasRender {
         const esPredefinido = tema._esPredefinido === true;
         const idiomaNativo = uiTemas._obtenerIdiomaNativo();
         
-        // 🔥 OBTENER ESTADO DE COMPLETADO
         let estaCompletado = false;
-        if (tema._temaOriginalId) {
+        if (tema._temaOriginalId && esPredefinido) {
             estaCompletado = await uiTemas._temaEstaCompletado(idiomaActivo, tema._temaOriginalId);
         } else {
             estaCompletado = tema.estado === 'completado' || tema._completado === true;
@@ -752,7 +773,7 @@ class UITemasRender {
                     <span style="font-size:24px;">${icono}</span>
                     <div>
                         <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0;">${tema.nombre}</h2>
-                        <span style="font-size:12px;color:var(--gray);">${tema.descripcion || 'Sin descripción'} · ${tema.idioma || idiomaActivo} (${tema.nivel || 'B1'})</span>
+                        <span style="font-size:12px;color:var(--gray);">${tema.descripcion || 'Sin descripción'} · ${uiTemas._getNombreIdioma(tema.idioma || idiomaActivo)} (${tema.nivel || 'B1'})</span>
                         ${esImportado ? '<span style="font-size:10px;color:var(--secondary);margin-left:6px;">📥 Importado</span>' : ''}
                         ${esPredefinido ? '<span style="font-size:10px;color:var(--primary);margin-left:6px;">📚 Predefinido</span>' : ''}
                         ${versionTema ? `<span style="font-size:10px;color:var(--secondary);margin-left:6px;">📌 ${versionTema}</span>` : ''}
@@ -781,12 +802,12 @@ class UITemasRender {
                         <i class="fas fa-download"></i> Exportar
                     </button>
                     ${!estaCompletado ? `
-                        <button class="btn-success" onclick="window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${temaId}', true)" 
+                        <button class="btn-success" onclick="window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${esPredefinido && tema._temaOriginalId ? tema._temaOriginalId : temaId}', true)" 
                                 style="padding:6px 14px;font-size:12px;background:var(--success);color:white;border:none;border-radius:6px;cursor:pointer;">
                             ✅ Marcar completado
                         </button>
                     ` : `
-                        <button class="btn-warning" onclick="event.stopPropagation();window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${temaId}', false)" 
+                        <button class="btn-warning" onclick="event.stopPropagation();window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${esPredefinido && tema._temaOriginalId ? tema._temaOriginalId : temaId}', false)" 
                                 style="padding:6px 14px;font-size:12px;background:var(--warning);color:var(--dark);border:none;border-radius:6px;cursor:pointer;">
                             ↩️ Desmarcar
                         </button>
@@ -943,7 +964,4 @@ class UITemasRender {
 
 window.UITemasRender = UITemasRender;
 
-console.log('✅ UITemas Render v2.16 - CORREGIDO: CHECKBOX UNIFICADO');
-console.log('  🔥 SIEMPRE usa tema.id para el checkbox');
-console.log('  🔥 _temaEstaCompletado se usa SOLO para leer el estado, no para el checkbox');
-console.log('  🔥 El checkbox ahora se mantiene marcado correctamente en TODOS los temas');
+console.log('✅ UITemas Render v2.21 - INDEPENDIENTE POR IDIOMA');
