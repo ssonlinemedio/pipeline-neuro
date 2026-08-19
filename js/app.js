@@ -1,5 +1,6 @@
 // ============================================================
-// APP v22.1 - REGISTRO CON VALIDACIÓN DE IDIOMAS CORREGIDA
+// APP v22.7 - DEFINITIVA CON PERSISTENCIA ASEGURADA
+// Y MODO ONDAS CRUZADAS - CORREGIDO
 // ============================================================
 
 class App {
@@ -38,82 +39,74 @@ class App {
         this._verificandoRuta = false;
         this._verificandoTutor = false;
         
-        // ============================================================
-        // LISTA COMPLETA DE IDIOMAS PARA VALIDACIÓN LOCAL
-        // ============================================================
+        // Asegurar que el Modo Elipse existe globalmente
+        if (typeof modoElipse !== 'undefined' && modoElipse) {
+            window.modoElipse = modoElipse;
+        }
+        
+        // 🔥 MODO ONDAS CRUZADAS
+        if (typeof modoOndasCruzadas !== 'undefined' && modoOndasCruzadas) {
+            window.modoOndasCruzadas = modoOndasCruzadas;
+        }
+        if (typeof UIOndasCruzadas !== 'undefined' && UIOndasCruzadas) {
+            window.UIOndasCruzadas = UIOndasCruzadas;
+        }
+        
         this._IDIOMAS_CONOCIDOS = {
-            // Español y variantes
-            'español': 'es', 'espanol': 'es', 'castellano': 'es', 'spanish': 'es',
-            // Inglés y variantes
-            'inglés': 'en', 'ingles': 'en', 'english': 'en',
-            // Chino y variantes
-            'chino': 'zh', 'mandarín': 'zh', 'mandarin': 'zh', 'chinese': 'zh',
-            // Japonés
-            'japonés': 'ja', 'japones': 'ja', 'japanese': 'ja',
-            // Coreano
+            'espaÃ±ol': 'es', 'espanol': 'es', 'castellano': 'es', 'spanish': 'es',
+            'inglÃ©s': 'en', 'ingles': 'en', 'english': 'en',
+            'chino': 'zh', 'mandarÃ­n': 'zh', 'mandarin': 'zh', 'chinese': 'zh',
+            'japonÃ©s': 'ja', 'japones': 'ja', 'japanese': 'ja',
             'coreano': 'ko', 'korean': 'ko',
-            // Francés
-            'francés': 'fr', 'frances': 'fr', 'french': 'fr',
-            // Alemán
-            'alemán': 'de', 'aleman': 'de', 'german': 'de',
-            // Italiano
+            'francÃ©s': 'fr', 'frances': 'fr', 'french': 'fr',
+            'alemÃ¡n': 'de', 'aleman': 'de', 'german': 'de',
             'italiano': 'it', 'italian': 'it',
-            // Portugués
-            'portugués': 'pt', 'portugues': 'pt', 'portuguese': 'pt',
-            // Ruso
+            'portuguÃ©s': 'pt', 'portugues': 'pt', 'portuguese': 'pt',
             'ruso': 'ru', 'russian': 'ru',
-            // Árabe
-            'árabe': 'ar', 'arabe': 'ar', 'arabic': 'ar',
-            // Hindi
+            'Ã¡rabe': 'ar', 'arabe': 'ar', 'arabic': 'ar',
             'hindi': 'hi',
-            // Otros idiomas comunes
             'urdu': 'ur', 'persa': 'fa', 'farsi': 'fa', 'turco': 'tr', 'turkish': 'tr',
-            'vietnamita': 'vi', 'vietnamese': 'vi', 'tailandés': 'th', 'thai': 'th',
+            'vietnamita': 'vi', 'vietnamese': 'vi', 'tailandÃ©s': 'th', 'thai': 'th',
             'griego': 'el', 'greek': 'el', 'hebreo': 'he', 'hebrew': 'he',
             'polaco': 'pl', 'polish': 'pl', 'ucraniano': 'uk', 'ukrainian': 'uk',
-            'rumano': 'ro', 'romanian': 'ro', 'holandés': 'nl', 'dutch': 'nl',
+            'rumano': 'ro', 'romanian': 'ro', 'holandÃ©s': 'nl', 'dutch': 'nl',
             'sueco': 'sv', 'swedish': 'sv', 'noruego': 'no', 'norwegian': 'no',
-            'danés': 'da', 'danish': 'da', 'finlandés': 'fi', 'finnish': 'fi',
-            'irlandés': 'ga', 'irish': 'ga', 'galés': 'cy', 'welsh': 'cy',
+            'danÃ©s': 'da', 'danish': 'da', 'finlandÃ©s': 'fi', 'finnish': 'fi',
+            'irlandÃ©s': 'ga', 'irish': 'ga', 'galÃ©s': 'cy', 'welsh': 'cy',
             'checo': 'cs', 'czech': 'cs', 'eslovaco': 'sk', 'slovak': 'sk',
-            'húngaro': 'hu', 'hungarian': 'hu', 'búlgaro': 'bg', 'bulgarian': 'bg',
+            'hÃºngaro': 'hu', 'hungarian': 'hu', 'bÃºlgaro': 'bg', 'bulgarian': 'bg',
             'serbio': 'sr', 'serbian': 'sr', 'croata': 'hr', 'croatian': 'hr',
-            'estonio': 'et', 'estonian': 'et', 'letón': 'lv', 'latvian': 'lv',
-            'lituano': 'lt', 'lithuanian': 'lt', 'maltés': 'mt', 'maltese': 'mt',
-            'islandés': 'is', 'icelandic': 'is', 'albanés': 'sq', 'albanian': 'sq',
+            'estonio': 'et', 'estonian': 'et', 'letÃ³n': 'lv', 'latvian': 'lv',
+            'lituano': 'lt', 'lithuanian': 'lt', 'maltÃ©s': 'mt', 'maltese': 'mt',
+            'islandÃ©s': 'is', 'icelandic': 'is', 'albanÃ©s': 'sq', 'albanian': 'sq',
             'georgiano': 'ka', 'georgian': 'ka', 'armenio': 'hy', 'armenian': 'hy',
             'mongol': 'mn', 'mongolian': 'mn', 'tibetano': 'bo', 'tibetan': 'bo',
             'camboyano': 'km', 'khmer': 'km', 'laosiano': 'lo', 'lao': 'lo',
             'birmano': 'my', 'burmese': 'my', 'tagalo': 'tl', 'tagalog': 'tl',
             'indonesio': 'id', 'indonesian': 'id', 'malayo': 'ms', 'malay': 'ms',
-            'suajili': 'sw', 'swahili': 'sw', 'amárico': 'am', 'amharic': 'am',
-            'hausa': 'ha', 'yoruba': 'yo', 'igbo': 'ig', 'zulú': 'zu', 'zulu': 'zu',
-            'afrikáans': 'af', 'afrikaans': 'af'
+            'suajili': 'sw', 'swahili': 'sw', 'amÃ¡rico': 'am', 'amharic': 'am',
+            'hausa': 'ha', 'yoruba': 'yo', 'igbo': 'ig', 'zulÃº': 'zu', 'zulu': 'zu',
+            'afrikÃ¡ans': 'af', 'afrikaans': 'af'
         };
 
-        // Nombres de idiomas en español para mostrar
         this._NOMBRES_IDIOMAS = {
-            'es': 'Español', 'en': 'Inglés', 'zh': 'Chino', 'ja': 'Japonés',
-            'ko': 'Coreano', 'fr': 'Francés', 'de': 'Alemán', 'it': 'Italiano',
-            'pt': 'Portugués', 'ru': 'Ruso', 'ar': 'Árabe', 'hi': 'Hindi',
+            'es': 'EspaÃ±ol', 'en': 'InglÃ©s', 'zh': 'Chino', 'ja': 'JaponÃ©s',
+            'ko': 'Coreano', 'fr': 'FrancÃ©s', 'de': 'AlemÃ¡n', 'it': 'Italiano',
+            'pt': 'PortuguÃ©s', 'ru': 'Ruso', 'ar': 'Ãrabe', 'hi': 'Hindi',
             'ur': 'Urdu', 'fa': 'Persa', 'tr': 'Turco', 'vi': 'Vietnamita',
-            'th': 'Tailandés', 'el': 'Griego', 'he': 'Hebreo', 'pl': 'Polaco',
-            'uk': 'Ucraniano', 'ro': 'Rumano', 'nl': 'Holandés', 'sv': 'Sueco',
-            'no': 'Noruego', 'da': 'Danés', 'fi': 'Finlandés', 'ga': 'Irlandés',
-            'cy': 'Galés', 'cs': 'Checo', 'sk': 'Eslovaco', 'hu': 'Húngaro',
-            'bg': 'Búlgaro', 'sr': 'Serbio', 'hr': 'Croata', 'et': 'Estonio',
-            'lv': 'Letón', 'lt': 'Lituano', 'mt': 'Maltés', 'is': 'Islandés',
-            'sq': 'Albanés', 'ka': 'Georgiano', 'hy': 'Armenio', 'mn': 'Mongol',
+            'th': 'TailandÃ©s', 'el': 'Griego', 'he': 'Hebreo', 'pl': 'Polaco',
+            'uk': 'Ucraniano', 'ro': 'Rumano', 'nl': 'HolandÃ©s', 'sv': 'Sueco',
+            'no': 'Noruego', 'da': 'DanÃ©s', 'fi': 'FinlandÃ©s', 'ga': 'IrlandÃ©s',
+            'cy': 'GalÃ©s', 'cs': 'Checo', 'sk': 'Eslovaco', 'hu': 'HÃºngaro',
+            'bg': 'BÃºlgaro', 'sr': 'Serbio', 'hr': 'Croata', 'et': 'Estonio',
+            'lv': 'LetÃ³n', 'lt': 'Lituano', 'mt': 'MaltÃ©s', 'is': 'IslandÃ©s',
+            'sq': 'AlbanÃ©s', 'ka': 'Georgiano', 'hy': 'Armenio', 'mn': 'Mongol',
             'bo': 'Tibetano', 'km': 'Camboyano', 'lo': 'Laosiano', 'my': 'Birmano',
             'tl': 'Tagalo', 'id': 'Indonesio', 'ms': 'Malayo', 'sw': 'Suajili',
-            'am': 'Amárico', 'ha': 'Hausa', 'yo': 'Yoruba', 'ig': 'Igbo',
-            'zu': 'Zulú', 'af': 'Afrikáans'
+            'am': 'AmÃ¡rico', 'ha': 'Hausa', 'yo': 'Yoruba', 'ig': 'Igbo',
+            'zu': 'ZulÃº', 'af': 'AfrikÃ¡ans'
         };
     }
-
-    // ============================================================
-    // VERIFICACIÓN MENSUAL DE GROQ
-    // ============================================================
 
     _debeEjecutarVerificacionGroq() {
         try {
@@ -145,7 +138,6 @@ class App {
         this._verificandoTutor = true;
 
         try {
-            // 1. Actualizar versiones de idiomas
             if (window.vigia && window.vigia.enLinea && window.gestorIdiomas) {
                 try {
                     const resultados = await window.gestorIdiomas.actualizarTodasLasVersiones(false);
@@ -161,7 +153,6 @@ class App {
             }
             this._verificandoVersion = false;
 
-            // 2. Generar ruta de aprendizaje
             try {
                 if (window.LearningPath) {
                     await window.LearningPath.generarRuta();
@@ -171,13 +162,12 @@ class App {
             }
             this._verificandoRuta = false;
 
-            // 3. Recomendación del tutor
             try {
                 if (window.tutorNeuro && window.tutorNeuro._recomendarSiguienteTema) {
                     window.tutorNeuro._recomendarSiguienteTema();
                 }
             } catch (e) {
-                console.warn('⚠️ Error en recomendación del tutor:', e);
+                console.warn('⚠️ Error en recomendaciÃ³n del tutor:', e);
             }
             this._verificandoTutor = false;
 
@@ -193,26 +183,21 @@ class App {
         }
     }
 
-    // ============================================================
-    // 🔥 VALIDACIÓN LOCAL DE IDIOMAS (FALLBACK CUANDO VIGÍA ESTÁ OFFLINE)
-    // ============================================================
-
     _validarIdiomaLocal(texto, tipo = 'nativo') {
         if (!texto || texto.trim().length < 2) {
             return {
                 original: texto || '',
                 idiomaFinal: texto || '',
                 valido: false,
-                mensaje: '❌ Por favor, escribe un idioma válido.',
+                mensaje: '❌ Por favor, escribe un idioma vÃ¡lido.',
                 corregido: false
             };
         }
 
-        const textoLower = texto.trim().toLowerCase();
+        const textoNormalizado = texto.trim().normalize('NFKC').toLowerCase();
         const idiomasKeys = Object.keys(this._IDIOMAS_CONOCIDOS);
         
-        // 1. Buscar coincidencia exacta
-        const exacto = idiomasKeys.find(i => i === textoLower);
+        const exacto = idiomasKeys.find(i => i === textoNormalizado);
         if (exacto) {
             const codigo = this._IDIOMAS_CONOCIDOS[exacto];
             const nombre = this._NOMBRES_IDIOMAS[codigo] || this._capitalizar(exacto);
@@ -226,13 +211,13 @@ class App {
             };
         }
 
-        // 2. Buscar por coincidencia parcial o similaridad
         let mejorMatch = null;
         let mejorSimilitud = 0;
         const umbralMinimo = 0.6;
 
         for (const idioma of idiomasKeys) {
-            const similitud = this._calcularSimilitud(textoLower, idioma);
+            const idiomaNormalizado = idioma.normalize('NFKC').toLowerCase();
+            const similitud = this._calcularSimilitud(textoNormalizado, idiomaNormalizado);
             if (similitud > mejorSimilitud && similitud > umbralMinimo) {
                 mejorSimilitud = similitud;
                 mejorMatch = idioma;
@@ -246,19 +231,18 @@ class App {
                 original: texto.trim(),
                 idiomaFinal: nombre,
                 valido: true,
-                mensaje: `✏️ ¿Quisiste decir "${nombre}"?`,
+                mensaje: `✏️ Â¿Quisiste decir "${nombre}"?`,
                 corregido: true,
                 codigo: codigo,
                 sugerido: mejorMatch
             };
         }
 
-        // 3. No se encontró
         return {
             original: texto.trim(),
             idiomaFinal: texto.trim(),
             valido: false,
-            mensaje: `❌ "${texto.trim()}" no es un idioma válido. Prueba con: Español, Inglés, Chino, etc.`,
+            mensaje: `❌ "${texto.trim()}" no es un idioma vÃ¡lido. Prueba con: EspaÃ±ol, InglÃ©s, Chino, etc.`,
             corregido: false
         };
     }
@@ -267,11 +251,10 @@ class App {
         if (a === b) return 1;
         if (a.length === 0 || b.length === 0) return 0;
         
-        // Normalizar: eliminar acentos y caracteres especiales
         const normalize = (str) => {
             return str.normalize('NFKD')
                 .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-zA-Záéíóúñü\s]/g, '')
+                .replace(/[^a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃ±Ã¼ÃÃ‰ÃÃ“ÃšÃ‘Ãœ\s]/g, '')
                 .toLowerCase();
         };
         
@@ -306,16 +289,12 @@ class App {
         return texto.charAt(0).toUpperCase() + texto.slice(1);
     }
 
-    // ============================================================
-    // INIT PRINCIPAL
-    // ============================================================
-
     async init() {
         if (this._iniciando || this._initDone) return;
         this._iniciando = true;
 
         try {
-            console.log('🧠 Iniciando Pipeline v22.1 con validación mejorada...');
+            console.log('🧠 Iniciando Pipeline v22.7 con persistencia asegurada y Ondas Cruzadas...');
 
             this._mostrarPantallaCarga('Inicializando...');
 
@@ -329,13 +308,12 @@ class App {
                 this._dbInicializada = true;
                 console.log('✅ Database inicializada correctamente');
             } catch (dbError) {
-                console.error('❌ Error crítico inicializando DB:', dbError);
+                console.error('❌ Error crÃ­tico inicializando DB:', dbError);
                 this._dbReady = false;
                 this._dbInicializada = false;
             }
             this._esperandoDB = false;
 
-            // Inicializar balanceador
             if (window.balanceadorGroq) {
                 try {
                     await window.balanceadorGroq.init();
@@ -345,7 +323,6 @@ class App {
                 }
             }
 
-            // Inicializar validador de idiomas
             if (window.validadorIdiomas) {
                 console.log('✅ Validador de idiomas disponible');
             }
@@ -439,7 +416,50 @@ class App {
                     } catch (e) {}
                 }
                 
-                // Ejecutar verificaciones mensuales
+                // 🌌 INICIALIZAR MODO ELIPSE CON CARGA DE DATOS
+                if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+                    try {
+                        await window.modoElipse.init(window.uiCore);
+                        console.log('🌌 Modo Elipse inicializado');
+                        
+                        if (typeof window.modoElipse.cargarDatos === 'function') {
+                            const datos = await window.modoElipse.cargarDatos();
+                            console.log(`🌌 Datos del Modo Elipse cargados: ${datos.length} ondas`);
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Error inicializando Modo Elipse:', e);
+                    }
+                }
+                
+                // 🔥 INICIALIZAR MODO ONDAS CRUZADAS
+                if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+                    try {
+                        await window.modoOndasCruzadas.init(window.uiCore);
+                        console.log('🌊 Modo Ondas Cruzadas inicializado');
+                    } catch (e) {
+                        console.warn('⚠️ Error inicializando Modo Ondas Cruzadas:', e);
+                    }
+                }
+                
+                if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+                    try {
+                        await window.UIOndasCruzadas.init(window.uiCore);
+                        console.log('🌊 UI Ondas Cruzadas inicializada');
+                    } catch (e) {
+                        console.warn('⚠️ Error inicializando UI Ondas Cruzadas:', e);
+                    }
+                }
+                
+                // Inicializar UI Elipse
+                if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+                    try {
+                        await window.UIClipse.init(window.uiCore);
+                        console.log('🌌 UI Elipse inicializada');
+                    } catch (e) {
+                        console.warn('⚠️ Error inicializando UI Elipse:', e);
+                    }
+                }
+                
                 setTimeout(async () => {
                     await this._ejecutarVerificacionesGroq();
                 }, 5000);
@@ -461,7 +481,7 @@ class App {
                 
                 this.inicializada = true;
                 this._initDone = true;
-                console.log('✅ App iniciada correctamente');
+                console.log('✅ App iniciada correctamente con Ondas Cruzadas');
                 return;
             }
 
@@ -470,7 +490,7 @@ class App {
             this._showRegisterScreen();
 
         } catch (error) {
-            console.error('❌ Error crítico en init:', error);
+            console.error('❌ Error crÃ­tico en init:', error);
             const localUser = this._getUsuarioLocalStorage();
             if (localUser && localUser.nombre) {
                 try {
@@ -489,10 +509,6 @@ class App {
         }
     }
 
-    // ============================================================
-    // REGISTRO DE EVENTOS GLOBALES
-    // ============================================================
-
     _registrarEventosGlobales() {
         if (this._eventosGlobalesRegistrados) return;
         this._eventosGlobalesRegistrados = true;
@@ -508,7 +524,7 @@ class App {
         
         window.addEventListener('idiomaCambiado', async (e) => {
             const idioma = e.detail?.idioma;
-            console.log(`📢 App recibió idiomaCambiado: ${idioma}`);
+            console.log(`📢 App recibiÃ³ idiomaCambiado: ${idioma}`);
             
             if (window.UITemas) {
                 window.UITemas._temaCompletadoCache = {};
@@ -550,6 +566,29 @@ class App {
             
             if (window.UITemas) {
                 setTimeout(() => window.UITemas._renderTemas(), 300);
+            }
+            
+            // 🌌 RECARGAR MÃ“DULO ELIPSE
+            if (window.UIClipse) {
+                setTimeout(() => {
+                    try {
+                        window.UIClipse.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+            
+            // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS - FORZAR RECARGA COMPLETA
+            if (window.UIOndasCruzadas) {
+                try {
+                    console.log('🌊 Forzando recarga de Ondas Cruzadas por cambio de idioma...');
+                    // Marcar datos como no cargados
+                    window.UIOndasCruzadas._datosCargados = false;
+                    // Recargar datos y renderizar
+                    await window.UIOndasCruzadas._cargarDatos();
+                    window.UIOndasCruzadas._renderizarPanel();
+                } catch (error) {
+                    console.warn('⚠️ Error recargando Ondas Cruzadas:', error);
+                }
             }
         });
         
@@ -661,10 +700,94 @@ class App {
             }
         });
         
+        // 🌌 EVENTOS DEL MODO ELIPSE
+        window.addEventListener('elipseOndaGenerada', (e) => {
+            console.log('🌌 App detectÃ³ elipseOndaGenerada:', e.detail);
+            if (window.modoElipse) {
+                window.modoElipse._guardarEstadoElipse();
+            }
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            }
+            if (window.UIClipse) {
+                setTimeout(() => {
+                    try {
+                        window.UIClipse.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+            if (window.UITemas) {
+                setTimeout(() => window.UITemas._renderTemas(), 500);
+            }
+            // 🌊 Sincronizar Ondas Cruzadas
+            if (window.modoOndasCruzadas) {
+                setTimeout(() => {
+                    window.modoOndasCruzadas.sincronizarConElipse(e.detail?.temaId);
+                }, 500);
+            }
+        });
+        
+        window.addEventListener('elipseOndaCompletada', (e) => {
+            console.log('🌌 App detectÃ³ elipseOndaCompletada:', e.detail);
+            if (window.modoElipse) {
+                window.modoElipse._guardarEstadoElipse();
+            }
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            }
+            if (window.UIClipse) {
+                setTimeout(() => {
+                    try {
+                        window.UIClipse.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+        });
+        
+        window.addEventListener('elipseTemaSeleccionado', (e) => {
+            console.log('🌌 App detectÃ³ elipseTemaSeleccionado:', e.detail);
+            if (window.modoElipse) {
+                window.modoElipse._guardarEstadoElipse();
+            }
+        });
+        
+        // 🌊 EVENTOS DEL MODO ONDAS CRUZADAS
+        window.addEventListener('ondasCruzadasGenerada', (e) => {
+            console.log('🌊 App detectÃ³ ondasCruzadasGenerada:', e.detail);
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            }
+            if (window.UIOndasCruzadas) {
+                setTimeout(() => {
+                    try {
+                        window.UIOndasCruzadas.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+            if (window.UIClipse) {
+                setTimeout(() => {
+                    try {
+                        window.UIClipse.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+        });
+        
+        window.addEventListener('ondasCruzadasSincronizadas', (e) => {
+            console.log('🌊 App detectÃ³ ondasCruzadasSincronizadas:', e.detail);
+            if (window.UIOndasCruzadas) {
+                setTimeout(() => {
+                    try {
+                        window.UIOndasCruzadas.cargar(window.uiCore);
+                    } catch (e) {}
+                }, 500);
+            }
+        });
+        
         // Eventos del balanceador
         window.addEventListener('balanceadorModeloCambiado', (e) => {
             if (window.uiCore) {
-                window.uiCore.mostrarToast(`⚖️ Modelo activo: ${e.detail?.modelo}`, 'info');
+                window.uiCore.mostrarToast(`âš–ï¸ Modelo activo: ${e.detail?.modelo}`, 'info');
             }
             if (window.UIDashboard) {
                 window.UIDashboard._cargarDashboardInicial(window.uiCore);
@@ -686,12 +809,8 @@ class App {
             }
         });
         
-        console.log('✅ Eventos globales registrados');
+        console.log('✅ Eventos globales registrados (incluyendo Ondas Cruzadas)');
     }
-
-    // ============================================================
-    // MÉTODOS PRIVADOS
-    // ============================================================
 
     async _inicializarDBConReintentos() {
         return new Promise((resolve, reject) => {
@@ -795,6 +914,40 @@ class App {
                 try { await window.tutorNeuro.initTutor(); } catch (e) {}
             }
             
+            // 🌌 INICIALIZAR MODO ELIPSE EN MODO EMERGENCIA
+            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+                try {
+                    await window.modoElipse.init(window.uiCore);
+                    if (typeof window.modoElipse.cargarDatos === 'function') {
+                        await window.modoElipse.cargarDatos();
+                    }
+                    console.log('🌌 Modo Elipse inicializado en modo emergencia');
+                } catch (e) {
+                    console.warn('⚠️ Error inicializando Modo Elipse en emergencia:', e);
+                }
+            }
+            
+            // 🌊 INICIALIZAR MODO ONDAS CRUZADAS EN MODO EMERGENCIA
+            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+                try {
+                    await window.modoOndasCruzadas.init(window.uiCore);
+                    console.log('🌊 Modo Ondas Cruzadas inicializado en modo emergencia');
+                } catch (e) {
+                    console.warn('⚠️ Error inicializando Modo Ondas Cruzadas en emergencia:', e);
+                }
+            }
+            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+                try {
+                    await window.UIOndasCruzadas.init(window.uiCore);
+                } catch (e) {}
+            }
+            
+            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+                try {
+                    await window.UIClipse.init(window.uiCore);
+                } catch (e) {}
+            }
+            
             setTimeout(async () => { await this._ejecutarVerificacionesGroq(); }, 5000);
             setTimeout(async () => {
                 if (window.UIBackup) {
@@ -811,7 +964,7 @@ class App {
             
             this.inicializada = true;
             this._initDone = true;
-            console.log('✅ App iniciada en modo localStorage');
+            console.log('✅ App iniciada en modo localStorage con Ondas Cruzadas');
         } catch (e) {
             console.error('❌ Error en modo localStorage:', e);
             this._ocultarPantallaCarga();
@@ -863,6 +1016,12 @@ class App {
                 try {
                     await gestorFavoritos.guardarFavoritos();
                     await gestorFavoritos._guardarGrupos();
+                } catch (e) {}
+            }
+            // 🌊 Guardar estado de Ondas Cruzadas
+            if (window.modoOndasCruzadas) {
+                try {
+                    window.modoOndasCruzadas._guardarDatos();
                 } catch (e) {}
             }
         } catch (e) { console.warn('⚠️ Error guardando datos:', e); }
@@ -929,10 +1088,6 @@ class App {
         console.log('✅ Formulario de registro configurado');
     }
 
-    // ============================================================
-    // 🔥 HANDLE REGISTER - CON VALIDACIÓN DE IDIOMAS CORREGIDA
-    // ============================================================
-
     async _handleRegister(event) {
         console.log('📝 Procesando registro...');
 
@@ -955,9 +1110,9 @@ class App {
 
             if (!nombre) { await this._showToast('❌ El nombre es obligatorio', 'error'); return; }
             if (!idiomaNativo) { await this._showToast('❌ El idioma nativo es obligatorio', 'error'); return; }
-            if (idiomas.length === 0) { await this._showToast('❌ Debes añadir al menos un idioma objetivo', 'error'); return; }
+            if (idiomas.length === 0) { await this._showToast('❌ Debes aÃ±adir al menos un idioma objetivo', 'error'); return; }
             if (!apiKey || !apiKey.startsWith('gsk_')) {
-                await this._showToast('❌ API Key inválida. Debe comenzar con "gsk_"', 'error');
+                await this._showToast('❌ API Key invÃ¡lida. Debe comenzar con "gsk_"', 'error');
                 return;
             }
 
@@ -970,49 +1125,41 @@ class App {
                 return;
             }
 
-            // ============================================================
-            // 🔥 VALIDAR IDIOMA NATIVO - CORREGIDO
-            // ============================================================
             let validacionNativo = null;
             let usarGroq = false;
             
-            // Verificar si Groq está disponible
             if (window.validadorIdiomas && window.vigia && window.vigia.enLinea && window.vigia._apiKeyValidada) {
                 try {
                     validacionNativo = await window.validadorIdiomas.validar(idiomaNativo, 'nativo');
                     usarGroq = true;
-                    console.log('🔍 Validación con Groq para nativo:', validacionNativo);
+                    console.log('🔍 ValidaciÃ³n con Groq para nativo:', validacionNativo);
                 } catch (e) {
                     console.warn('⚠️ Error en validadorIdiomas, usando fallback local:', e);
                 }
             }
 
-            // Fallback local si Groq no está disponible o falló
             if (!validacionNativo) {
                 validacionNativo = this._validarIdiomaLocal(idiomaNativo, 'nativo');
-                console.log('📌 Usando validación LOCAL para nativo:', validacionNativo);
+                console.log('📌 Usando validaciÃ³n LOCAL para nativo:', validacionNativo);
             }
 
-            // Si la validación local o Groq dice que no es válido
             if (!validacionNativo.valido) {
-                let mensaje = `❌ "${idiomaNativo}" no es un idioma válido.`;
+                let mensaje = `❌ "${idiomaNativo}" no es un idioma vÃ¡lido.`;
                 if (validacionNativo.mensaje) {
                     mensaje += `\n\n${validacionNativo.mensaje}`;
                 }
-                // Mostrar sugerencias de idiomas similares
                 const sugerencias = this._obtenerSugerenciasIdiomas(idiomaNativo);
                 if (sugerencias.length > 0) {
-                    mensaje += `\n\n💡 ¿Quisiste decir: ${sugerencias.join(', ')}?`;
+                    mensaje += `\n\nðŸ’¡ Â¿Quisiste decir: ${sugerencias.join(', ')}?`;
                 }
                 await this._showToast(mensaje, 'error');
                 return;
             }
 
-            // Si hay corrección, preguntar al usuario
             if (validacionNativo.corregido && validacionNativo.sugerido) {
                 const aceptar = await this._showConfirm(
                     `🔍 Sugerencia: "${idiomaNativo}" → **"${validacionNativo.idiomaFinal}"**\n\n${validacionNativo.mensaje || ''}\n\n¿Usar "${validacionNativo.idiomaFinal}"?`,
-                    '✏️ Corrección de idioma'
+                    '✏️ CorrecciÃ³n de idioma'
                 );
                 if (aceptar) {
                     idiomaNativo = validacionNativo.idiomaFinal;
@@ -1022,38 +1169,32 @@ class App {
                 }
             }
 
-            // ============================================================
-            // 🔥 VALIDAR IDIOMAS OBJETIVO - CORREGIDO
-            // ============================================================
             const idiomasValidados = [];
             for (const item of idiomas) {
                 let validacion = null;
                 
-                // Verificar si Groq está disponible
                 if (window.validadorIdiomas && window.vigia && window.vigia.enLinea && window.vigia._apiKeyValidada) {
                     try {
                         validacion = await window.validadorIdiomas.validar(item.idioma, 'objetivo');
-                        console.log(`🔍 Validación con Groq para "${item.idioma}":`, validacion);
+                        console.log(`🔍 ValidaciÃ³n con Groq para "${item.idioma}":`, validacion);
                     } catch (e) {
                         console.warn(`⚠️ Error en validadorIdiomas para "${item.idioma}", usando fallback local:`, e);
                     }
                 }
 
-                // Fallback local si Groq no está disponible o falló
                 if (!validacion) {
                     validacion = this._validarIdiomaLocal(item.idioma, 'objetivo');
-                    console.log(`📌 Usando validación LOCAL para "${item.idioma}":`, validacion);
+                    console.log(`📌 Usando validaciÃ³n LOCAL para "${item.idioma}":`, validacion);
                 }
 
                 if (!validacion.valido) {
-                    let mensaje = `❌ "${item.idioma}" no es un idioma válido.`;
+                    let mensaje = `❌ "${item.idioma}" no es un idioma vÃ¡lido.`;
                     if (validacion.mensaje) {
                         mensaje += `\n\n${validacion.mensaje}`;
                     }
-                    // Mostrar sugerencias de idiomas similares
                     const sugerencias = this._obtenerSugerenciasIdiomas(item.idioma);
                     if (sugerencias.length > 0) {
-                        mensaje += `\n\n💡 ¿Quisiste decir: ${sugerencias.join(', ')}?`;
+                        mensaje += `\n\nðŸ’¡ Â¿Quisiste decir: ${sugerencias.join(', ')}?`;
                     }
                     await this._showToast(mensaje, 'error');
                     return;
@@ -1064,7 +1205,7 @@ class App {
                 if (validacion.corregido && validacion.sugerido) {
                     const aceptar = await this._showConfirm(
                         `🔍 Sugerencia: "${item.idioma}" → **"${idiomaFinal}"**\n\n${validacion.mensaje || ''}\n\n¿Usar "${idiomaFinal}"?`,
-                        '✏️ Corrección de idioma'
+                        '✏️ CorrecciÃ³n de idioma'
                     );
                     if (aceptar) {
                         const rows = document.querySelectorAll('.idioma-row');
@@ -1087,9 +1228,6 @@ class App {
             
             idiomas = idiomasValidados;
 
-            // ============================================================
-            // CREAR USUARIO
-            // ============================================================
             const usuario = {
                 nombre: nombre,
                 idiomaNativo: idiomaNativo,
@@ -1097,7 +1235,7 @@ class App {
                 nivel: idiomas[0]?.nivel || 'B1',
                 idiomaActivo: idiomas[0]?.idioma || '',
                 fechaRegistro: new Date().toISOString(),
-                version: '22.1'
+                version: '22.7'
             };
 
             this._saveUsuarioLocalStorage(usuario);
@@ -1112,9 +1250,6 @@ class App {
                 }
             }
 
-            // ============================================================
-            // GUARDAR IDIOMAS VALIDADOS
-            // ============================================================
             if (window.validadorIdiomas) {
                 try {
                     await window.validadorIdiomas.guardar(idiomaNativo, 'nativo');
@@ -1127,9 +1262,6 @@ class App {
                 }
             }
 
-            // ============================================================
-            // CONFIGURAR MODO DEL TUTOR
-            // ============================================================
             const modoTutor = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
             if (window.tutorNeuro) {
                 try {
@@ -1167,6 +1299,41 @@ class App {
                 try { await window.tutorNeuro.initTutor(); } catch (e) {}
             }
             
+            // 🌌 INICIALIZAR MODO ELIPSE DESPUÃ‰S DEL REGISTRO
+            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+                try {
+                    await window.modoElipse.init(window.uiCore);
+                    if (typeof window.modoElipse.cargarDatos === 'function') {
+                        await window.modoElipse.cargarDatos();
+                    }
+                    console.log('🌌 Modo Elipse inicializado despuÃ©s del registro');
+                } catch (e) {
+                    console.warn('⚠️ Error inicializando Modo Elipse despuÃ©s del registro:', e);
+                }
+            }
+            
+            // 🌊 INICIALIZAR MODO ONDAS CRUZADAS DESPUÃ‰S DEL REGISTRO
+            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+                try {
+                    await window.modoOndasCruzadas.init(window.uiCore);
+                    console.log('🌊 Modo Ondas Cruzadas inicializado despuÃ©s del registro');
+                } catch (e) {
+                    console.warn('⚠️ Error inicializando Modo Ondas Cruzadas despuÃ©s del registro:', e);
+                }
+            }
+            
+            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+                try {
+                    await window.UIOndasCruzadas.init(window.uiCore);
+                } catch (e) {}
+            }
+            
+            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+                try {
+                    await window.UIClipse.init(window.uiCore);
+                } catch (e) {}
+            }
+            
             setTimeout(async () => { await this._ejecutarVerificacionesGroq(); }, 5000);
             
             setTimeout(async () => {
@@ -1181,8 +1348,24 @@ class App {
                 console.log('📊 Estado final de idiomas:', finalIdiomas.map(i => i.idioma + ' (' + i.nivel + ')'));
                 if (window.vigiaGramatical) {
                     window.vigiaGramatical.initGramatical().then(() => {
-                        console.log('✅ Vigía Gramatical inicializado');
+                        console.log('✅ VigÃ­a Gramatical inicializado');
                     }).catch(e => {});
+                }
+                // 🌌 RECARGAR MÃ“DULO ELIPSE
+                if (window.UIClipse) {
+                    setTimeout(() => {
+                        try {
+                            window.UIClipse.cargar(window.uiCore);
+                        } catch (e) {}
+                    }, 1000);
+                }
+                // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS
+                if (window.UIOndasCruzadas) {
+                    setTimeout(() => {
+                        try {
+                            window.UIOndasCruzadas.cargar(window.uiCore);
+                        } catch (e) {}
+                    }, 1200);
                 }
             }, 500);
 
@@ -1192,10 +1375,6 @@ class App {
         }
     }
 
-    // ============================================================
-    // OBTENER SUGERENCIAS DE IDIOMAS SIMILARES
-    // ============================================================
-
     _obtenerSugerenciasIdiomas(texto) {
         if (!texto || texto.trim().length < 2) return [];
         
@@ -1204,7 +1383,8 @@ class App {
         const idiomasKeys = Object.keys(this._IDIOMAS_CONOCIDOS);
         
         for (const idioma of idiomasKeys) {
-            const similitud = this._calcularSimilitud(textoLower, idioma);
+            const idiomaNormalizado = idioma.normalize('NFKC').toLowerCase();
+            const similitud = this._calcularSimilitud(textoLower, idiomaNormalizado);
             if (similitud > 0.5 && similitud < 0.9) {
                 const codigo = this._IDIOMAS_CONOCIDOS[idioma];
                 const nombre = this._NOMBRES_IDIOMAS[codigo] || this._capitalizar(idioma);
@@ -1289,7 +1469,7 @@ class App {
     }
 
     async _iniciarModulosYUI(usuario) {
-        console.log('🔄 Iniciando módulos y UI...');
+        console.log('🔄 Iniciando mÃ³dulos y UI...');
         if (usuario.idiomasObjetivo) {
             for (const item of usuario.idiomasObjetivo) {
                 const existe = gestorIdiomas.idiomas.some(i => i.idioma === item.idioma);
@@ -1336,19 +1516,100 @@ class App {
         if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
             try { await window.tutorNeuro.initTutor(); } catch (e) {}
         }
+        // 🌌 INICIALIZAR MODO ELIPSE
+        if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+            try {
+                await window.modoElipse.init(window.uiCore);
+                if (typeof window.modoElipse.cargarDatos === 'function') {
+                    await window.modoElipse.cargarDatos();
+                }
+                console.log('🌌 Modo Elipse inicializado en _iniciarModulosYUI');
+            } catch (e) {
+                console.warn('⚠️ Error inicializando Modo Elipse:', e);
+            }
+        }
+        // 🌊 INICIALIZAR MODO ONDAS CRUZADAS
+        if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+            try {
+                await window.modoOndasCruzadas.init(window.uiCore);
+                console.log('🌊 Modo Ondas Cruzadas inicializado en _iniciarModulosYUI');
+            } catch (e) {
+                console.warn('⚠️ Error inicializando Modo Ondas Cruzadas:', e);
+            }
+        }
+        if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+            try {
+                await window.UIOndasCruzadas.init(window.uiCore);
+            } catch (e) {}
+        }
+        if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+            try {
+                await window.UIClipse.init(window.uiCore);
+            } catch (e) {}
+        }
     }
 
     async _initModules() {
-        console.log('🔄 Inicializando módulos...');
-        try { await pipeline.init(); console.log('✅ Pipeline iniciado'); } catch (e) { console.warn('⚠️ Pipeline falló:', e); }
-        try { await gramatica.init(); console.log('✅ Gramática iniciada'); } catch (e) { console.warn('⚠️ Gramática falló:', e); }
-        try { await vigia.init(); console.log('✅ Vigía iniciado'); } catch (e) { console.warn('⚠️ Vigía falló:', e); }
-        try { await centinela.init(); console.log('✅ Centinela iniciado'); } catch (e) { console.warn('⚠️ Centinela falló:', e); }
-        try { await gestorNiveles.init(); console.log('✅ Gestor de Niveles iniciado'); } catch (e) { console.warn('⚠️ Gestor de Niveles falló:', e); }
+        console.log('🔄 Inicializando mÃ³dulos...');
+        try { await pipeline.init(); console.log('✅ Pipeline iniciado'); } catch (e) { console.warn('⚠️ Pipeline fallÃ³:', e); }
+        try { await gramatica.init(); console.log('✅ GramÃ¡tica iniciada'); } catch (e) { console.warn('⚠️ GramÃ¡tica fallÃ³:', e); }
+        try { await vigia.init(); console.log('✅ VigÃ­a iniciado'); } catch (e) { console.warn('⚠️ VigÃ­a fallÃ³:', e); }
+        try { await centinela.init(); console.log('✅ Centinela iniciado'); } catch (e) { console.warn('⚠️ Centinela fallÃ³:', e); }
+        try { await gestorNiveles.init(); console.log('✅ Gestor de Niveles iniciado'); } catch (e) { console.warn('⚠️ Gestor de Niveles fallÃ³:', e); }
+        
+        // 🌌 INICIALIZAR MODO ELIPSE - CON CARGA DE DATOS
+        try {
+            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+                await window.modoElipse.init(window.uiCore);
+                console.log('🌌 Modo Elipse inicializado');
+                
+                if (typeof window.modoElipse.cargarDatos === 'function') {
+                    const datos = await window.modoElipse.cargarDatos();
+                    console.log(`🌌 Datos del Modo Elipse cargados: ${datos.length} ondas`);
+                }
+            }
+        } catch (e) { 
+            console.warn('⚠️ Modo Elipse fallÃ³:', e); 
+        }
+        
+        // 🌊 INICIALIZAR MODO ONDAS CRUZADAS - CON CARGA DE DATOS
+        try {
+            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+                await window.modoOndasCruzadas.init(window.uiCore);
+                console.log('🌊 Modo Ondas Cruzadas inicializado');
+                
+                if (typeof window.modoOndasCruzadas._cargarDatos === 'function') {
+                    await window.modoOndasCruzadas._cargarDatos();
+                }
+            }
+        } catch (e) { 
+            console.warn('⚠️ Modo Ondas Cruzadas fallÃ³:', e); 
+        }
+        
+        // Inicializar UI Elipse
+        try {
+            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+                await window.UIClipse.init(window.uiCore);
+                console.log('🌌 UI Elipse inicializada');
+            }
+        } catch (e) {
+            console.warn('⚠️ UI Elipse fallÃ³:', e);
+        }
+        
+        // Inicializar UI Ondas Cruzadas
+        try {
+            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+                await window.UIOndasCruzadas.init(window.uiCore);
+                console.log('🌊 UI Ondas Cruzadas inicializada');
+            }
+        } catch (e) {
+            console.warn('⚠️ UI Ondas Cruzadas fallÃ³:', e);
+        }
+        
         if (window.balanceadorGroq && !window.balanceadorGroq._initDone) {
             try { await window.balanceadorGroq.init(); } catch (e) { console.warn('⚠️ Error inicializando balanceador:', e); }
         }
-        console.log('✅ Todos los módulos inicializados');
+        console.log('✅ Todos los mÃ³dulos inicializados (incluyendo Ondas Cruzadas)');
     }
 
     async _actualizarUICompleta() {
@@ -1396,6 +1657,18 @@ class App {
             if (window.uiCore && window.uiCore._actualizarIndicadorBalanceador) {
                 window.uiCore._actualizarIndicadorBalanceador();
             }
+            // 🌌 RECARGAR MÃ“DULO ELIPSE
+            if (window.UIClipse) {
+                try {
+                    await window.UIClipse.cargar(window.uiCore);
+                } catch (e) {}
+            }
+            // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS
+            if (window.UIOndasCruzadas) {
+                try {
+                    await window.UIOndasCruzadas.cargar(window.uiCore);
+                } catch (e) {}
+            }
         } catch (e) { console.warn('⚠️ Error actualizando UI:', e); }
     }
 
@@ -1421,13 +1694,13 @@ class App {
 
     async _mostrarBienvenida(usuario) {
         console.log('🎉 Mostrando bienvenida para:', usuario.nombre);
-        let mensajeMotivador = '🌟 ¡Comienza tu viaje de aprendizaje!';
+        let mensajeMotivador = '🌟 Â¡Comienza tu viaje de aprendizaje!';
         try {
             if (vigia && vigia.enLinea) {
                 const prompt = `
                     Eres un asistente motivacional. El usuario ${usuario.nombre} acaba de registrarse.
                     Idiomas: ${usuario.idiomasObjetivo.map(i => i.idioma + ' (' + i.nivel + ')').join(', ')}
-                    Genera un mensaje motivador corto (máx 30 palabras).
+                    Genera un mensaje motivador corto (mÃ¡x 30 palabras).
                 `;
                 const respuesta = await vigia._consultarGroq(prompt, 'text');
                 if (respuesta && respuesta.length > 5) mensajeMotivador = respuesta.trim();
@@ -1438,9 +1711,9 @@ class App {
         overlay.innerHTML = `
             <div style="background:#fff;border-radius:24px;padding:40px 32px;max-width:420px;width:92%;text-align:center;animation:scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 30px 80px rgba(0,0,0,0.35);">
                 <div style="font-size:72px;margin-bottom:16px;">🎉</div>
-                <h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">¡Bienvenido, ${usuario.nombre}!</h2>
+                <h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Â¡Bienvenido, ${usuario.nombre}!</h2>
                 <p style="font-size:16px;color:#636E72;margin-bottom:16px;">${mensajeMotivador}</p>
-                <button onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">🚀 ¡Comenzar!</button>
+                <button onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">🚀 Â¡Comenzar!</button>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -1514,21 +1787,17 @@ class App {
     }
 }
 
-// ============================================================
-// INSTANCIA GLOBAL
-// ============================================================
-
 document.addEventListener('DOMContentLoaded', () => {
     if (window._appInitialized) return;
     window._appInitialized = true;
-    console.log('🚀 Iniciando App v22.1 con validación de idiomas corregida...');
+    console.log('🚀 Iniciando App v22.7 con persistencia asegurada y Ondas Cruzadas...');
     if (typeof db === 'undefined') {
         console.error('❌ Database no definida');
         document.body.innerHTML = `
             <div style="display:flex;justify-content:center;align-items:center;height:100vh;padding:20px;text-align:center;flex-direction:column;background:#f5f6fa;font-family:sans-serif;">
                 <div style="font-size:64px;margin-bottom:16px;">⚠️</div>
                 <h1 style="font-size:24px;color:#FF7675;margin-bottom:8px;">Error de Carga</h1>
-                <p style="color:#636E72;max-width:400px;">No se pudo cargar el módulo de base de datos.</p>
+                <p style="color:#636E72;max-width:400px;">No se pudo cargar el mÃ³dulo de base de datos.</p>
                 <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#6C5CE7;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">🔄 Reintentar</button>
             </div>
         `;
@@ -1549,10 +1818,18 @@ window.gestorIdiomas = gestorIdiomas;
 window.modoInverso = modoInverso;
 window.tutorNeuro = tutorNeuro;
 window.balanceadorGroq = balanceadorGroq;
+window.modoElipse = modoElipse;
+window.modoOndasCruzadas = modoOndasCruzadas;
+window.UIOndasCruzadas = UIOndasCruzadas;
 
-console.log('✅ App v22.1 - REGISTRO CON VALIDACIÓN DE IDIOMAS CORREGIDA');
-console.log('  🔍 Validación de idioma nativo: AHORA FUNCIONA');
-console.log('  📦 Fallback local con lista de 100+ idiomas');
-console.log('  🔥 Corrección tipográfica inteligente');
-console.log('  💾 Guardado en IndexedDB y localStorage');
-console.log('  🎯 Sugerencias de idiomas similares al usuario');
+console.log('✅ App v22.7 - DEFINITIVA CON PERSISTENCIA ASEGURADA Y ONDAS CRUZADAS');
+console.log('  🌌 InicializaciÃ³n del Modo Elipse con carga de datos');
+console.log('  🌊 InicializaciÃ³n del Modo Ondas Cruzadas');
+console.log('  🔥 Carga de datos desde localStorage e IndexedDB');
+console.log('  🔥 RecuperaciÃ³n automÃ¡tica al iniciar');
+console.log('  🔥 Eventos de persistencia: beforeunload, visibilitychange');
+console.log('  🔥 Guardado automÃ¡tico cada 3 segundos');
+console.log('  🔥 Eventos de sincronizaciÃ³n entre Elipse y Ondas Cruzadas');
+console.log('  ✅ SincronizaciÃ³n automÃ¡tica de Ondas Cruzadas al cambiar de idioma');
+console.log('  ✅ EstadÃ­sticas en tiempo real en Ondas Cruzadas');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

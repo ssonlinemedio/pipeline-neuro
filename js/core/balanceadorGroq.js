@@ -1,141 +1,417 @@
 // ============================================================
-// BALANCEADOR DE CARGA GROQ v1.2 - CORREGIDO
+// BALANCEADOR DE CARGA GROQ v2.4 - VERIFICACIÓN SOLO BAJO DEMANDA
 // ============================================================
 
 class BalanceadorGroq {
     constructor() {
-        this._modelos = []; // Lista de modelos disponibles desde Groq
-        this._modeloActivo = null; // Modelo actualmente en uso
-        this._modeloPrioritario = 'openai/gpt-oss-120b'; // Modelo prioritario
-        this._estadoModelos = {}; // Estado de cada modelo: 'disponible', 'agotado', 'error'
-        this._modeloEnPrueba = null; // Modelo en proceso de validación
+        // 🔥 MODELO OSS FIJO Y PRIORITARIO
+        this._modeloPrioritario = 'openai/gpt-oss-120b';
+        this._modeloActivo = this._modeloPrioritario;
+        this._modelos = [];
+        this._estadoModelos = {};
         this._monitoreoActivo = false;
         this._intervaloMonitoreo = null;
-        this._tiempoReintentoPrioritario = 60000; // Reintentar el prioritario cada 60s
         this._callbackCambioModelo = null;
         this._callbackEstado = null;
         this._ultimaFechaActualizacion = 0;
-        this._intentosReconexion = 0;
-        this._maxIntentosReconexion = 3;
         this._initDone = false;
-        this._cacheModelos = null;
-        this._usandoFallback = false;
         
-        // 🔥 OPTIMIZACIÓN: Control de verificaciones
+        // 🔥 SOLO VERIFICAMOS CUANDO OSS DA 429
         this._ultimaVerificacion = {};
         this._verificacionEnCurso = {};
-        this._tiempoMinimoEntreVerificaciones = 10000; // 10 segundos mínimo
         this._backoffVerificacion = {};
-        this._maxBackoff = 300000; // 5 minutos máximo
+        this._maxBackoff = 300000; // 5 minutos
+        this._modoEmergencia = false;
+        this._ultimoError429 = 0;
+        this._tiempoEsperaTras429 = 60000; // 1 minuto
+        
+        // 🔥 Modelos de respaldo (solo si OSS falla)
+        this._FALLBACK_MODELOS = [
+            'qwen/qwen3.6-27b',
+            'llama-3.3-70b-versatile',
+            'llama-3.1-8b-instant',
+            'mixtral-8x7b-32768'
+        ];
+        
+        // 🔥 Cache de última respuesta exitosa
+        this._ultimaRespuestaExitosa = 0;
+        this._modeloDeUltimaRespuesta = null;
     }
 
     // ============================================================
-    // MÉTODOS PRINCIPALES
+    // INICIALIZACIÓN (SIN VERIFICACIONES AUTOMÁTICAS)
     // ============================================================
 
     async init() {
-        if (this._initDone) return this;
-        console.log('⚖️ BalanceadorGroq: Inicializando...');
-
-        // Cargar modelos desde caché local primero
-        this._cargarCacheModelos();
-
-        // Intentar obtener la lista actualizada de modelos de Groq
-        await this._actualizarListaModelos();
-
-        // Si no hay modelos, usar los que tenemos por defecto
-        if (this._modelos.length === 0) {
-            this._modelos = [
-                'openai/gpt-oss-120b',
-                'qwen/qwen3.6-27b',
-                'qwen/qwen3-32b',
-                'llama-3.3-70b-versatile',
-                'llama-3.1-8b-instant',
-                'mixtral-8x7b-32768'
-            ];
-            this._guardarCacheModelos();
+        if (this._initDone) {
+            console.log('⚖️ BalanceadorGroq: Ya inicializado');
+            return this;
         }
+        
+        console.log('⚖️ BalanceadorGroq v2.4: Inicializando (VERIFICACIÓN SOLO BAJO DEMANDA)...');
+        console.log(`   🔥 MODELO PRIORITARIO: ${this._modeloPrioritario} (OSS)`);
 
-        // Inicializar el estado de todos los modelos
+        this._cargarCacheModelos();
+        await this._actualizarListaModelos();
+        this._asegurarModeloOSS();
         this._inicializarEstadoModelos();
 
-        // Establecer el modelo activo inicial (prioritario)
         this._modeloActivo = this._modeloPrioritario;
 
-        // Verificar disponibilidad del modelo prioritario
-        await this._verificarDisponibilidadModelo(this._modeloPrioritario);
+        // 🔥 OSS disponible por defecto (optimista)
+        if (this._estadoModelos[this._modeloPrioritario]) {
+            this._estadoModelos[this._modeloPrioritario].disponible = true;
+            this._estadoModelos[this._modeloPrioritario].fallosConsecutivos = 0;
+        }
 
-        // Iniciar el monitoreo
-        this._iniciarMonitoreo();
-
+        console.log(`✅ BalanceadorGroq v2.4: Inicializado. Modelo activo: ${this._modeloActivo}`);
+        console.log(`   🔥 OSS es PRIORITARIO y se usa SIEMPRE que esté disponible`);
+        console.log(`   🔥 SOLO verifica OSS cuando recibe un error 429`);
+        console.log(`   🔥 SIN verificaciones automáticas en segundo plano`);
+        
         this._initDone = true;
-        console.log(`✅ BalanceadorGroq: Inicializado. Modelo activo: ${this._modeloActivo}`);
-        console.log(`   Modelos disponibles: ${this._modelos.join(', ')}`);
         return this;
     }
 
     // ============================================================
-    // OBTENER LISTA DE MODELOS DESDE GROQ
+    // 🔥 OBTENER MODELO PARA PETICIÓN (SOLO VERIFICA EN 429)
     // ============================================================
+
+    async obtenerModeloParaPeticion() {
+        const ahora = Date.now();
+
+        // 🔥 1. Verificar si OSS está en modo de espera por 429
+        const estadoOSS = this._estadoModelos[this._modeloPrioritario];
+        const enEsperaPor429 = estadoOSS && 
+                               !estadoOSS.disponible && 
+                               (ahora - (estadoOSS.ultimaPrueba || 0) < this._tiempoEsperaTras429);
+
+        // 🔥 2. Si OSS está disponible o no está en espera, intentar usarlo
+        if (!enEsperaPor429 && (!estadoOSS || estadoOSS.disponible)) {
+            this._modeloActivo = this._modeloPrioritario;
+            this._notificarCambioModelo();
+            return this._modeloPrioritario;
+        }
+
+        // 🔥 3. Si OSS está en espera por 429, buscar alternativas
+        console.log(`⏳ OSS en espera por 429 (${Math.round((this._tiempoEsperaTras429 - (ahora - (estadoOSS?.ultimaPrueba || 0))) / 1000)}s restantes)`);
+        
+        // Buscar modelos disponibles (excluyendo OSS)
+        const modelosDisponibles = this._modelos
+            .filter(m => m !== this._modeloPrioritario)
+            .filter(m => {
+                const estado = this._estadoModelos[m];
+                return estado && estado.disponible && estado.fallosConsecutivos < 2;
+            });
+
+        // Ordenar por éxito reciente
+        modelosDisponibles.sort((a, b) => {
+            const aExito = this._estadoModelos[a]?.ultimoExito || 0;
+            const bExito = this._estadoModelos[b]?.ultimoExito || 0;
+            return bExito - aExito;
+        });
+
+        if (modelosDisponibles.length > 0) {
+            const modeloElegido = modelosDisponibles[0];
+            this._modeloActivo = modeloElegido;
+            this._notificarCambioModelo();
+            console.log(`⚖️ Usando modelo alternativo: ${modeloElegido} (OSS en espera)`);
+            return modeloElegido;
+        }
+
+        // 🔥 4. Último recurso: intentar OSS aunque esté en espera
+        console.warn(`⚠️ No hay modelos alternativos disponibles. Reintentando OSS...`);
+        this._modeloActivo = this._modeloPrioritario;
+        this._notificarCambioModelo();
+        return this._modeloPrioritario;
+    }
+
+    // ============================================================
+    // 🔥 REGISTRAR FALLO (SOLO DISPARA VERIFICACIÓN EN 429)
+    // ============================================================
+
+    registrarFallo(modelo, error) {
+        // Solo procesar si el error es 429 (límite de tasa)
+        const es429 = error?.includes('429') || error?.includes('rate limit') || error?.includes('Rate limit');
+        
+        if (es429 && modelo === this._modeloPrioritario) {
+            console.log(`🚨 OSS (${modelo}) devolvió 429 - Iniciando verificación...`);
+            this._ultimoError429 = Date.now();
+            
+            // Marcar OSS como no disponible temporalmente
+            if (this._estadoModelos[modelo]) {
+                this._estadoModelos[modelo].disponible = false;
+                this._estadoModelos[modelo].ultimaPrueba = Date.now();
+                this._estadoModelos[modelo].fallosConsecutivos++;
+            }
+
+            // 🔥 Buscar alternativa INMEDIATAMENTE
+            this._buscarAlternativaInmediata();
+            
+            // 🔥 Verificar OSS después de 1 minuto (solo una vez)
+            setTimeout(() => {
+                this._verificarOSS();
+            }, this._tiempoEsperaTras429);
+        } else if (es429) {
+            // Si es 429 en otro modelo, solo registrar
+            console.warn(`⚠️ Modelo ${modelo} devolvió 429 (no es OSS, ignorando)`);
+            if (this._estadoModelos[modelo]) {
+                this._estadoModelos[modelo].disponible = false;
+                this._estadoModelos[modelo].fallosConsecutivos++;
+            }
+        }
+    }
+
+    // ============================================================
+    // 🔥 BUSCAR ALTERNATIVA INMEDIATA (SIN VERIFICAR)
+    // ============================================================
+
+    _buscarAlternativaInmediata() {
+        // Buscar modelos disponibles (excluyendo OSS)
+        const modelosDisponibles = this._modelos
+            .filter(m => m !== this._modeloPrioritario)
+            .filter(m => {
+                const estado = this._estadoModelos[m];
+                return estado && estado.disponible !== false;
+            });
+
+        if (modelosDisponibles.length > 0) {
+            const modeloElegido = modelosDisponibles[0];
+            this._modeloActivo = modeloElegido;
+            this._notificarCambioModelo();
+            console.log(`⚖️ Cambiando a alternativa: ${modeloElegido} (OSS en espera)`);
+        } else {
+            console.warn('⚠️ No hay modelos alternativos disponibles');
+        }
+    }
+
+    // ============================================================
+    // 🔥 VERIFICAR OSS (SOLO DESPUÉS DE UN 429)
+    // ============================================================
+
+    async _verificarOSS() {
+        const modelo = this._modeloPrioritario;
+        
+        // Si ya está disponible, no hacer nada
+        if (this._estadoModelos[modelo]?.disponible) {
+            console.log('✅ OSS ya está disponible');
+            return;
+        }
+
+        console.log('🔍 Verificando OSS después de 429...');
+        
+        try {
+            const apiKey = localStorage.getItem('pipeline_api_key');
+            if (!apiKey) {
+                console.warn('⚠️ No hay API Key para verificar OSS');
+                return;
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: modelo,
+                    messages: [{ role: 'user', content: 'OK' }],
+                    max_tokens: 1,
+                    temperature: 0
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.status === 429) {
+                console.warn(`⚠️ OSS sigue en 429, esperando ${this._tiempoEsperaTras429/1000}s más...`);
+                // Programar nueva verificación
+                setTimeout(() => {
+                    this._verificarOSS();
+                }, this._tiempoEsperaTras429);
+                return;
+            }
+
+            if (response.ok) {
+                console.log('✅ OSS restaurado!');
+                if (this._estadoModelos[modelo]) {
+                    this._estadoModelos[modelo].disponible = true;
+                    this._estadoModelos[modelo].fallosConsecutivos = 0;
+                    this._estadoModelos[modelo].ultimaPrueba = Date.now();
+                    this._estadoModelos[modelo].ultimoExito = Date.now();
+                }
+                this._modeloActivo = modelo;
+                this._notificarCambioModelo();
+                this._notificarCambioEstado();
+                console.log('✅ OSS restaurado como modelo activo');
+            } else {
+                console.warn(`⚠️ OSS no disponible (${response.status}), reintentando en ${this._tiempoEsperaTras429/1000}s...`);
+                setTimeout(() => {
+                    this._verificarOSS();
+                }, this._tiempoEsperaTras429);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error verificando OSS:', error.message);
+            setTimeout(() => {
+                this._verificarOSS();
+            }, this._tiempoEsperaTras429);
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR ÉXITO (RESTAURA OSS INMEDIATAMENTE)
+    // ============================================================
+
+    registrarExito(modelo, tokensUsados = 0) {
+        this._ultimaRespuestaExitosa = Date.now();
+        this._modeloDeUltimaRespuesta = modelo;
+        this._modoEmergencia = false;
+        
+        if (this._estadoModelos[modelo]) {
+            this._estadoModelos[modelo].ultimoExito = Date.now();
+            this._estadoModelos[modelo].ultimoUso = Date.now();
+            this._estadoModelos[modelo].tokensDisponibles = Math.max(0, 
+                (this._estadoModelos[modelo].tokensDisponibles || 10000) - (tokensUsados || 0)
+            );
+            this._estadoModelos[modelo].fallosConsecutivos = 0;
+            this._estadoModelos[modelo].disponible = true;
+        }
+        
+        // 🔥 Si el éxito fue en OSS, restaurarlo como activo
+        if (modelo === this._modeloPrioritario) {
+            this._modeloActivo = this._modeloPrioritario;
+            this._notificarCambioModelo();
+            console.log('✅ OSS restaurando como modelo activo (éxito)');
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR USO DE TOKENS
+    // ============================================================
+
+    registrarUsoTokens(modelo, tokensUsados) {
+        if (this._estadoModelos[modelo]) {
+            this._estadoModelos[modelo].tokensDisponibles = Math.max(0, 
+                (this._estadoModelos[modelo].tokensDisponibles || 10000) - tokensUsados
+            );
+            this._estadoModelos[modelo].ultimoUso = Date.now();
+        }
+    }
+
+    // ============================================================
+    // MÉTODOS DE UTILIDAD (MANTENIDOS)
+    // ============================================================
+
+    _obtenerEstadoResumido() {
+        const totalModelos = this._modelos?.length || 0;
+        const disponibles = this._modelos?.filter(m => this._estadoModelos[m]?.disponible).length || 0;
+        const ossDisponible = this._estadoModelos?.[this._modeloPrioritario]?.disponible || false;
+
+        return {
+            modelosTotal: totalModelos,
+            modelosDisponibles: disponibles,
+            modeloActivo: this._modeloActivo || this._modeloPrioritario,
+            modeloPrioritario: this._modeloPrioritario,
+            usaPrioritario: this._modeloActivo === this._modeloPrioritario,
+            ossDisponible: ossDisponible,
+            modoEmergencia: this._modoEmergencia || false,
+            ultimaRespuestaExitosa: this._ultimaRespuestaExitosa || 0,
+            modeloDeUltimaRespuesta: this._modeloDeUltimaRespuesta,
+            fallosConsecutivos: this._fallosConsecutivos || 0,
+            ultimoError429: this._ultimoError429 || 0
+        };
+    }
+
+    _notificarCambioEstado() {
+        const estado = this._obtenerEstadoResumido();
+        if (this._callbackEstado) {
+            try { this._callbackEstado(estado); } catch (e) {}
+        }
+        try {
+            window.dispatchEvent(new CustomEvent('balanceadorEstadoActualizado', {
+                detail: { estado, timestamp: Date.now() }
+            }));
+        } catch (e) {}
+    }
+
+    _notificarCambioModelo() {
+        if (this._callbackCambioModelo) {
+            try { this._callbackCambioModelo(this._modeloActivo); } catch (e) {}
+        }
+        try {
+            window.dispatchEvent(new CustomEvent('balanceadorModeloCambiado', {
+                detail: { modelo: this._modeloActivo, timestamp: Date.now() }
+            }));
+        } catch (e) {}
+    }
+
+    _asegurarModeloOSS() {
+        this._modelos = this._modelos.filter(m => m !== this._modeloPrioritario);
+        this._modelos.unshift(this._modeloPrioritario);
+        this._modelos = [...new Set(this._modelos)];
+    }
 
     async _actualizarListaModelos() {
         try {
             const apiKey = localStorage.getItem('pipeline_api_key');
             if (!apiKey) {
-                console.warn('⚠️ BalanceadorGroq: No hay API Key para obtener modelos');
+                this._usarModelosFallback();
                 return;
             }
 
-            console.log('📡 BalanceadorGroq: Obteniendo lista de modelos de Groq...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
             const response = await fetch('https://api.groq.com/openai/v1/models', {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                }
+                headers: { 'Authorization': `Bearer ${apiKey}` },
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`HTTP ${response.status}`);
             }
 
             const data = await response.json();
             const modelos = data.data || [];
 
-            // Filtrar modelos relevantes (chat completions, excluir whisper, etc.)
             const modelosFiltrados = modelos
                 .filter(m => {
                     const id = m.id;
-                    // Excluir modelos de whisper (solo audio)
                     if (id.includes('whisper')) return false;
-                    // Excluir modelos de embeddings
                     if (id.includes('embed')) return false;
-                    // Incluir solo modelos de chat
+                    if (id.includes('safeguard')) return false;
+                    if (id.includes('prompt-guard')) return false;
+                    if (id === 'groq/compound') return false;
+                    if (id === 'groq/compound-mini') return false;
                     return true;
                 })
                 .map(m => m.id);
 
             if (modelosFiltrados.length > 0) {
                 this._modelos = modelosFiltrados;
-                // Asegurar que el modelo prioritario esté en la lista
-                if (!this._modelos.includes(this._modeloPrioritario)) {
-                    this._modelos.unshift(this._modeloPrioritario);
-                }
+                this._asegurarModeloOSS();
                 this._guardarCacheModelos();
-                console.log(`✅ BalanceadorGroq: ${this._modelos.length} modelos obtenidos de Groq`);
+                console.log(`✅ ${this._modelos.length} modelos obtenidos`);
                 return;
             }
 
-            console.warn('⚠️ BalanceadorGroq: No se obtuvieron modelos de Groq, usando fallback');
-
+            this._usarModelosFallback();
         } catch (error) {
-            console.error('❌ BalanceadorGroq: Error obteniendo modelos:', error);
+            console.warn('⚠️ Error obteniendo modelos:', error.message);
+            this._usarModelosFallback();
         }
+    }
 
-        // Usar modelos de caché o fallback
-        this._cargarCacheModelos();
-        if (this._modelos.length === 0) {
-            this._modelos = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b', 'llama-3.3-70b-versatile'];
-            this._guardarCacheModelos();
-        }
+    _usarModelosFallback() {
+        this._modelos = [this._modeloPrioritario, ...this._FALLBACK_MODELOS];
+        this._modelos = [...new Set(this._modelos)];
+        this._guardarCacheModelos();
     }
 
     _cargarCacheModelos() {
@@ -144,392 +420,54 @@ class BalanceadorGroq {
             if (cache) {
                 const parsed = JSON.parse(cache);
                 if (parsed.modelos && parsed.modelos.length > 0) {
-                    this._modelos = parsed.modelos;
+                    this._modelos = parsed.modelos.filter(m => 
+                        m !== 'groq/compound' && 
+                        m !== 'groq/compound-mini' &&
+                        !m.includes('safeguard') &&
+                        !m.includes('prompt-guard')
+                    );
+                    this._asegurarModeloOSS();
                     this._ultimaFechaActualizacion = parsed.fecha || 0;
-                    console.log(`📦 BalanceadorGroq: Modelos cargados de caché (${this._modelos.length})`);
                     return;
                 }
             }
-        } catch (e) {
-            console.warn('⚠️ BalanceadorGroq: Error cargando caché de modelos', e);
-        }
-        this._modelos = [];
+        } catch (e) {}
+        this._modelos = [this._modeloPrioritario];
     }
 
     _guardarCacheModelos() {
         try {
+            const modelosLimpios = this._modelos.filter(m => 
+                m !== 'groq/compound' && 
+                m !== 'groq/compound-mini' &&
+                !m.includes('safeguard') &&
+                !m.includes('prompt-guard')
+            );
             localStorage.setItem('pipeline_groq_modelos_cache', JSON.stringify({
-                modelos: this._modelos,
+                modelos: modelosLimpios,
                 fecha: Date.now()
             }));
-        } catch (e) {
-            console.warn('⚠️ BalanceadorGroq: Error guardando caché de modelos', e);
-        }
+        } catch (e) {}
     }
-
-    // ============================================================
-    // GESTIÓN DE ESTADO DE MODELOS
-    // ============================================================
 
     _inicializarEstadoModelos() {
+        const ahora = Date.now();
         for (const modelo of this._modelos) {
             this._estadoModelos[modelo] = {
-                disponible: modelo === this._modeloPrioritario, // Solo el prioritario se considera disponible al inicio
-                ultimaPrueba: 0,
-                fallosConsecutivos: 0,
-                tokensDisponibles: 10000, // Estimación inicial
-                ultimoUso: 0
-            };
-            this._ultimaVerificacion[modelo] = 0;
-            this._backoffVerificacion[modelo] = 0;
-        }
-    }
-
-    // ============================================================
-    // 🔥 VERIFICAR DISPONIBILIDAD - CORREGIDO
-    // ============================================================
-
-    async _verificarDisponibilidadModelo(modelo) {
-        // 🔥 1. Si la verificación está en curso, devolver el estado actual
-        if (this._verificacionEnCurso[modelo]) {
-            console.log(`⏳ Verificación de ${modelo} en curso, devolviendo estado actual...`);
-            return this._estadoModelos[modelo]?.disponible || false;
-        }
-
-        // 🔥 2. Verificar tiempo mínimo entre verificaciones (backoff)
-        const ahora = Date.now();
-        const tiempoDesdeUltima = ahora - (this._ultimaVerificacion[modelo] || 0);
-        const tiempoMinimo = this._backoffVerificacion[modelo] || this._tiempoMinimoEntreVerificaciones;
-        
-        if (tiempoDesdeUltima < tiempoMinimo) {
-            // Devolver el estado actual sin hacer una nueva verificación
-            return this._estadoModelos[modelo]?.disponible || false;
-        }
-
-        // 🔥 3. Iniciar verificación
-        this._verificacionEnCurso[modelo] = true;
-        this._ultimaVerificacion[modelo] = ahora;
-
-        try {
-            const apiKey = localStorage.getItem('pipeline_api_key');
-            if (!apiKey) {
-                this._actualizarEstadoModelo(modelo, false, 'error');
-                return false;
-            }
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            // ============================================================
-            // 🔥 CORRECCIÓN: Body con formato válido
-            // ============================================================
-            const requestBody = {
-                model: modelo,
-                messages: [
-                    { role: 'system', content: 'Eres un asistente útil.' },
-                    { role: 'user', content: 'Responde "OK" si estás funcionando.' }
-                ],
-                max_tokens: 2,
-                temperature: 0.1
-            };
-
-            // 🔥 LOG PARA DEPURACIÓN (opcional, puedes comentarlo)
-            console.log(`📤 Verificando modelo: ${modelo}`);
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            const disponible = response.ok;
-
-            if (response.status === 429) {
-                // Límite de tasa excedido, agotado temporalmente
-                this._actualizarEstadoModelo(modelo, false, 'agotado');
-                // 🔥 Aumentar backoff para este modelo
-                this._backoffVerificacion[modelo] = Math.min(
-                    this._maxBackoff, 
-                    (this._backoffVerificacion[modelo] || 0) + 5000
-                );
-                console.warn(`⚠️ Modelo ${modelo} agotado (429)`);
-                return false;
-            }
-
-            if (response.status === 401 || response.status === 403) {
-                // API Key inválida
-                this._actualizarEstadoModelo(modelo, false, 'error');
-                // 🔥 Aumentar backoff significativamente
-                this._backoffVerificacion[modelo] = this._maxBackoff;
-                console.error(`❌ API Key inválida para ${modelo}`);
-                return false;
-            }
-
-            if (disponible) {
-                const data = await response.json();
-                // Estimar tokens disponibles
-                const tokensUsados = data.usage?.total_tokens || 0;
-                this._actualizarEstadoModelo(modelo, true, 'disponible', tokensUsados);
-                // 🔥 Resetear backoff si está disponible
-                this._backoffVerificacion[modelo] = 0;
-                console.log(`✅ Modelo ${modelo} disponible`);
-                return true;
-            }
-
-            this._actualizarEstadoModelo(modelo, false, 'error');
-            // 🔥 Aumentar backoff
-            this._backoffVerificacion[modelo] = Math.min(
-                this._maxBackoff, 
-                (this._backoffVerificacion[modelo] || 0) + 2000
-            );
-            console.warn(`⚠️ Modelo ${modelo} no disponible (${response.status})`);
-            return false;
-
-        } catch (error) {
-            console.warn(`⚠️ BalanceadorGroq: Error verificando ${modelo}:`, error.message);
-            this._actualizarEstadoModelo(modelo, false, 'error');
-            // 🔥 Aumentar backoff en caso de error
-            this._backoffVerificacion[modelo] = Math.min(
-                this._maxBackoff, 
-                (this._backoffVerificacion[modelo] || 0) + 3000
-            );
-            return false;
-        } finally {
-            this._verificacionEnCurso[modelo] = false;
-        }
-    }
-
-    _actualizarEstadoModelo(modelo, disponible, estado, tokensUsados = 0) {
-        if (!this._estadoModelos[modelo]) {
-            this._estadoModelos[modelo] = {
-                disponible: false,
-                ultimaPrueba: 0,
+                disponible: modelo === this._modeloPrioritario,
+                ultimaPrueba: ahora,
                 fallosConsecutivos: 0,
                 tokensDisponibles: 10000,
-                ultimoUso: 0
+                ultimoUso: 0,
+                ultimoExito: 0
             };
-        }
-
-        const estadoActual = this._estadoModelos[modelo];
-        estadoActual.disponible = disponible;
-        estadoActual.ultimaPrueba = Date.now();
-
-        if (estado === 'agotado') {
-            estadoActual.fallosConsecutivos++;
-            estadoActual.tokensDisponibles = 0;
-        } else if (estado === 'error') {
-            estadoActual.fallosConsecutivos++;
-        } else {
-            estadoActual.fallosConsecutivos = Math.max(0, estadoActual.fallosConsecutivos - 1);
-            estadoActual.tokensDisponibles = Math.max(0, estadoActual.tokensDisponibles - (tokensUsados || 0));
-        }
-
-        if (estado === 'disponible' && disponible) {
-            // Resetear fallos si está disponible
-            estadoActual.fallosConsecutivos = 0;
-            // 🔥 Resetear backoff
             this._backoffVerificacion[modelo] = 0;
         }
-
-        this._estadoModelos[modelo] = estadoActual;
-        this._notificarCambioEstado();
     }
 
     // ============================================================
-    // BALANCEO DE CARGA
+    // MÉTODOS PÚBLICOS
     // ============================================================
-
-    async obtenerModeloDisponible(modeloSolicitado = null) {
-        // Si se solicita un modelo específico y está disponible
-        if (modeloSolicitado && this._estadoModelos[modeloSolicitado]?.disponible) {
-            // Verificar que realmente esté disponible (prueba rápida)
-            const disponible = await this._verificarDisponibilidadModelo(modeloSolicitado);
-            if (disponible) {
-                this._modeloActivo = modeloSolicitado;
-                this._notificarCambioModelo();
-                return modeloSolicitado;
-            }
-        }
-
-        // Verificar el modelo actual
-        if (this._modeloActivo && this._estadoModelos[this._modeloActivo]?.disponible) {
-            const disponible = await this._verificarDisponibilidadModelo(this._modeloActivo);
-            if (disponible) {
-                return this._modeloActivo;
-            }
-        }
-
-        // Intentar encontrar otro modelo disponible
-        const modelosDisponibles = this._modelos.filter(m => {
-            const estado = this._estadoModelos[m];
-            return estado && estado.disponible && estado.fallosConsecutivos < 3;
-        });
-
-        // Priorizar modelos por número de tokens disponibles (estimado)
-        modelosDisponibles.sort((a, b) => {
-            const tokensA = this._estadoModelos[a]?.tokensDisponibles || 0;
-            const tokensB = this._estadoModelos[b]?.tokensDisponibles || 0;
-            return tokensB - tokensA;
-        });
-
-        if (modelosDisponibles.length > 0) {
-            const modeloElegido = modelosDisponibles[0];
-            // Verificar que realmente esté disponible
-            const disponible = await this._verificarDisponibilidadModelo(modeloElegido);
-            if (disponible) {
-                this._modeloActivo = modeloElegido;
-                this._notificarCambioModelo();
-                console.log(`⚖️ BalanceadorGroq: Cambiando a modelo ${modeloElegido} (tokens disponibles: ${this._estadoModelos[modeloElegido]?.tokensDisponibles || 'N/A'})`);
-                return modeloElegido;
-            }
-        }
-
-        // Si no hay modelos disponibles, intentar con el prioritario
-        console.warn('⚠️ BalanceadorGroq: No hay modelos disponibles, intentando con el prioritario...');
-        const disponiblePrioritario = await this._verificarDisponibilidadModelo(this._modeloPrioritario);
-        if (disponiblePrioritario) {
-            this._modeloActivo = this._modeloPrioritario;
-            this._notificarCambioModelo();
-            return this._modeloPrioritario;
-        }
-
-        console.error('❌ BalanceadorGroq: No hay modelos disponibles');
-        return null;
-    }
-
-    async obtenerModeloParaPeticion() {
-        // Intentar siempre usar el modelo prioritario si está disponible
-        const disponiblePrioritario = await this._verificarDisponibilidadModelo(this._modeloPrioritario);
-        if (disponiblePrioritario) {
-            this._modeloActivo = this._modeloPrioritario;
-            this._notificarCambioModelo();
-            return this._modeloPrioritario;
-        }
-
-        // Si no está disponible, buscar otro
-        return await this.obtenerModeloDisponible();
-    }
-
-    // ============================================================
-    // MONITOREO CONTINUO
-    // ============================================================
-
-    _iniciarMonitoreo() {
-        if (this._monitoreoActivo) return;
-        this._monitoreoActivo = true;
-
-        // Verificar el estado de los modelos cada 30 segundos
-        this._intervaloMonitoreo = setInterval(async () => {
-            await this._monitorearModelos();
-        }, 30000);
-
-        // Verificar disponibilidad del prioritario cada minuto
-        setInterval(async () => {
-            if (this._modeloActivo !== this._modeloPrioritario) {
-                const disponible = await this._verificarDisponibilidadModelo(this._modeloPrioritario);
-                if (disponible) {
-                    console.log(`⚖️ BalanceadorGroq: Modelo prioritario disponible, conmutando...`);
-                    this._modeloActivo = this._modeloPrioritario;
-                    this._notificarCambioModelo();
-                    this._notificarCambioEstado();
-                }
-            }
-        }, this._tiempoReintentoPrioritario);
-
-        console.log('🔄 BalanceadorGroq: Monitoreo iniciado (cada 30s)');
-    }
-
-    async _monitorearModelos() {
-        // Solo verificar modelos que no están disponibles y que no estén en backoff
-        const ahora = Date.now();
-        const modelosParaVerificar = this._modelos.filter(m => {
-            const estado = this._estadoModelos[m];
-            const tiempoDesdeUltima = ahora - (this._ultimaVerificacion[m] || 0);
-            const tiempoMinimo = this._backoffVerificacion[m] || this._tiempoMinimoEntreVerificaciones;
-            
-            // Si el modelo está disponible y es el actual, verificar cada 2 minutos
-            if (m === this._modeloActivo && estado?.disponible) {
-                return tiempoDesdeUltima > 120000;
-            }
-            
-            // Verificar si no está disponible o tiene fallos
-            const necesitaVerificacion = !estado || !estado.disponible || estado.fallosConsecutivos > 2;
-            return necesitaVerificacion && tiempoDesdeUltima > tiempoMinimo;
-        });
-
-        // Limitar a 3 verificaciones por ciclo
-        const modelosLimitados = modelosParaVerificar.slice(0, 3);
-
-        // Verificar los modelos
-        for (const modelo of modelosLimitados) {
-            await this._verificarDisponibilidadModelo(modelo);
-            // Pequeña pausa entre verificaciones
-            await new Promise(r => setTimeout(r, 500));
-        }
-
-        // Si el modelo actual no está disponible, buscar otro
-        if (this._modeloActivo && !this._estadoModelos[this._modeloActivo]?.disponible) {
-            await this.obtenerModeloDisponible();
-        }
-
-        this._notificarCambioEstado();
-    }
-
-    // ============================================================
-    // NOTIFICACIONES
-    // ============================================================
-
-    _notificarCambioModelo() {
-        if (this._callbackCambioModelo) {
-            this._callbackCambioModelo(this._modeloActivo);
-        }
-
-        // Disparar evento global
-        window.dispatchEvent(new CustomEvent('balanceadorModeloCambiado', {
-            detail: {
-                modelo: this._modeloActivo,
-                timestamp: Date.now()
-            }
-        }));
-    }
-
-    _notificarCambioEstado() {
-        if (this._callbackEstado) {
-            this._callbackEstado(this._obtenerEstadoResumido());
-        }
-
-        window.dispatchEvent(new CustomEvent('balanceadorEstadoActualizado', {
-            detail: {
-                estado: this._obtenerEstadoResumido(),
-                timestamp: Date.now()
-            }
-        }));
-    }
-
-    // ============================================================
-    // OBTENER ESTADO
-    // ============================================================
-
-    _obtenerEstadoResumido() {
-        const totalModelos = this._modelos.length;
-        const disponibles = this._modelos.filter(m => this._estadoModelos[m]?.disponible).length;
-        const agotados = this._modelos.filter(m => this._estadoModelos[m]?.fallosConsecutivos > 2).length;
-
-        return {
-            modelosTotal: totalModelos,
-            modelosDisponibles: disponibles,
-            modelosAgotados: agotados,
-            modeloActivo: this._modeloActivo,
-            modeloPrioritario: this._modeloPrioritario,
-            usaPrioritario: this._modeloActivo === this._modeloPrioritario
-        };
-    }
 
     getEstado() {
         return this._obtenerEstadoResumido();
@@ -551,10 +489,6 @@ class BalanceadorGroq {
         return this._estadoModelos[modelo] || null;
     }
 
-    // ============================================================
-    // REGISTRAR CALLBACKS
-    // ============================================================
-
     onCambioModelo(callback) {
         this._callbackCambioModelo = callback;
     }
@@ -564,22 +498,24 @@ class BalanceadorGroq {
     }
 
     // ============================================================
-    // REGISTRAR USO DE TOKENS
+    // FORZAR RECONEXIÓN MANUAL
     // ============================================================
 
-    registrarUsoTokens(modelo, tokensUsados) {
-        if (this._estadoModelos[modelo]) {
-            this._estadoModelos[modelo].tokensDisponibles = Math.max(0, 
-                (this._estadoModelos[modelo].tokensDisponibles || 10000) - tokensUsados
-            );
-            this._estadoModelos[modelo].ultimoUso = Date.now();
-
-            // Si los tokens se están agotando, marcar como no disponible
-            if (this._estadoModelos[modelo].tokensDisponibles < 100) {
-                this._estadoModelos[modelo].disponible = false;
-                this._notificarCambioEstado();
-            }
+    async forzarReconexion() {
+        console.log('🔄 Forzando reconexión manual...');
+        
+        // Resetear estado de OSS
+        if (this._estadoModelos[this._modeloPrioritario]) {
+            this._estadoModelos[this._modeloPrioritario].disponible = true;
+            this._estadoModelos[this._modeloPrioritario].fallosConsecutivos = 0;
+            this._estadoModelos[this._modeloPrioritario].ultimaPrueba = Date.now();
         }
+        
+        this._modeloActivo = this._modeloPrioritario;
+        this._notificarCambioModelo();
+        this._notificarCambioEstado();
+        
+        return { exito: true, modelo: this._modeloActivo };
     }
 
     // ============================================================
@@ -603,9 +539,10 @@ class BalanceadorGroq {
 const balanceadorGroq = new BalanceadorGroq();
 window.balanceadorGroq = balanceadorGroq;
 
-console.log('✅ Balanceador de Carga Groq v1.2 - CORREGIDO');
-console.log('  🔥 Corregido: messages con formato válido para verificación');
-console.log('  🔥 Añadido mensaje system + user con contenido real');
-console.log('  🔥 max_tokens aumentado a 2 para mayor estabilidad');
-console.log('  🔥 Logs de depuración para seguimiento');
-console.log('  🎯 Todas las funcionalidades originales preservadas');
+console.log('✅ Balanceador de Carga Groq v2.4 - VERIFICACIÓN SOLO BAJO DEMANDA');
+console.log('  🔥 MODELO FIJO: openai/gpt-oss-120b (SIEMPRE prioritario)');
+console.log('  🔥 SOLO verifica OSS cuando recibe un error 429');
+console.log('  🔥 SIN verificaciones automáticas en segundo plano');
+console.log('  🔥 Backoff de 1 minuto después de un 429');
+console.log('  🔥 Verificación programada única después de cada 429');
+console.log('  🔥 Fallbacks solo si OSS está en espera');

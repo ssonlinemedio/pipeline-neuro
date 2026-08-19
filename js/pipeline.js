@@ -1,5 +1,5 @@
 // ============================================================
-// PIPELINE v18.2 - CORREGIDO: MANEJO DE PALABRAS COMO OBJETOS O IDs
+// PIPELINE v18.7 - COMPLETO CON ORIGEN DE HISTORIA PARA FLUJOS DIFERENCIADOS
 // ============================================================
 
 class Pipeline {
@@ -29,6 +29,18 @@ class Pipeline {
         this._frasesCompletadasDesdeUltimaEvaluacion = 0;
         this._idiomaActual = null;
         this._recargando = false;
+        this._estudiandoTema = false;
+        this._temaActual = null;
+        this._temaOriginalFrases = null;
+        this._temaOriginalIndice = 0;
+        this._historiaActual = null;
+        this._estudiandoHistoria = false;
+        this._historiaIdActual = null;
+        this._temaIdDesdeHistoria = null;
+        
+        // 🔥 NUEVAS PROPIEDADES PARA RASTREAR ORIGEN DE HISTORIA
+        this._origenHistoria = null; // 'elipse' | 'tema' | 'importada'
+        this._callbackRetorno = null;
         
         this.neuroParams = {
             consolidacionRate: 0.05,
@@ -58,10 +70,7 @@ class Pipeline {
         this._initDone = false;
         this._cargandoFrases = false;
         this._reanudando = false;
-        this._estudiandoTema = false;
-        this._temaOriginalFrases = null;
-        this._temaOriginalIndice = 0;
-        this._historiaActual = null;
+        this._palabrasCache = {};
     }
 
     async init() {
@@ -86,9 +95,11 @@ class Pipeline {
             await this.cargarProgreso();
             
             this._initDone = true;
-            console.log('🧠 Pipeline Neuroadaptativo v18.2: Iniciado');
+            console.log('🧠 Pipeline Neuroadaptativo v18.7: Iniciado');
             console.log(`   Idioma: ${this.idiomaObjetivo}, Nivel: ${this.nivel}`);
             console.log(`   📚 ${this.frases.length} frases cargadas`);
+            console.log(`   🔥 Carga de palabras desglosadas: ACTIVADA`);
+            console.log(`   🔥 Origen de historias: ACTIVADO`);
         } catch (e) {
             console.warn('⚠️ Pipeline init parcial:', e);
             this._initDone = true;
@@ -253,6 +264,31 @@ class Pipeline {
             const todas = await db.obtenerFrasesPorIdioma(this.idiomaObjetivo);
             this.frases = todas.filter(f => f.activa !== false);
             
+            // CARGAR PALABRAS DESGLOSADAS
+            for (const f of this.frases) {
+                if (f.palabras && Array.isArray(f.palabras) && f.palabras.length > 0) {
+                    for (let i = 0; i < f.palabras.length; i++) {
+                        const p = f.palabras[i];
+                        if (p && typeof p === 'object' && p.id && typeof p.id === 'number') {
+                            try {
+                                const palabraCompleta = await db.get('palabras', p.id);
+                                if (palabraCompleta) {
+                                    f.palabras[i] = { ...palabraCompleta };
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                } else if (f.historiaId) {
+                    try {
+                        const frasesHistoria = await db.obtenerFrasesPorHistoria(f.historiaId);
+                        const fraseHistoria = frasesHistoria.find(fh => fh.id === f.id);
+                        if (fraseHistoria && fraseHistoria.palabras && Array.isArray(fraseHistoria.palabras) && fraseHistoria.palabras.length > 0) {
+                            f.palabras = fraseHistoria.palabras;
+                        }
+                    } catch (e) {}
+                }
+            }
+            
             this.frases.sort((a, b) => {
                 const rcnA = a.progreso?.rcn || 0;
                 const rcnB = b.progreso?.rcn || 0;
@@ -260,6 +296,7 @@ class Pipeline {
             });
             
             console.log(`📚 ${this.frases.length} frases cargadas para ${this.idiomaObjetivo}`);
+            console.log(`   📝 Frases con palabras desglosadas: ${this.frases.filter(f => f.palabras && f.palabras.length > 0).length}`);
             
         } catch (e) {
             console.warn('⚠️ Error cargando frases por idioma:', e);
@@ -286,7 +323,7 @@ class Pipeline {
     }
 
     // ============================================================
-    // CARGAR FRASE ACTUAL
+    // CARGAR FRASE ACTUAL CON PALABRAS DESGLOSADAS
     // ============================================================
     
     async cargarFrase(indice) {
@@ -340,6 +377,27 @@ class Pipeline {
             
             await this._cargarHistoriaCompletaContexto();
             
+            if (!this.fraseActual.palabras || this.fraseActual.palabras.length === 0) {
+                if (this._historiaActual && this._historiaActual.frases) {
+                    const historiaFrase = this._historiaActual.frases.find(f => f.id === this.fraseActual.id);
+                    if (historiaFrase && historiaFrase.palabras && historiaFrase.palabras.length > 0) {
+                        this.fraseActual.palabras = historiaFrase.palabras;
+                        console.log(`📝 Palabras cargadas desde historia: ${this.fraseActual.palabras.length}`);
+                    }
+                }
+                
+                if (!this.fraseActual.palabras || this.fraseActual.palabras.length === 0) {
+                    try {
+                        const frasesDB = await db.obtenerFrases();
+                        const fraseDB = frasesDB.find(f => f.id === this.fraseActual.id);
+                        if (fraseDB && fraseDB.palabras && Array.isArray(fraseDB.palabras) && fraseDB.palabras.length > 0) {
+                            this.fraseActual.palabras = fraseDB.palabras;
+                            console.log(`📝 Palabras cargadas desde DB: ${this.fraseActual.palabras.length}`);
+                        }
+                    } catch (e) {}
+                }
+            }
+            
             this.mostrarFrase();
             
         } catch (e) {
@@ -370,12 +428,11 @@ class Pipeline {
     }
 
     // ============================================================
-    // OBTENER HISTORIA COMPLETA DE UNA FRASE - CORREGIDO
+    // OBTENER HISTORIA COMPLETA DE UNA FRASE
     // ============================================================
 
     async obtenerHistoriaCompletaDeFrase(fraseId) {
         try {
-            // Validar que el ID sea válido
             if (!fraseId || typeof fraseId !== 'number' || fraseId <= 0) {
                 console.warn('⚠️ ID de frase inválido:', fraseId);
                 return null;
@@ -400,89 +457,57 @@ class Pipeline {
 
             const todasLasFrases = await db.obtenerFrasesPorHistoria(frase.historiaId);
             
-            // Procesar cada frase con manejo de errores robusto
             const frasesCompletas = [];
             for (const f of todasLasFrases) {
                 const palabras = [];
                 
-                // Verificar que palabras sea un array
                 if (f.palabras && Array.isArray(f.palabras)) {
                     for (const p of f.palabras) {
-                        try {
-                            let palabraObtenida = null;
-                            
-                            // CASO 1: p es un objeto (contiene los datos de la palabra)
-                            if (p && typeof p === 'object' && !Array.isArray(p)) {
-                                // Verificar si tiene estructura de palabra
-                                if (p.palabra || p.hanzi || p.id) {
-                                    palabraObtenida = p;
-                                    console.log('📖 Usando objeto de palabra directamente:', p.palabra || p.hanzi);
-                                } else {
-                                    console.warn('⚠️ Objeto de palabra sin datos válidos:', p);
-                                    continue;
-                                }
+                        let palabraObj = null;
+                        
+                        if (p && typeof p === 'object' && p.id && typeof p.id === 'number') {
+                            try {
+                                palabraObj = await db.get('palabras', p.id);
+                            } catch (e) {}
+                            if (!palabraObj) {
+                                palabraObj = p;
                             }
-                            // CASO 2: p es un número (ID)
-                            else if (typeof p === 'number' && p > 0) {
+                        }
+                        else if (typeof p === 'number' && p > 0) {
+                            try {
+                                palabraObj = await db.get('palabras', p);
+                            } catch (e) {}
+                        }
+                        else if (typeof p === 'string') {
+                            const numId = parseInt(p);
+                            if (!isNaN(numId) && numId > 0) {
                                 try {
-                                    palabraObtenida = await db.get('palabras', p);
-                                    if (!palabraObtenida) {
-                                        console.warn('⚠️ Palabra no encontrada con ID:', p);
-                                        continue;
-                                    }
-                                } catch (e) {
-                                    console.warn('⚠️ Error obteniendo palabra por ID:', p, e.message);
-                                    continue;
-                                }
+                                    palabraObj = await db.get('palabras', numId);
+                                } catch (e) {}
                             }
-                            // CASO 3: p es un string (podría ser un ID o texto)
-                            else if (typeof p === 'string') {
-                                // Intentar parsear como número
-                                const numId = parseInt(p);
-                                if (!isNaN(numId) && numId > 0) {
-                                    try {
-                                        palabraObtenida = await db.get('palabras', numId);
-                                        if (!palabraObtenida) {
-                                            console.warn('⚠️ Palabra no encontrada con ID string:', numId);
-                                            continue;
-                                        }
-                                    } catch (e) {
-                                        console.warn('⚠️ Error obteniendo palabra por ID string:', numId, e.message);
-                                        continue;
-                                    }
-                                } else {
-                                    // Es un texto, buscar por coincidencia
-                                    console.log('🔍 Buscando palabra por texto:', p);
-                                    const todasPalabras = await db.obtenerPalabrasPorIdioma(f.idioma || this.idiomaObjetivo);
-                                    palabraObtenida = todasPalabras.find(w => 
-                                        w.palabra === p || w.hanzi === p
-                                    );
-                                    if (!palabraObtenida) {
-                                        console.warn('⚠️ Palabra no encontrada por texto:', p);
-                                        continue;
-                                    }
-                                }
+                            if (!palabraObj) {
+                                const todasPalabras = await db.obtenerPalabrasPorIdioma(f.idioma || this.idiomaObjetivo);
+                                palabraObj = todasPalabras.find(w => 
+                                    (w.palabra || w.hanzi || '') === p
+                                );
                             }
-                            
-                            // Si se obtuvo una palabra, añadirla
-                            if (palabraObtenida) {
-                                // Asegurar que tenga los campos mínimos
-                                if (!palabraObtenida.palabra && palabraObtenida.hanzi) {
-                                    palabraObtenida.palabra = palabraObtenida.hanzi;
-                                }
-                                if (!palabraObtenida.hanzi && palabraObtenida.palabra) {
-                                    palabraObtenida.hanzi = palabraObtenida.palabra;
-                                }
-                                palabras.push(palabraObtenida);
+                        }
+                        else if (p && typeof p === 'object') {
+                            palabraObj = p;
+                        }
+                        
+                        if (palabraObj) {
+                            if (!palabraObj.palabra && palabraObj.hanzi) {
+                                palabraObj.palabra = palabraObj.hanzi;
                             }
-                        } catch (palabraError) {
-                            console.warn('⚠️ Error procesando palabra:', palabraError.message);
-                            continue;
+                            if (!palabraObj.hanzi && palabraObj.palabra) {
+                                palabraObj.hanzi = palabraObj.palabra;
+                            }
+                            palabras.push(palabraObj);
                         }
                     }
                 }
 
-                // Construir la frase completa con o sin palabras
                 frasesCompletas.push({
                     ...f,
                     palabras: palabras,
@@ -507,7 +532,7 @@ class Pipeline {
     }
 
     // ============================================================
-    // MOSTRAR FRASE CON MODO INVERSO
+    // MOSTRAR FRASE CON MODO INVERSO Y PALABRAS DESGLOSADAS
     // ============================================================
     
     mostrarFrase() {
@@ -563,8 +588,10 @@ class Pipeline {
                 html += `<div class="card-traduccion">${modoData.ocultar}</div>`;
             }
 
-            if (frase.palabras && frase.palabras.length > 0) {
-                html += this._renderPalabrasDesglosadas(frase);
+            // PALABRAS DESGLOSADAS
+            const palabrasParaMostrar = this.fraseActual.palabras || [];
+            if (palabrasParaMostrar && palabrasParaMostrar.length > 0) {
+                html += this._renderPalabrasDesglosadas(palabrasParaMostrar, frase);
             }
 
             html += `<div class="card-progress">
@@ -601,16 +628,22 @@ class Pipeline {
         }
     }
 
-    _renderPalabrasDesglosadas(frase) {
-        if (!frase.palabras || frase.palabras.length === 0) return '';
+    // ============================================================
+    // RENDERIZAR PALABRAS DESGLOSADAS
+    // ============================================================
+
+    _renderPalabrasDesglosadas(palabras, frase) {
+        if (!palabras || palabras.length === 0) return '';
         
-        const esJeroglifico = frase.esJeroglifico || false;
+        const esJeroglifico = frase?.esJeroglifico || false;
         let html = '<div style="padding:12px 0;border-top:2px solid var(--bg);margin-top:8px;">';
         html += '<div style="font-size:12px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">📖 Palabras desglosadas</div>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
         
-        for (const p of frase.palabras) {
+        for (const p of palabras) {
             const texto = p.hanzi || p.palabra || '';
+            if (!texto) continue;
+            
             const pinyin = p.pinyin || '';
             const familia = p.familia || (p.familias && p.familias[0]) || 'sin_clasificar';
             const significado = p.significado || '';
@@ -631,10 +664,6 @@ class Pipeline {
         return html;
     }
 
-    // ============================================================
-    // MÉTODOS AUXILIARES
-    // ============================================================
-    
     _getSemaforo(rcn) {
         if (rcn <= 0) return '🔴';
         if (rcn < 3) return '🟡';
@@ -673,7 +702,46 @@ class Pipeline {
     // ============================================================
     
     async estudiarTema(temaId) {
-        const historias = await db.obtenerHistoriasPorTema(temaId);
+        let temaIdReal = temaId;
+        if (typeof temaId === 'string' && temaId.match(/^[a-cA-C][1-2]_\d+$/)) {
+            console.log(`🔍 Buscando tema predefinido: ${temaId}`);
+            const temas = await db.obtenerTemas();
+            const temaEncontrado = temas.find(t => 
+                t._temaOriginalId === temaId || t._temaOriginalId === temaId.toLowerCase()
+            );
+            if (temaEncontrado) {
+                temaIdReal = temaEncontrado.id;
+                console.log(`📌 Tema predefinido encontrado: "${temaEncontrado.nombre}" (ID: ${temaIdReal})`);
+            } else {
+                console.warn(`⚠️ Tema predefinido ${temaId} no encontrado en DB, intentando como ID numérico...`);
+            }
+        }
+        
+        if (typeof temaIdReal === 'string' && !isNaN(parseInt(temaIdReal))) {
+            temaIdReal = parseInt(temaIdReal);
+        }
+        
+        if (typeof temaIdReal === 'string') {
+            console.log(`🔍 Buscando tema por nombre: ${temaIdReal}`);
+            const temas = await db.obtenerTemas();
+            const temaEncontrado = temas.find(t => 
+                t.nombre && t.nombre.toLowerCase().includes(temaIdReal.toLowerCase())
+            );
+            if (temaEncontrado) {
+                temaIdReal = temaEncontrado.id;
+                console.log(`📌 Tema encontrado por nombre: "${temaEncontrado.nombre}" (ID: ${temaIdReal})`);
+            } else {
+                console.error(`❌ No se encontró el tema: ${temaId}`);
+                if (window.uiCore) {
+                    window.uiCore.mostrarToast(`❌ Tema no encontrado: ${temaId}`, 'error');
+                }
+                return;
+            }
+        }
+        
+        console.log(`📚 Estudiando tema ID: ${temaIdReal}`);
+        
+        const historias = await db.obtenerHistoriasPorTema(temaIdReal);
         if (historias.length === 0) {
             if (window.uiCore) {
                 window.uiCore.mostrarToast('❌ No hay historias en este tema', 'error');
@@ -694,13 +762,28 @@ class Pipeline {
             return;
         }
         
-        this._temaActual = temaId;
+        this._temaActual = temaIdReal;
         this._estudiandoTema = true;
+        this._estudiandoHistoria = false;
+        this._historiaIdActual = null;
+        this._temaIdDesdeHistoria = null;
         this._temaOriginalFrases = [...this.frases];
         this._temaOriginalIndice = this.indiceFrase;
         
         this.frases = todasFrases;
         await this.cargarProgreso();
+        
+        for (const f of this.frases) {
+            if (!f.palabras || f.palabras.length === 0) {
+                try {
+                    const frasesDB = await db.obtenerFrases();
+                    const fraseDB = frasesDB.find(fdb => fdb.id === f.id);
+                    if (fraseDB && fraseDB.palabras && Array.isArray(fraseDB.palabras) && fraseDB.palabras.length > 0) {
+                        f.palabras = fraseDB.palabras;
+                    }
+                } catch (e) {}
+            }
+        }
         
         this.frases.sort((a, b) => {
             const rcnA = a.progreso?.rcn || 0;
@@ -721,8 +804,9 @@ class Pipeline {
             indiceReanudacion = 0;
         }
         
-        console.log(`📌 Estudiando tema "${temaId}" - ${this.frases.length} frases`);
+        console.log(`📌 Estudiando tema "${temaIdReal}" - ${this.frases.length} frases`);
         console.log(`📌 Reanudando en índice: ${indiceReanudacion + 1}/${this.frases.length}`);
+        console.log(`📝 Frases con palabras desglosadas: ${this.frases.filter(f => f.palabras && f.palabras.length > 0).length}`);
         
         this.indiceFrase = indiceReanudacion;
         await this.cargarFrase(indiceReanudacion);
@@ -743,7 +827,11 @@ class Pipeline {
         return Math.round((completadas / this.frases.length) * 100);
     }
 
-    async estudiarHistoria(historiaId) {
+    // ============================================================
+    // 🔥 ESTUDIAR HISTORIA CON ORIGEN - CORREGIDO
+    // ============================================================
+
+    async estudiarHistoria(historiaId, origen = 'tema') {
         const frases = await db.obtenerFrasesPorHistoria(historiaId);
         if (frases.length === 0) {
             if (window.uiCore) {
@@ -752,13 +840,42 @@ class Pipeline {
             return;
         }
         
-        this._temaActual = null;
-        this._estudiandoTema = true;
+        const historia = await db.get('historias', historiaId);
+        if (historia && historia.temaId) {
+            this._temaActual = historia.temaId;
+            this._temaIdDesdeHistoria = historia.temaId;
+            this._estudiandoTema = true;
+            console.log(`📌 Historia "${historia.titulo}" pertenece al tema ${historia.temaId}`);
+        } else {
+            this._temaActual = null;
+            this._temaIdDesdeHistoria = null;
+            this._estudiandoTema = false;
+            console.warn('⚠️ La historia no tiene tema asociado');
+        }
+        
+        // 🔥 ESTABLECER ORIGEN DE LA HISTORIA
+        this._origenHistoria = origen;
+        this._historiaIdActual = historiaId;
+        this._estudiandoHistoria = true;
+        
         this._temaOriginalFrases = [...this.frases];
         this._temaOriginalIndice = this.indiceFrase;
         
         this.frases = frases;
         await this.cargarProgreso();
+        
+        // CARGAR PALABRAS DESGLOSADAS
+        for (const f of this.frases) {
+            if (!f.palabras || f.palabras.length === 0) {
+                try {
+                    const frasesDB = await db.obtenerFrases();
+                    const fraseDB = frasesDB.find(fdb => fdb.id === f.id);
+                    if (fraseDB && fraseDB.palabras && Array.isArray(fraseDB.palabras) && fraseDB.palabras.length > 0) {
+                        f.palabras = fraseDB.palabras;
+                    }
+                } catch (e) {}
+            }
+        }
         
         this.frases.sort((a, b) => {
             const rcnA = a.progreso?.rcn || 0;
@@ -788,6 +905,53 @@ class Pipeline {
     }
 
     // ============================================================
+    // 🔥 OBTENER ORIGEN DE LA HISTORIA ACTUAL
+    // ============================================================
+
+    getOrigenHistoriaActual() {
+        return this._origenHistoria;
+    }
+
+    getHistoriaIdActual() {
+        return this._historiaIdActual;
+    }
+
+    estaEstudiandoHistoria() {
+        return this._estudiandoHistoria;
+    }
+
+    // ============================================================
+    // 🔥 SALIR DE HISTORIA (CON RETORNO ADECUADO)
+    // ============================================================
+
+    async salirDeHistoria() {
+        console.log('🔙 Saliendo de la historia...');
+        
+        if (this._temaOriginalFrases) {
+            this.frases = this._temaOriginalFrases;
+            this.indiceFrase = this._temaOriginalIndice || 0;
+            this._estudiandoHistoria = false;
+            this._historiaIdActual = null;
+            this._origenHistoria = null;
+            this._temaOriginalFrases = null;
+            this._temaOriginalIndice = 0;
+            await this.cargarFrase(this.indiceFrase);
+        } else {
+            const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+            await this.cargarFrasesPorIdioma(idioma);
+            await this.cargarProgreso();
+            if (this.frases.length > 0) {
+                await this.cargarFrase(0);
+            }
+        }
+        
+        if (window.uiCore) {
+            window.uiCore.irAModulo('study');
+            window.uiCore.mostrarToast('🔄 Has salido de la historia.', 'info');
+        }
+    }
+
+    // ============================================================
     // VOLVER AL ESTUDIO GENERAL
     // ============================================================
 
@@ -802,6 +966,9 @@ class Pipeline {
         this.indiceFrase = this._temaOriginalIndice || 0;
         this._estudiandoTema = false;
         this._temaActual = null;
+        this._estudiandoHistoria = false;
+        this._historiaIdActual = null;
+        this._temaIdDesdeHistoria = null;
         this._temaOriginalFrases = null;
         this._temaOriginalIndice = 0;
         
@@ -1134,8 +1301,12 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
             consolidacion: this.fraseActual ? this._calcularConsolidacion(this.fraseActual) : 0,
             idioma: this.idiomaObjetivo,
             nivel: this.nivel,
-            temaActual: this.temaActual,
-            estudiandoTema: this._estudiandoTema
+            temaActual: this._temaActual,
+            estudiandoTema: this._estudiandoTema,
+            estudiandoHistoria: this._estudiandoHistoria,
+            historiaIdActual: this._historiaIdActual,
+            origenHistoria: this._origenHistoria,
+            frasesConPalabras: this.frases.filter(f => f.palabras && f.palabras.length > 0).length
         };
     }
 
@@ -1149,16 +1320,20 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
             const fallidos = progresos.reduce((acc, p) => acc + (p.repasosFallidos || 0), 0);
             const totalRepasos = exitosos + fallidos;
             const eficiencia = totalRepasos > 0 ? exitosos / totalRepasos : 0;
+            
+            const frasesConPalabras = frases.filter(f => f.palabras && f.palabras.length > 0).length;
+            
             return {
                 frasesActivas: frases.filter(f => f.activa !== false).length,
                 progresosActivos: progresos.filter(p => p.estado !== 'completada').length,
                 rcnPromedio: Math.round(rcnPromedio * 10) / 10,
                 eficiencia: Math.round(eficiencia * 100),
                 fasePromedio: progresos.reduce((acc, p) => acc + (p.fase || 1), 0) / (progresos.length || 1),
-                neuroScore: Math.min(100, Math.round((rcnPromedio / 4) * 100))
+                neuroScore: Math.min(100, Math.round((rcnPromedio / 4) * 100)),
+                frasesConPalabras: frasesConPalabras
             };
         } catch (e) {
-            return { frasesActivas: 0, progresosActivos: 0, rcnPromedio: 0, eficiencia: 0, fasePromedio: 1, neuroScore: 0 };
+            return { frasesActivas: 0, progresosActivos: 0, rcnPromedio: 0, eficiencia: 0, fasePromedio: 1, neuroScore: 0, frasesConPalabras: 0 };
         }
     }
 
@@ -1190,10 +1365,6 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
         }
     }
 
-    // ============================================================
-    // OBTENER CONTEXTO DE HISTORIA PARA LA FRASE ACTUAL
-    // ============================================================
-
     getHistoriaActual() {
         return this._historiaActual;
     }
@@ -1205,19 +1376,72 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
     getTituloHistoriaActual() {
         return this._historiaActual?.titulo || 'Historia sin título';
     }
-}
 
-// ============================================================
-// INSTANCIA GLOBAL
-// ============================================================
+    // ============================================================
+    // OBTENER PROGRESO POR HISTORIA (PARA MODO ELIPSE)
+    // ============================================================
+
+    async obtenerProgresoHistoria(historiaId) {
+        try {
+            const frases = await db.obtenerFrasesPorHistoria(historiaId);
+            let totalFrases = frases.length;
+            let completadas = 0;
+            let totalRCN = 0;
+            let totalRepasos = 0;
+            let exitosos = 0;
+            let fallidos = 0;
+            
+            let frasesConPalabras = 0;
+
+            for (const f of frases) {
+                const progreso = await db.obtenerProgreso(f.id);
+                if (progreso) {
+                    if (progreso.estado === 'completada' || (progreso.rcn || 0) >= 4) {
+                        completadas++;
+                    }
+                    totalRCN += progreso.rcn || 0;
+                    totalRepasos += (progreso.repasosExitosos || 0) + (progreso.repasosFallidos || 0);
+                    exitosos += progreso.repasosExitosos || 0;
+                    fallidos += progreso.repasosFallidos || 0;
+                }
+                
+                if (f.palabras && f.palabras.length > 0) {
+                    frasesConPalabras++;
+                }
+            }
+
+            return {
+                historiaId,
+                totalFrases,
+                completadas,
+                rcnPromedio: totalFrases > 0 ? totalRCN / totalFrases : 0,
+                progreso: totalFrases > 0 ? Math.round((completadas / totalFrases) * 100) : 0,
+                repasosTotales: totalRepasos,
+                eficiencia: totalRepasos > 0 ? Math.round((exitosos / totalRepasos) * 100) : 0,
+                completada: totalFrases > 0 && completadas === totalFrases,
+                frasesConPalabras: frasesConPalabras
+            };
+        } catch (error) {
+            console.error('❌ Error obteniendo progreso de historia:', error);
+            return {
+                historiaId,
+                totalFrases: 0,
+                completadas: 0,
+                rcnPromedio: 0,
+                progreso: 0,
+                repasosTotales: 0,
+                eficiencia: 0,
+                completada: false,
+                frasesConPalabras: 0
+            };
+        }
+    }
+}
 
 const pipeline = new Pipeline();
 
-console.log('✅ Pipeline v18.2 - CORREGIDO: Manejo de palabras como objetos o IDs');
-console.log('  🔥 Acepta palabras como:');
-console.log('    - IDs numéricos (1, 2, 3)');
-console.log('    - Objetos completos ({ palabra: "hola", ... })');
-console.log('    - Strings ("hola")');
-console.log('  📚 Manejo de errores robusto');
-console.log('  🔄 Integración con Libro de Lectura');
-console.log('  🧠 Soporte para generador de frases');
+console.log('✅ Pipeline v18.7 - COMPLETO CON ORIGEN DE HISTORIA');
+console.log('  🔥 estudiarHistoria(historiaId, origen) con origen "elipse" o "tema"');
+console.log('  🔥 getOrigenHistoriaActual() para saber el origen');
+console.log('  🔥 salirDeHistoria() con retorno adecuado');
+console.log('  🔥 Todas las funcionalidades originales preservadas');

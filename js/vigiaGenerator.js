@@ -1,5 +1,5 @@
 // ============================================================
-// VIGÍA GENERATOR v6.1 - DEFINITIVO (SIN TRADUCCIÓN)
+// VIGÍA GENERATOR v7.0 - CON MODO ELIPSE
 // ============================================================
 
 class VigiaGenerator {
@@ -53,7 +53,7 @@ class VigiaGenerator {
         }
         
         this._initDone = true;
-        console.log('✅ VigíaGenerator v6.1 inicializado');
+        console.log('✅ VigíaGenerator v7.0 inicializado (con Modo Elipse)');
         return this;
     }
 
@@ -395,6 +395,120 @@ class VigiaGenerator {
     }
 
     // ============================================================
+    // 🌌 GENERAR HISTORIA EN MODO ELIPSE
+    // ============================================================
+
+    async generarHistoriaElipse(contexto, tema, historiaBase, frasesBase, nivel, numPalabrasNuevas, indice) {
+        try {
+            const idioma = tema.idioma || gestorIdiomas?.getIdiomaActivo() || 'es';
+            const esJeroglifico = window.gestorIdiomas?._esJeroglifico(idioma) || false;
+            const idiomaNativo = window.UITemas?._obtenerIdiomaNativo() || 'español';
+            const nombreIdioma = window.UITemas?._getNombreIdioma(idioma) || idioma;
+
+            // Extraer palabras base para contexto
+            const palabrasBase = frasesBase
+                .flatMap(f => f.palabras || [])
+                .map(p => p.palabra || p.hanzi || '')
+                .filter(Boolean);
+            const palabrasBaseUnicas = [...new Set(palabrasBase)].slice(0, 20);
+
+            const prompt = `
+Eres un experto en lingüística y narrativa. Tu tarea es generar una nueva historia que sea una "onda" expansiva de una historia existente.
+
+**CONTEXTO DE LA HISTORIA ANTERIOR:**
+- Título: ${historiaBase.titulo || 'Historia anterior'}
+- Resumen: ${contexto.resumen || 'Historia sobre el tema'}
+- Palabras clave: ${palabrasBaseUnicas.join(', ')}
+
+**REGLAS IMPORTANTES:**
+1. La nueva historia debe ser una continuación o expansión de la historia anterior.
+2. Debe incluir los mismos personajes y ambientación.
+3. Debe introducir ${numPalabrasNuevas} palabras nuevas en ${idioma}.
+4. Nivel de dificultad: ${nivel}.
+5. La historia debe tener entre 6 y 8 frases.
+6. Las palabras nuevas deben tener su traducción al ${idiomaNativo}.
+
+**ESTRUCTURA DEL JSON REQUERIDO:**
+{
+  "meta": {
+    "titulo": "Título de la nueva historia",
+    "nivel": "${nivel}",
+    "es_onda": true,
+    "indice": ${indice + 1}
+  },
+  "palabras_nuevas": [
+    {
+      "palabra": "palabra_nueva_1",
+      "significado": "significado_en_${idiomaNativo}",
+      "familia_semantica": "familia_semantica"
+    }
+  ],
+  "historias": [
+    {
+      "titulo": "Título de la historia",
+      "frases": [
+        {
+          "original": "Frase en ${idioma}",
+          "traduccion": "Traducción al ${idiomaNativo}",
+          "regla_gramatical": "Regla gramatical",
+          "explicacion_gramatical": "Explicación de la regla",
+          "palabras": [
+            {
+              "palabra": "palabra_en_${idioma}",
+              "familia": "familia_semantica",
+              "tipo": "tipo_gramatical",
+              "significado": "significado_en_${idiomaNativo}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+**IMPORTANTE:** Responde SOLO en formato JSON válido.
+`;
+
+            const resultado = await window.vigia._consultarGroq(prompt, 'json');
+            
+            if (!resultado || !resultado.historias || resultado.historias.length === 0) {
+                console.error('❌ Respuesta de IA inválida para historia elipse');
+                return null;
+            }
+
+            const historiaData = resultado.historias[0];
+            const palabrasNuevas = resultado.palabras_nuevas || [];
+
+            // Asegurar que todas las frases tengan palabras
+            for (const frase of (historiaData.frases || [])) {
+                if (!frase.palabras || frase.palabras.length === 0) {
+                    // Generar palabras básicas si no hay
+                    const palabras = frase.original.split(' ');
+                    frase.palabras = palabras.map(p => ({
+                        palabra: p.replace(/[^a-zA-ZáéíóúñüÁÉÍÓÚÑÜ\s]/g, ''),
+                        familia: 'sustantivo',
+                        tipo: 'sustantivo',
+                        significado: `[${p}]`
+                    })).filter(p => p.palabra.length > 0);
+                }
+            }
+
+            return {
+                ...historiaData,
+                palabrasNuevas: palabrasNuevas,
+                palabrasBase: palabrasBaseUnicas,
+                nivel: nivel,
+                idioma: idioma,
+                esJeroglifico: esJeroglifico
+            };
+
+        } catch (error) {
+            console.error('❌ Error generando historia elipse:', error);
+            return null;
+        }
+    }
+
+    // ============================================================
     // MÉTODOS DE UTILIDAD
     // ============================================================
 
@@ -439,7 +553,6 @@ if (window.vigiaGramatical) {
 
 const vigiaGenerator = window.vigiaGenerator;
 
-console.log('✅ Vigía Generator v6.1 - DEFINITIVO (SIN TRADUCCIÓN)');
-console.log('  🔥 Genera SOLO frases en idioma objetivo');
-console.log('  📚 SIN traducción - la UI la pide con Groq');
-console.log('  ✅ NO devuelve undefined');
+console.log('✅ Vigía Generator v7.0 - CON MODO ELIPSE');
+console.log('  🌌 Nueva función: generarHistoriaElipse()');
+console.log('  🔥 Genera ondas de aprendizaje a partir de una historia base');

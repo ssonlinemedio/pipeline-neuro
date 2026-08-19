@@ -1,5 +1,5 @@
 // ============================================================
-// UI TOOLS v22.9 - COMPLETO CON BALANCEADOR DE CARGA GROQ
+// UI TOOLS v23.0 - COMPLETO CON LIMPIEZA DE ELIPSE
 // ============================================================
 
 class UITools {
@@ -49,7 +49,6 @@ class UITools {
     }
 
     _iniciarActualizacionStorage() {
-        // Actualizar inmediatamente
         setTimeout(() => {
             this._actualizarIndicadorStorage();
         }, 300);
@@ -63,23 +62,20 @@ class UITools {
     }
 
     // ============================================================
-    // CALCULAR TAMAÑO REAL USANDO EXPORTAR BACKUP
+    // CALCULAR TAMAÑO REAL
     // ============================================================
 
     async _calcularTamanioReal() {
         try {
-            // 1. Obtener todos los datos mediante exportarBackup
             let data = {};
             let totalItems = 0;
             let totalSize = 0;
             
             try {
                 data = await db.exportarBackup();
-                // Calcular tamaño de los datos
                 const jsonStr = JSON.stringify(data);
-                totalSize = jsonStr.length * 2; // UTF-16
+                totalSize = jsonStr.length * 2;
                 
-                // Contar items por store
                 for (const [storeName, items] of Object.entries(data)) {
                     if (Array.isArray(items)) {
                         totalItems += items.length;
@@ -87,7 +83,6 @@ class UITools {
                 }
             } catch (e) {
                 console.warn('⚠️ Error exportando backup:', e);
-                // Fallback: intentar obtener datos directamente
                 try {
                     const stores = ['frases', 'palabras', 'historias', 'temas', 'progreso', 'usuarios', 'configuracion', 'chat', 'checkpoints'];
                     let backupData = {};
@@ -98,18 +93,13 @@ class UITools {
                                 backupData[store] = items;
                                 totalItems += items.length;
                             }
-                        } catch (e2) {
-                            // Ignorar stores que no existen
-                        }
+                        } catch (e2) {}
                     }
                     const jsonStr = JSON.stringify(backupData);
                     totalSize = jsonStr.length * 2;
-                } catch (e2) {
-                    console.warn('⚠️ Error en fallback:', e2);
-                }
+                } catch (e2) {}
             }
             
-            // 2. Calcular localStorage
             let localSize = 0;
             let localItems = 0;
             for (let key in localStorage) {
@@ -120,14 +110,12 @@ class UITools {
                 }
             }
             
-            // 3. Calcular porcentajes
             const idbPorcentaje = Math.min(100, Math.round((totalSize / this._STORAGE_LIMIT) * 100));
             const localPorcentaje = Math.min(100, Math.round((localSize / this._LOCAL_STORAGE_LIMIT) * 100));
             const totalUsado = totalSize + localSize;
             const totalTotal = this._STORAGE_LIMIT + this._LOCAL_STORAGE_LIMIT;
             const totalPorcentaje = Math.min(100, Math.round((totalUsado / totalTotal) * 100));
             
-            // 4. Guardar datos
             this._storageData = {
                 indexedDB: {
                     usado: totalSize,
@@ -181,7 +169,7 @@ class UITools {
     }
 
     // ============================================================
-    // ACTUALIZAR BARRAS DE PROGRESO EN LA UI
+    // ACTUALIZAR BARRAS DE PROGRESO
     // ============================================================
 
     _actualizarBarrasStorage() {
@@ -201,7 +189,6 @@ class UITools {
         const totalUsadoMB = (this._storageData.total.usado / (1024 * 1024)).toFixed(2);
         const totalTotalMB = (this._storageData.total.total / (1024 * 1024)).toFixed(2);
         
-        // Total
         if (totalBar) {
             const pct = Math.min(100, this._storageData.total.porcentaje || 0);
             totalBar.style.width = pct + '%';
@@ -211,7 +198,6 @@ class UITools {
             totalText.textContent = `${totalUsadoMB} MB / ${totalTotalMB} MB (${this._storageData.total.porcentaje || 0}%)`;
         }
         
-        // IndexedDB
         if (idbBar) {
             const pct = Math.min(100, this._storageData.indexedDB.porcentaje || 0);
             idbBar.style.width = pct + '%';
@@ -224,7 +210,6 @@ class UITools {
             idbInfo.textContent = `📦 ${this._storageData.indexedDB.items || 0} registros`;
         }
         
-        // localStorage
         if (localBar) {
             const pct = Math.min(100, this._storageData.localStorage.porcentaje || 0);
             localBar.style.width = pct + '%';
@@ -237,7 +222,6 @@ class UITools {
             localInfo.textContent = `📄 ${this._storageData.localStorage.items || 0} items`;
         }
         
-        // Actualizar también el footer
         const storageFooter = document.getElementById('storageFooter');
         if (storageFooter) {
             storageFooter.textContent = `💾 Almacenamiento: ${this._storageData.total.porcentaje || 0}%`;
@@ -256,7 +240,7 @@ class UITools {
     }
 
     // ============================================================
-    // RENDERIZAR PANEL PRINCIPAL CON BALANCEADOR
+    // RENDERIZAR PANEL PRINCIPAL
     // ============================================================
 
     _renderizarPanelConBackupMultiCapa() {
@@ -270,7 +254,6 @@ class UITools {
         const vigiaEstado = window.vigia?.getEstado?.() || { enLinea: false, modelo: 'openai/gpt-oss-120b' };
         const vigiaOnline = vigiaEstado.enLinea;
 
-        // Obtener estado del balanceador para el header
         let balanceadorEstado = '⏳ Cargando...';
         let balanceadorColor = 'var(--gray)';
         let modeloActivo = 'N/A';
@@ -560,7 +543,7 @@ class UITools {
                         </div>
                     </div>
 
-                    <!-- 9. BALANCEADOR GROQ (NUEVO) -->
+                    <!-- 9. BALANCEADOR GROQ -->
                     <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--primary);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;border:2px solid var(--primary);"
                          onclick="window.UITools._mostrarEstadoBalanceador()"
                          onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(108,92,231,0.15)'" 
@@ -587,7 +570,7 @@ class UITools {
                         </div>
                     </div>
 
-                    <!-- 10. LIMPIAR DATOS -->
+                    <!-- 10. LIMPIAR DATOS (CORREGIDO CON ELIPSE) -->
                     <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;"
                          onclick="window.UITools._reset()"
                          onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)'" 
@@ -598,15 +581,16 @@ class UITools {
                             </div>
                             <div>
                                 <h3 style="font-size:14px;font-weight:700;color:var(--dark);margin:0;">🗑️ Limpiar Datos</h3>
-                                <span style="font-size:11px;color:var(--gray-light);">Eliminar todo</span>
+                                <span style="font-size:11px;color:var(--gray-light);">Eliminar todo (incluye ondas Elipse)</span>
                             </div>
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
-                            ⚠️ Elimina TODOS los datos de la aplicación
+                            ⚠️ Elimina TODOS los datos de la aplicación incluyendo ondas del Modo Elipse
                         </p>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                             <span style="font-size:10px;background:var(--danger)15;padding:2px 12px;border-radius:12px;color:var(--danger);font-weight:600;">⚠️ Peligroso</span>
                             <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">💾 Backup recomendado</span>
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">🌌 Borra ondas</span>
                         </div>
                     </div>
                 </div>
@@ -621,8 +605,9 @@ class UITools {
                         <span>${vigiaOnline ? '🟢' : '🔴'} Vigía: ${vigiaOnline ? 'Online' : 'Offline'}</span>
                         <span id="storageFooter">💾 Almacenamiento: ${this._storageData.total.porcentaje || 0}%</span>
                         <span>⚖️ ${modeloActivo}</span>
+                        <span>🌌 Ondas: ${window.modoElipse?.getEstado()?.totalOndas || 0}</span>
                     </div>
-                    <div><span>⚙️ Tools v22.9</span></div>
+                    <div><span>⚙️ Tools v23.0</span></div>
                 </div>
             </div>
         `;
@@ -735,6 +720,7 @@ class UITools {
             const neuroDiag = await pipeline.obtenerDiagnosticoNeuro();
             const usuario = await db.getUsuario();
             const nivel = usuario?.idiomasObjetivo?.[0]?.nivel || 'A1';
+            const elipseEstado = window.modoElipse?.getEstado() || {};
             
             await this._actualizarIndicadorStorage();
             
@@ -746,13 +732,18 @@ class UITools {
             mensaje += '📊 DATOS:\n';
             mensaje += '- Frases: ' + (diag.datos ? diag.datos.frases : 0) + '\n';
             mensaje += '- Palabras: ' + (diag.datos ? diag.datos.palabras : 0) + '\n';
-            mensaje += '- Historias: ' + (diag.datos ? diag.datos.historias : 0) + '\n\n';
+            mensaje += '- Historias: ' + (diag.datos ? diag.datos.historias : 0) + '\n';
+            mensaje += '- Temas: ' + (diag.datos ? diag.datos.temas : 0) + '\n\n';
             mensaje += '🧠 NEURO:\n';
             mensaje += '- RCN Promedio: ' + (neuroDiag.rcnPromedio || 0) + '\n';
             mensaje += '- Eficiencia: ' + (neuroDiag.eficiencia || 0) + '%\n';
-            mensaje += '- NeuroScore: ' + (neuroDiag.neuroScore || 0) + '%';
-            
-            mensaje += '\n\n💾 ALMACENAMIENTO:\n';
+            mensaje += '- NeuroScore: ' + (neuroDiag.neuroScore || 0) + '%\n\n';
+            mensaje += '🌌 MODO ELIPSE:\n';
+            mensaje += '- Ondas totales: ' + (elipseEstado.totalOndas || 0) + '\n';
+            mensaje += '- Ondas completadas: ' + (elipseEstado.ondasCompletadas || 0) + '\n';
+            mensaje += '- Ondas sincronizadas: ' + (elipseEstado.ondasSincronizadas || 0) + '\n';
+            mensaje += '- Elipse activa: ' + (elipseEstado.elipseActiva || 'Ninguna') + '\n\n';
+            mensaje += '💾 ALMACENAMIENTO:\n';
             mensaje += `- IndexedDB: ${(this._storageData.indexedDB.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.indexedDB.porcentaje || 0}%) - ${this._storageData.indexedDB.items || 0} registros\n`;
             mensaje += `- localStorage: ${(this._storageData.localStorage.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.localStorage.porcentaje || 0}%) - ${this._storageData.localStorage.items || 0} items\n`;
             mensaje += `- Total: ${(this._storageData.total.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.total.porcentaje || 0}%)`;
@@ -772,8 +763,8 @@ class UITools {
             const estadoVigia = vigia.getEstado ? vigia.getEstado() : { enLinea: false };
             const estadoPipeline = pipeline.getEstado ? pipeline.getEstado() : { faseActual: 1, progreso: 0 };
             const nivel = usuario?.idiomasObjetivo?.[0]?.nivel || 'A1';
+            const elipseEstado = window.modoElipse?.getEstado() || {};
             
-            // Obtener estado del balanceador
             let balanceadorInfo = 'No disponible';
             try {
                 if (window.balanceadorGroq) {
@@ -798,9 +789,16 @@ class UITools {
             mensaje += '🟢 Vigía: ' + (estadoVigia.enLinea ? 'Online' : 'Offline') + '\n';
             mensaje += '📡 Modelo: ' + (estadoVigia.modelo || 'openai/gpt-oss-120b') + '\n';
             mensaje += '⚖️ Balanceador: ' + balanceadorInfo + '\n';
-            mensaje += '🧩 Versión: 22.9\n';
+            mensaje += '🧩 Versión: 23.0\n\n';
             
-            mensaje += '\n💾 ALMACENAMIENTO:\n';
+            mensaje += '🌌 MODO ELIPSE:\n';
+            mensaje += '- Ondas totales: ' + (elipseEstado.totalOndas || 0) + '\n';
+            mensaje += '- Ondas completadas: ' + (elipseEstado.ondasCompletadas || 0) + '\n';
+            mensaje += '- Ondas sincronizadas: ' + (elipseEstado.ondasSincronizadas || 0) + '\n';
+            mensaje += '- Elipse activa: ' + (elipseEstado.elipseActiva || 'Ninguna') + '\n';
+            mensaje += '- Palabras nuevas: ' + (elipseEstado.estadisticas?.palabrasNuevas || 0) + '\n\n';
+            
+            mensaje += '💾 ALMACENAMIENTO:\n';
             mensaje += `- IndexedDB: ${(this._storageData.indexedDB.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.indexedDB.porcentaje || 0}%) - ${this._storageData.indexedDB.items || 0} registros\n`;
             mensaje += `- localStorage: ${(this._storageData.localStorage.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.localStorage.porcentaje || 0}%) - ${this._storageData.localStorage.items || 0} items\n`;
             mensaje += `- Total: ${(this._storageData.total.usado / (1024 * 1024)).toFixed(2)} MB (${this._storageData.total.porcentaje || 0}%)`;
@@ -845,6 +843,10 @@ class UITools {
         }
     }
 
+    // ============================================================
+    // 🔥 LIMPIAR DATOS - CORREGIDO CON ELIPSE
+    // ============================================================
+
     async _reset() {
         const confirmar = await this._core.confirm(
             '⚠️ ⚠️ ⚠️ ¡ATENCIÓN! ⚠️ ⚠️ ⚠️\n\n' +
@@ -853,7 +855,9 @@ class UITools {
             '• Frases, palabras e historias\n' +
             '• Progreso y niveles\n' +
             '• Checkpoints y backups\n' +
-            '• Configuración y preferencias\n\n' +
+            '• Configuración y preferencias\n' +
+            '• 🌌 TODAS las ondas del Modo Elipse\n' +
+            '• TODOS los temas (incluyendo los de Elipse)\n\n' +
             '⚠️ Esta acción NO se puede deshacer.\n\n' +
             '💡 Se recomienda hacer un Backup antes.\n\n' +
             '¿Estás SEGURO de que quieres continuar?',
@@ -865,19 +869,96 @@ class UITools {
                 '🔴 ÚLTIMA ADVERTENCIA 🔴\n\n' +
                 '¿Estás ABSOLUTAMENTE SEGURO?\n\n' +
                 'Esta acción es IRREVERSIBLE.\n' +
-                'Todos tus datos de aprendizaje se perderán para siempre.\n\n' +
+                'Todos tus datos de aprendizaje se perderán para siempre.\n' +
+                'Las ondas del Modo Elipse también serán eliminadas.\n\n' +
                 'Escribe "ELIMINAR" para confirmar:',
                 'CONFIRMACIÓN FINAL'
             );
             
             if (segundaConfirmacion) {
                 try {
+                    // ============================================================
+                    // 🔥 1. LIMPIAR MODO ELIPSE
+                    // ============================================================
+                    if (window.modoElipse) {
+                        console.log('🌌 Limpiando Modo Elipse...');
+                        // Limpiar historias de Elipse
+                        window.modoElipse._historiasElipse = [];
+                        window.modoElipse._elipseActiva = null;
+                        window.modoElipse._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
+                        window.modoElipse._datosCargados = false;
+                        window.modoElipse._progresoTemasCache = {};
+                        
+                        // Limpiar localStorage de Elipse
+                        localStorage.removeItem('pipeline_elipse_estado_v4');
+                        localStorage.removeItem('pipeline_elipse_estado_v4_backup');
+                        localStorage.removeItem('pipeline_elipse_tema_activo');
+                        localStorage.removeItem('pipeline_elipse_config');
+                        localStorage.removeItem('pipeline_elipse_recomendaciones');
+                        
+                        // Eliminar configuración de Elipse en IndexedDB
+                        try {
+                            const configs = await db.getByIndex('configuracion', 'clave', 'elipse_estado');
+                            if (configs && configs.length > 0) {
+                                await db.delete('configuracion', configs[0].id);
+                            }
+                            // Eliminar también backups de estado por tema
+                            const allConfigs = await db.getAll('configuracion');
+                            for (const cfg of allConfigs) {
+                                if (cfg.clave && cfg.clave.startsWith('pipeline_elipse_estado_tema_')) {
+                                    await db.delete('configuracion', cfg.id);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Error limpiando Elipse en IndexedDB:', e);
+                        }
+                        
+                        console.log('✅ Modo Elipse limpiado correctamente');
+                    }
+
+                    // ============================================================
+                    // 2. LIMPIAR DB COMPLETA
+                    // ============================================================
                     await db.limpiarTodo();
-                    indexedDB.deleteDatabase('PipelineDB');
+                    
+                    // ============================================================
+                    // 3. ELIMINAR BASE DE DATOS INDEXEDDB
+                    // ============================================================
+                    try {
+                        const req = indexedDB.deleteDatabase('PipelineDB');
+                        req.onsuccess = () => {
+                            console.log('🗑️ Base de datos IndexedDB eliminada');
+                        };
+                        req.onerror = () => {
+                            console.warn('⚠️ Error eliminando IndexedDB');
+                        };
+                    } catch (e) {
+                        console.warn('⚠️ Error eliminando IndexedDB:', e);
+                    }
+                    
+                    // ============================================================
+                    // 4. LIMPIAR LOCALSTORAGE COMPLETO
+                    // ============================================================
                     localStorage.clear();
-                    this._core.mostrarToast('🗑️ Todos los datos eliminados. Recargando...', 'warning');
-                    setTimeout(() => { location.reload(); }, 2000);
+                    
+                    // ============================================================
+                    // 5. LIMPIAR SESSIONSTORAGE
+                    // ============================================================
+                    try {
+                        sessionStorage.clear();
+                    } catch (e) {}
+                    
+                    this._core.mostrarToast('🗑️ Todos los datos eliminados (incluyendo ondas Elipse). Recargando...', 'warning');
+                    
+                    // ============================================================
+                    // 6. RECARGAR LA PÁGINA
+                    // ============================================================
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                    
                 } catch (error) {
+                    console.error('❌ Error eliminando datos:', error);
                     this._core.mostrarToast('❌ Error eliminando datos: ' + error.message, 'error');
                 }
             }
@@ -885,14 +966,13 @@ class UITools {
     }
 
     // ============================================================
-    // MOSTRAR ESTADO DEL BALANCEADOR DE CARGA
+    // MOSTRAR ESTADO DEL BALANCEADOR
     // ============================================================
 
     async _mostrarEstadoBalanceador() {
         const core = this._core;
         
         try {
-            // Verificar que el balanceador exista
             if (!window.balanceadorGroq) {
                 await core.alert(
                     '❌ El balanceador de carga no está disponible.\n\n' +
@@ -909,7 +989,6 @@ class UITools {
             const modelosTotal = estado.modelosTotal || 0;
             const usaPrioritario = estado.usaPrioritario;
 
-            // Obtener información detallada de cada modelo
             let detallesModelos = '';
             if (window.balanceadorGroq._modelos) {
                 for (const modelo of window.balanceadorGroq._modelos) {
@@ -980,10 +1059,13 @@ class UITools {
 // ============================================================
 
 window.UITools = new UITools();
-console.log('✅ UITools v22.9 - COMPLETO CON BALANCEADOR DE CARGA GROQ');
+console.log('✅ UITools v23.0 - COMPLETO CON LIMPIEZA DE ELIPSE');
+console.log('  🌌 Limpia TODOS los datos del Modo Elipse');
+console.log('  🗑️ Elimina ondas, configuración y persistencia');
+console.log('  🔥 Elimina claves de localStorage: pipeline_elipse_*');
+console.log('  🔥 Elimina configuración en IndexedDB: elipse_estado');
+console.log('  🔥 Elimina backups de estado por tema');
+console.log('  📊 Incluye estadísticas de Elipse en diagnóstico');
 console.log('  ⚖️ Tarjeta "Balanceador Groq" en Herramientas');
-console.log('  📊 Método _mostrarEstadoBalanceador()');
 console.log('  💾 Cálculo real de almacenamiento con exportar');
-console.log('  📊 Muestra número de registros/items');
-console.log('  🔄 Actualización en tiempo real cada 10 segundos');
-console.log('  🎯 Todas las funcionalidades originales preservadas');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

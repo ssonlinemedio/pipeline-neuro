@@ -1,5 +1,5 @@
 // ============================================================
-// UI CORE v18.22 - COMPLETO Y CORREGIDO
+// UI CORE v18.32 - CON MANUAL INTERACTIVO
 // ============================================================
 
 class UICore {
@@ -20,6 +20,14 @@ class UICore {
         this.MAX_HISTORIAS = 10;
         this.MAX_FRASES_POR_HISTORIA = 10;
         this._eventosConfigurados = false;
+        this._cargandoModulo = null;
+        
+        this._modoDashboard = 'lite';
+        this._cargarPreferenciaDashboard();
+        
+        // ============================================================
+        // MÓDULOS REGISTRADOS - INCLUYE MANUAL
+        // ============================================================
         this._moduleNames = {
             'dashboard': 'Dashboard',
             'study': 'Estudiar',
@@ -37,7 +45,10 @@ class UICore {
             'neuro': '🧠 Estado Neuro',
             'familias': '🧠 Familias de Caracteres',
             'tutor': '🧠 Tutor NeuroAdaptativo',
-            'tutor_generador': '🧠 Generador NeuroAdaptativo'
+            'tutor_generador': '🧠 Generador NeuroAdaptativo',
+            'elipse': '🌌 Modo Elipse',
+            'ondasCruzadas': '🌊 Modo Ondas Cruzadas',
+            'manual': '📖 Manual Interactivo'
         };
         
         this._cargaCompletada = false;
@@ -58,9 +69,6 @@ class UICore {
         this._vigiaActivity = 0;
         this._centinelaActivity = 0;
         
-        // ============================================================
-        // BALANCEADOR DE CARGA GROQ
-        // ============================================================
         this._balanceador = window.balanceadorGroq || null;
         this._indicadorModelo = null;
         this._balanceadorEventosRegistrados = false;
@@ -68,25 +76,69 @@ class UICore {
         this._intentosCreacionIndicador = 0;
         this._maxIntentosCreacionIndicador = 5;
         
-        // ============================================================
-        // INDICADOR DE TOKENS
-        // ============================================================
         this._tokenIndicatorCreado = false;
         this._ultimoEstadoTokens = null;
         
-        // ============================================================
-        // RESPONSIVE
-        // ============================================================
         this._isMobile = window.innerWidth < 640;
         this._isSmallMobile = window.innerWidth < 400;
         
-        // Listener para cambios de tamaño
+        this._navegacionElipsePendiente = false;
+        this._navegacionOndasCruzadasPendiente = false;
+        this._navegacionManualPendiente = false;
+        
         window.addEventListener('resize', () => {
             this._isMobile = window.innerWidth < 640;
             this._isSmallMobile = window.innerWidth < 400;
             this._actualizarHeaderResponsive();
             this._actualizarIndicadorTokens();
         });
+    }
+
+    // ============================================================
+    // MODO DASHBOARD
+    // ============================================================
+
+    _cargarPreferenciaDashboard() {
+        try {
+            const saved = localStorage.getItem('pipeline_dashboard_modo');
+            if (saved === 'expandido' || saved === 'lite') {
+                this._modoDashboard = saved;
+            }
+        } catch (e) {
+            this._modoDashboard = 'lite';
+        }
+    }
+
+    _guardarPreferenciaDashboard() {
+        try {
+            localStorage.setItem('pipeline_dashboard_modo', this._modoDashboard);
+        } catch (e) {}
+    }
+
+    toggleModoDashboard() {
+        this._modoDashboard = this._modoDashboard === 'lite' ? 'expandido' : 'lite';
+        this._guardarPreferenciaDashboard();
+        
+        const mensaje = this._modoDashboard === 'lite' 
+            ? '🧘 Modo Lite activado - Vista simplificada' 
+            : '🚀 Modo Expandido activado - Todas las funcionalidades';
+        this.mostrarToast(mensaje, 'info');
+        
+        if (window.UIDashboard) {
+            window.UIDashboard._cargarDashboardInicial(this);
+        }
+    }
+
+    getModoDashboard() {
+        return this._modoDashboard;
+    }
+
+    esModoLite() {
+        return this._modoDashboard === 'lite';
+    }
+
+    esModoExpandido() {
+        return this._modoDashboard === 'expandido';
     }
 
     _esJeroglifico(idioma) {
@@ -97,10 +149,122 @@ class UICore {
         );
     }
 
+    // ============================================================
+    // REGISTRAR MÓDULO MANUAL
+    // ============================================================
+
+    _registrarModuloManual() {
+        console.log('📖 Registrando módulo Manual Interactivo...');
+        
+        if (this._moduleNames['manual']) {
+            console.log('📖 Módulo Manual ya registrado');
+            return;
+        }
+        
+        this._moduleNames['manual'] = '📖 Manual Interactivo';
+        
+        if (window.UIManual && typeof window.UIManual.init === 'function') {
+            try {
+                if (!window.UIManual._initDone) {
+                    window.UIManual.init(this).then(() => {
+                        console.log('✅ UIManual inicializado correctamente');
+                    }).catch(e => {
+                        console.warn('⚠️ Error inicializando UIManual:', e.message);
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Error en init de UIManual:', e.message);
+            }
+        } else {
+            console.warn('⚠️ UIManual no está disponible para registrar');
+        }
+        
+        if (this._navegacionManualPendiente) {
+            this._navegacionManualPendiente = false;
+            this._cargarContenidoModulo('manual');
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR MÓDULO ELIPSE
+    // ============================================================
+
+    _registrarModuloElipse() {
+        console.log('🌌 Registrando módulo Elipse...');
+        
+        if (this._moduleNames['elipse']) {
+            console.log('🌌 Módulo Elipse ya registrado');
+            return;
+        }
+        
+        this._moduleNames['elipse'] = '🌌 Modo Elipse';
+        
+        if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+            try {
+                if (!window.UIClipse._initDone) {
+                    window.UIClipse.init(this).then(() => {
+                        console.log('✅ UIClipse inicializado correctamente');
+                    }).catch(e => {
+                        console.warn('⚠️ Error inicializando UIClipse:', e.message);
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Error en init de UIClipse:', e.message);
+            }
+        } else {
+            console.warn('⚠️ UIClipse no está disponible para registrar');
+        }
+        
+        if (this._navegacionElipsePendiente) {
+            this._navegacionElipsePendiente = false;
+            this._cargarContenidoModulo('elipse');
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR MÓDULO ONDAS CRUZADAS
+    // ============================================================
+
+    _registrarModuloOndasCruzadas() {
+        console.log('🌊 Registrando módulo Ondas Cruzadas...');
+        
+        if (this._moduleNames['ondasCruzadas']) {
+            console.log('🌊 Módulo Ondas Cruzadas ya registrado');
+            return;
+        }
+        
+        this._moduleNames['ondasCruzadas'] = '🌊 Modo Ondas Cruzadas';
+        
+        if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+            try {
+                if (!window.UIOndasCruzadas._initDone) {
+                    window.UIOndasCruzadas.init(this).then(() => {
+                        console.log('✅ UIOndasCruzadas inicializado correctamente');
+                    }).catch(e => {
+                        console.warn('⚠️ Error inicializando UIOndasCruzadas:', e.message);
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Error en init de UIOndasCruzadas:', e.message);
+            }
+        } else {
+            console.warn('⚠️ UIOndasCruzadas no está disponible para registrar');
+        }
+        
+        if (this._navegacionOndasCruzadasPendiente) {
+            this._navegacionOndasCruzadasPendiente = false;
+            this._cargarContenidoModulo('ondasCruzadas');
+        }
+    }
+
+    // ============================================================
+    // INICIALIZACIÓN
+    // ============================================================
+
     async init() {
         if (this._initDone || this._inicializado) return this;
         
-        console.log('🎨 Inicializando UI Core v18.22...');
+        console.log('🎨 Inicializando UI Core v18.32 con Manual Interactivo...');
         
         try {
             this._esperandoDatos = true;
@@ -120,9 +284,6 @@ class UICore {
                 this._dialogs._crearDialogPersonalizado();
             }
             
-            // ============================================================
-            // INICIALIZAR BALANCEADOR
-            // ============================================================
             if (window.balanceadorGroq) {
                 this._balanceador = window.balanceadorGroq;
                 if (!this._balanceador._initDone) {
@@ -153,6 +314,9 @@ class UICore {
             this._registrarModuloCompeticiones();
             this._registrarModuloCaracteres();
             this._registrarModuloFonetica();
+            this._registrarModuloElipse();
+            this._registrarModuloOndasCruzadas();
+            this._registrarModuloManual();
             
             setTimeout(() => {
                 this._actualizarIndicadoresSeguro();
@@ -168,8 +332,10 @@ class UICore {
             
             this._inicializado = true;
             this._initDone = true;
-            console.log('🎨 UI Core v18.22: Inicializada correctamente');
+            console.log('🎨 UI Core v18.32: Inicializada correctamente');
+            console.log(`   📌 Modo Dashboard: ${this._modoDashboard === 'lite' ? '🧘 Lite' : '🚀 Expandido'}`);
             console.log('  📌 Módulos registrados:', Object.keys(this._moduleNames));
+            console.log('  📖 Manual Interactivo: Registrado');
         } catch (e) {
             console.warn('⚠️ UI Core init parcial:', e);
             this._inicializado = true;
@@ -184,771 +350,301 @@ class UICore {
     // ============================================================
 
     _registrarEventosBalanceador() {
-        if (this._balanceadorEventosRegistrados) return;
-        if (!this._balanceador) return;
+        if (this._balanceadorEventosRegistrados || !this._balanceador) return;
         
-        this._balanceadorEventosRegistrados = true;
-        
-        this._balanceador.onCambioModelo((modelo) => {
-            console.log(`⚖️ UI: Modelo cambiado a ${modelo}`);
-            this._actualizarIndicadorBalanceador();
-            const esPrioritario = modelo === this._balanceador.getModeloPrioritario();
-            this.mostrarToast(
-                esPrioritario ? 
-                    `🟢 Modelo prioritario: ${modelo}` : 
-                    `🟡 Modelo alternativo: ${modelo}`,
-                esPrioritario ? 'success' : 'warning'
-            );
-        });
-        
-        this._balanceador.onEstadoActualizado(() => {
-            this._actualizarIndicadorBalanceador();
-        });
-        
-        // Escuchar eventos globales también
-        window.addEventListener('balanceadorModeloCambiado', (e) => {
-            console.log('⚖️ Evento balanceadorModeloCambiado:', e.detail.modelo);
-            this._actualizarIndicadorBalanceador();
-        });
-        
-        window.addEventListener('balanceadorEstadoActualizado', () => {
-            this._actualizarIndicadorBalanceador();
-        });
-        
-        // Escuchar eventos de tokens
-        window.addEventListener('tokensActualizados', (e) => {
-            this._actualizarIndicadorTokens(e.detail);
-            this._actualizarActividad();
-        });
-        
-        console.log('🔗 Eventos del balanceador y tokens registrados en UI Core');
-    }
-
-    // ============================================================
-    // HEADER RESPONSIVE
-    // ============================================================
-
-    _actualizarHeaderResponsive() {
-        const headerContent = document.querySelector('.header-content');
-        if (headerContent) {
-            headerContent.style.cssText = `
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                justify-content: space-between;
-                gap: 4px 8px;
-                padding: 6px 10px;
-                width: 100%;
-                box-sizing: border-box;
-            `;
-        }
-
-        const brand = document.querySelector('.brand');
-        if (brand) {
-            brand.style.cssText = `
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                flex-shrink: 0;
-                font-size: clamp(13px, 4vw, 20px);
-            `;
-            const brandSpan = brand.querySelector('span');
-            if (brandSpan) {
-                brandSpan.textContent = this._isSmallMobile ? 'Pipeline' : 'Pipeline Neuro';
-                brandSpan.style.fontSize = this._isSmallMobile ? '13px' : 'inherit';
-            }
-        }
-
-        const headerRight = document.querySelector('.header-right');
-        if (headerRight) {
-            headerRight.style.cssText = `
-                display: flex;
-                align-items: center;
-                gap: 3px;
-                flex-wrap: wrap;
-                flex-shrink: 0;
-            `;
-        }
-
-        const userBadge = document.getElementById('userBadge');
-        if (userBadge) {
-            const userName = userBadge.querySelector('.user-name');
-            if (userName) {
-                userName.style.cssText = `
-                    font-size: ${this._isSmallMobile ? '11px' : '13px'};
-                    max-width: ${this._isSmallMobile ? '50px' : '80px'};
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                    display: inline-block;
-                `;
-            }
-            const userAvatar = userBadge.querySelector('.user-avatar');
-            if (userAvatar) {
-                userAvatar.style.fontSize = this._isSmallMobile ? '16px' : '20px';
-            }
-        }
-
-        // Vigía y Centinela indicators
-        const vigiaIndicator = document.getElementById('vigiaIndicator');
-        const centinelaIndicator = document.getElementById('centinelaIndicator');
-        
-        for (const indicator of [vigiaIndicator, centinelaIndicator]) {
-            if (indicator) {
-                indicator.style.cssText = `
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 2px;
-                    font-size: ${this._isSmallMobile ? '8px' : (this._isMobile ? '9px' : '11px')};
-                    flex-shrink: 0;
-                `;
-                const label = indicator.querySelector('.vigia-label, .centinela-label');
-                if (label) {
-                    label.style.display = this._isSmallMobile ? 'none' : 'inline';
-                }
-                const dot = indicator.querySelector('.vigia-dot, .centinela-dot');
-                if (dot) {
-                    dot.style.width = this._isSmallMobile ? '6px' : '8px';
-                    dot.style.height = this._isSmallMobile ? '6px' : '8px';
-                }
-            }
-        }
-    }
-
-    // ============================================================
-    // INICIAR INDICADORES HEADER
-    // ============================================================
-
-    _iniciarIndicadoresHeader() {
-        const brand = document.querySelector('.brand');
-        if (!brand) return;
-        
-        // Aplicar responsive al header
-        this._actualizarHeaderResponsive();
-        
-        if (!document.getElementById('vigiaIndicator')) {
-            const vigiaIndicator = document.createElement('div');
-            vigiaIndicator.id = 'vigiaIndicator';
-            vigiaIndicator.className = 'vigia-indicator';
-            vigiaIndicator.innerHTML = `
-                <div class="vigia-dot" id="vigiaDot"></div>
-                <span class="vigia-label">Vigía</span>
-                <span class="vigia-status" id="vigiaStatus">● Offline</span>
-            `;
-            brand.appendChild(vigiaIndicator);
-        }
-        
-        if (!document.getElementById('centinelaIndicator')) {
-            const centinelaIndicator = document.createElement('div');
-            centinelaIndicator.id = 'centinelaIndicator';
-            centinelaIndicator.className = 'centinela-indicator';
-            centinelaIndicator.innerHTML = `
-                <div class="centinela-dot" id="centinelaDot"></div>
-                <span class="centinela-label">Centinela</span>
-                <span class="centinela-status" id="centinelaStatus">● Activo</span>
-            `;
-            brand.appendChild(centinelaIndicator);
-        }
-        
-        const existingSelector = document.getElementById('idiomaSelectorWrapper');
-        if (existingSelector) existingSelector.remove();
-        
-        // Crear el contenedor y el indicador del balanceador
-        this._crearIndicadorBalanceador();
-        
-        // PRIMERO: Configurar el botón de modo inverso
-        this._configurarModoInverso();
-        
-        // SEGUNDO: Crear el indicador de tokens (se inserta ANTES del botón)
-        this._crearIndicadorTokens();
-        
-        this._actualizarIndicadoresSeguro();
-        
-        // Aplicar responsive cada vez que cambie el tamaño
-        window.addEventListener('resize', () => {
-            this._actualizarHeaderResponsive();
-        });
-        
-        if (this._vigiaInterval) clearInterval(this._vigiaInterval);
-        this._vigiaInterval = setInterval(() => {
-            this._actualizarIndicadoresSeguro();
-            this._actualizarBarraVigiaCentinela();
-            this._actualizarIndicadorBalanceador();
-            this._actualizarIndicadorTokens();
-        }, 3000);
-    }
-
-    // ============================================================
-    // CREAR INDICADOR VISUAL DEL BALANCEADOR
-    // ============================================================
-
-    _crearIndicadorBalanceador() {
-        if (document.getElementById('balanceadorModeloIndicator')) {
-            this._indicadorCreado = true;
-            this._actualizarIndicadorBalanceador();
-            return;
-        }
-
-        let container = document.getElementById('vigiaCentinelaContainer');
-        if (!container) {
-            const header = document.querySelector('.header-content');
-            if (!header) {
-                console.warn('⚠️ No se encontró el header para crear el indicador');
-                return;
-            }
-            
-            container = document.createElement('div');
-            container.id = 'vigiaCentinelaContainer';
-            container.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-                padding: 3px 6px;
-                background: var(--bg);
-                border-radius: 6px;
-                border: 1px solid var(--light);
-                min-width: clamp(60px, 15vw, 180px);
-                max-width: 200px;
-                flex: 1;
-                flex-shrink: 0;
-            `;
-            header.appendChild(container);
-        }
-
-        if (!document.body.contains(container)) {
-            console.warn('⚠️ Contenedor no está en el DOM, reintentando...');
-            if (this._intentosCreacionIndicador < this._maxIntentosCreacionIndicador) {
-                this._intentosCreacionIndicador++;
-                setTimeout(() => this._crearIndicadorBalanceador(), 300);
-            }
-            return;
-        }
-
-        const existing = document.getElementById('balanceadorModeloIndicator');
-        if (existing) existing.remove();
-
-        const indicador = document.createElement('div');
-        indicador.id = 'balanceadorModeloIndicator';
-        indicador.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: clamp(8px, 1.5vw, 11px);
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: var(--bg);
-            border: 1px solid var(--light);
-            margin-top: 1px;
-            transition: all 0.5s ease;
-            cursor: default;
-            position: relative;
-            overflow: hidden;
-            flex-shrink: 0;
-        `;
-        
-        const modeloNombre = this._balanceador?.getModeloActivo() || 'openai/gpt-oss-120b';
-        const nombreCorto = this._isSmallMobile ? this._abreviarModelo(modeloNombre) : modeloNombre;
-        
-        indicador.innerHTML = `
-            <span class="balanceador-dot" id="balanceadorStatusDot" style="width:${this._isSmallMobile ? '6px' : '8px'};height:${this._isSmallMobile ? '6px' : '8px'};border-radius:50%;display:inline-block;background:var(--success);flex-shrink:0;"></span>
-            <span class="balanceador-nombre" id="balanceadorModeloNombre" style="font-weight:600;color:var(--dark);font-size:clamp(8px,1.5vw,11px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:clamp(60px,10vw,160px);">${nombreCorto}</span>
-            <span class="balanceador-estado" id="balanceadorModeloEstado" style="font-size:clamp(7px,1.2vw,10px);color:var(--gray);white-space:nowrap;margin-left:auto;">🟢</span>
-        `;
-
-        if (document.body.contains(container)) {
-            container.appendChild(indicador);
-        } else {
-            console.warn('⚠️ Contenedor ya no está en el DOM, reintentando...');
-            if (this._intentosCreacionIndicador < this._maxIntentosCreacionIndicador) {
-                this._intentosCreacionIndicador++;
-                setTimeout(() => this._crearIndicadorBalanceador(), 300);
-            }
-            return;
-        }
-
-        this._indicadorModelo = {
-            dot: document.getElementById('balanceadorStatusDot'),
-            nombre: document.getElementById('balanceadorModeloNombre'),
-            estado: document.getElementById('balanceadorModeloEstado')
-        };
-        this._indicadorCreado = true;
-        this._intentosCreacionIndicador = 0;
-
-        this._actualizarIndicadorBalanceador();
-        console.log('✅ Indicador del balanceador creado');
-    }
-
-    _abreviarModelo(modelo) {
-        const abreviaturas = {
-            'openai/gpt-oss-120b': 'GPT OSS',
-            'qwen/qwen3.6-27b': 'Qwen3.6',
-            'qwen/qwen3-32b': 'Qwen3',
-            'llama-3.3-70b-versatile': 'Llama 70B',
-            'llama-3.1-8b-instant': 'Llama 8B',
-            'mixtral-8x7b-32768': 'Mixtral 8x7B'
-        };
-        return abreviaturas[modelo] || modelo.split('/').pop() || modelo;
-    }
-
-    // ============================================================
-    // ACTUALIZAR INDICADOR VISUAL DEL BALANCEADOR
-    // ============================================================
-
-    _actualizarIndicadorBalanceador() {
-        if (!this._indicadorModelo) {
-            if (!document.getElementById('balanceadorModeloIndicator')) {
-                this._crearIndicadorBalanceador();
-                return;
-            }
-            this._indicadorModelo = {
-                dot: document.getElementById('balanceadorStatusDot'),
-                nombre: document.getElementById('balanceadorModeloNombre'),
-                estado: document.getElementById('balanceadorModeloEstado')
-            };
-            if (!this._indicadorModelo.nombre) return;
-        }
-
-        const estado = this._balanceador?.getEstado();
-        if (!estado) {
-            if (this._indicadorModelo.nombre) {
-                this._indicadorModelo.nombre.textContent = '⚖️';
-                this._indicadorModelo.estado.textContent = '⏳';
-                this._indicadorModelo.dot.style.background = 'var(--gray)';
-            }
-            return;
-        }
-
-        const modelo = estado.modeloActivo || 'N/A';
-        const esPrioritario = modelo === estado.modeloPrioritario;
-        const modelosDisponibles = estado.modelosDisponibles || 0;
-        const totalModelos = estado.modelosTotal || 0;
-
-        if (this._indicadorModelo.nombre) {
-            const nombreCorto = this._isSmallMobile ? this._abreviarModelo(modelo) : modelo;
-            this._indicadorModelo.nombre.textContent = nombreCorto;
-            this._indicadorModelo.nombre.style.color = esPrioritario ? 'var(--success)' : 'var(--warning)';
-            this._indicadorModelo.nombre.title = `Modelo activo: ${modelo}`;
-        }
-
-        if (this._indicadorModelo.estado) {
-            if (esPrioritario) {
-                this._indicadorModelo.estado.textContent = this._isSmallMobile ? '🟢' : '🟢 Prioritario';
-                this._indicadorModelo.estado.style.color = 'var(--success)';
-                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--success)';
-            } else {
-                this._indicadorModelo.estado.textContent = this._isSmallMobile ? `🟡${modelosDisponibles}` : `🟡 ${modelosDisponibles}/${totalModelos}`;
-                this._indicadorModelo.estado.style.color = 'var(--warning)';
-                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--warning)';
-            }
-
-            if (modelosDisponibles === 0) {
-                this._indicadorModelo.estado.textContent = '🔴';
-                this._indicadorModelo.estado.style.color = 'var(--danger)';
-                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--danger)';
-            }
-        }
-
-        const tooltip = `Modelo activo: ${modelo}\nPrioritario: ${estado.modeloPrioritario}\nDisponibles: ${modelosDisponibles}/${totalModelos}\n${esPrioritario ? '✅ Usando modelo prioritario' : '⚠️ Usando modelo alternativo'}`;
-        if (this._indicadorModelo.nombre) this._indicadorModelo.nombre.title = tooltip;
-        if (this._indicadorModelo.estado) this._indicadorModelo.estado.title = tooltip;
-    }
-
-    // ============================================================
-    // CONFIGURAR MODO INVERSO
-    // ============================================================
-
-    _configurarModoInverso() {
-        const headerRight = document.querySelector('.header-right');
-        if (!headerRight) return;
-        
-        const existingWrapper = document.getElementById('idiomaSelectorWrapper');
-        if (existingWrapper) existingWrapper.remove();
-        
-        if (!document.getElementById('modoInversoBtn')) {
-            const modoBtn = document.createElement('button');
-            modoBtn.id = 'modoInversoBtn';
-            modoBtn.className = 'icon-btn';
-            modoBtn.title = 'Alternar modo inverso';
-            modoBtn.style.cssText = `
-                padding: ${this._isSmallMobile ? '2px 4px' : '3px 6px'};
-                background: none;
-                border: none;
-                color: var(--gray);
-                cursor: pointer;
-                font-size: clamp(14px, 3vw, 18px);
-                border-radius: 4px;
-                transition: all 0.3s ease;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            `;
-            modoBtn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
-            
-            modoBtn.addEventListener('click', () => {
-                const activo = modoInverso.toggle();
-                this.mostrarToast(
-                    activo ? '🔄 Modo Inverso activado' : '🔄 Modo Normal',
-                    'info'
-                );
-                this._actualizarModoInversoBtn();
-                if (window.UIStudy) {
-                    window.UIStudy._renderizarFraseInteractiva();
-                }
-            });
-            
-            headerRight.appendChild(modoBtn);
-            this._actualizarModoInversoBtn();
-        }
-    }
-
-    _actualizarModoInversoBtn() {
-        const btn = document.getElementById('modoInversoBtn');
-        if (!btn) return;
-        const activo = modoInverso.isActivo();
-        btn.style.color = activo ? 'var(--secondary)' : 'var(--gray)';
-        btn.style.background = activo ? 'var(--secondary)20' : 'transparent';
-        btn.title = activo ? 'Modo Inverso activado' : 'Modo Normal';
-        if (activo) {
-            btn.style.border = '1px solid var(--secondary)';
-        } else {
-            btn.style.border = 'none';
-        }
-    }
-
-    // ============================================================
-    // CREAR INDICADOR DE TOKENS (RESPONSIVE)
-    // ============================================================
-
-    _crearIndicadorTokens() {
-        if (document.getElementById('tokenIndicator')) {
-            this._tokenIndicatorCreado = true;
-            this._actualizarIndicadorTokens();
-            return;
-        }
-
-        const headerRight = document.querySelector('.header-right');
-        if (!headerRight) {
-            console.warn('⚠️ No se encontró el header-right para el indicador de tokens');
-            setTimeout(() => this._crearIndicadorTokens(), 500);
-            return;
-        }
-
-        const modoBtn = document.getElementById('modoInversoBtn');
-        
-        const indicator = document.createElement('span');
-        indicator.id = 'tokenIndicator';
-        indicator.className = 'token-indicator';
-        indicator.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            padding: ${this._isSmallMobile ? '1px 4px' : '2px 8px'};
-            border-radius: ${this._isSmallMobile ? '8px' : '10px'};
-            font-size: clamp(8px, 2vw, 11px);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid var(--light);
-            background: var(--bg);
-            color: var(--gray);
-            white-space: nowrap;
-            flex-shrink: 0;
-        `;
-        indicator.title = 'Consumo de tokens de Groq - Haz clic para detalles';
-        
-        // En móvil muy pequeño, solo mostrar el icono
-        const displayText = this._isSmallMobile ? '🪙' : '🪙 0%';
-        indicator.innerHTML = displayText;
-        
-        indicator.onclick = () => {
-            this._mostrarDetalleTokens();
-        };
-        
-        indicator.onmouseover = function() {
-            this.style.transform = 'scale(1.05)';
-            this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-        };
-        indicator.onmouseout = function() {
-            this.style.transform = 'none';
-            this.style.boxShadow = 'none';
-        };
-        
-        // Insertar ANTES del botón de modo inverso
-        if (modoBtn && modoBtn.parentNode) {
-            modoBtn.parentNode.insertBefore(indicator, modoBtn);
-            console.log('✅ Indicador de tokens insertado ANTES del botón Modo Inverso');
-        } else {
-            headerRight.appendChild(indicator);
-            console.log('✅ Indicador de tokens añadido al final del header');
-        }
-        
-        this._tokenIndicatorCreado = true;
-        this._actualizarIndicadorTokens();
-    }
-
-    // ============================================================
-    // ACTUALIZAR INDICADOR DE TOKENS (RESPONSIVE)
-    // ============================================================
-
-    _actualizarIndicadorTokens(tokenData) {
-        const indicator = document.getElementById('tokenIndicator');
-        if (!indicator) {
-            if (!this._tokenIndicatorCreado) {
-                this._crearIndicadorTokens();
-            }
-            return;
-        }
-
-        if (!tokenData && window.vigia && typeof window.vigia.obtenerEstadoTokens === 'function') {
-            tokenData = window.vigia.obtenerEstadoTokens();
-        }
-
-        if (!tokenData) {
-            indicator.innerHTML = this._isSmallMobile ? '🪙' : '🪙 ...';
-            indicator.style.borderColor = 'var(--light)';
-            indicator.style.color = 'var(--gray)';
-            indicator.style.background = 'var(--bg)';
-            return;
-        }
-
-        const pct = tokenData.diario?.porcentaje || 0;
-        const estado = tokenData.estado || 'normal';
-        const emoji = tokenData.emoji || '🪙';
-        const color = tokenData.color || 'var(--success)';
-        
-        // En móvil muy pequeño, solo mostrar icono + porcentaje sin espacio
-        const displayText = this._isSmallMobile ? 
-            (pct > 0 ? `${emoji}${pct}%` : emoji) : 
-            (pct > 0 ? `${emoji} ${pct}%` : `${emoji} 0%`);
-        
-        indicator.innerHTML = displayText;
-        indicator.style.borderColor = color;
-        indicator.style.color = color;
-        indicator.style.background = `${color}15`;
-        indicator.title = `Consumo: ${pct}% · ${tokenData.label || 'Normal'}\nRestantes: ${Math.round((tokenData.diario?.tokensRestantes || 0) / 1000)}K\nReinicio: ${tokenData.tiempoReinicio || 'N/A'}`;
-        
-        if (estado === 'critico') {
-            indicator.classList.add('critico');
-            indicator.style.animation = 'pulse-warning 1.5s ease-in-out infinite';
-        } else {
-            indicator.classList.remove('critico');
-            indicator.style.animation = 'none';
-        }
-        
-        this._ultimoEstadoTokens = tokenData;
-    }
-
-    // ============================================================
-    // MOSTRAR DETALLE DE TOKENS EN MODAL
-    // ============================================================
-
-    async _mostrarDetalleTokens() {
-        if (!window.vigia || typeof window.vigia.obtenerEstadoTokens !== 'function') {
-            this.mostrarToast('⚠️ No se puede obtener el estado de tokens', 'error');
-            return;
-        }
-
-        const data = window.vigia.obtenerEstadoTokens();
-        if (!data) {
-            this.mostrarToast('⚠️ No hay datos de tokens disponibles', 'error');
-            return;
-        }
-
-        const pctDiario = data.diario?.porcentaje || 0;
-        const usadoDiario = Math.round((data.diario?.usado || 0) / 1000);
-        const limiteDiario = Math.round((data.diario?.limite || 150000) / 1000);
-        const restantes = Math.round((data.diario?.tokensRestantes || 0) / 1000);
-        const pctMinuto = data.porMinuto?.porcentaje || 0;
-        const usadoMinuto = Math.round((data.porMinuto?.usado || 0) / 1000);
-        const limiteMinuto = Math.round((data.porMinuto?.limite || 20000) / 1000);
-        const peticiones = data.peticionesMinuto?.actual || 0;
-        const limitePeticiones = data.peticionesMinuto?.limite || 20;
-        const tiempoReinicio = data.tiempoReinicio || 'N/A';
-        
-        let colorBarra = 'var(--success)';
-        let mensajeEstado = '✅ Consumo normal';
-        let recomendacion = '💡 Sigue así, estás usando los tokens de forma eficiente.';
-        
-        if (pctDiario >= 95) {
-            colorBarra = 'var(--danger)';
-            mensajeEstado = '🔴 ¡Límite crítico!';
-            recomendacion = '⚠️ Cambia a modo "Flashcard" offline para ahorrar tokens.';
-        } else if (pctDiario >= 80) {
-            colorBarra = 'var(--warning)';
-            mensajeEstado = '🟠 Consumo alto';
-            recomendacion = '📊 Considera reducir el uso de ejercicios con Groq.';
-        } else if (pctDiario >= 60) {
-            colorBarra = '#FDCB6E';
-            mensajeEstado = '🟡 Consumo medio';
-            recomendacion = '📖 Puedes seguir usando Groq con moderación.';
-        } else {
-            colorBarra = 'var(--success)';
-            mensajeEstado = '🟢 Consumo bajo';
-            recomendacion = '✅ Disfruta estudiando con Groq sin preocupaciones.';
-        }
-
-        const mensaje = 
-`📊 **CONSUMO DE TOKENS GROQ**
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📈 **LÍMITE DIARIO**
-• Usados: ${usadoDiario}K / ${limiteDiario}K tokens
-• Restantes: ${restantes}K tokens
-• Porcentaje: ${pctDiario}%
-• Estado: ${mensajeEstado}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⏱️ **CONSUMO POR MINUTO**
-• ${usadoMinuto}K / ${limiteMinuto}K tokens
-• ${pctMinuto}% del límite
-
-📨 **PETICIONES**
-• ${peticiones} / ${limitePeticiones} por minuto
-• ${Math.round((peticiones / limitePeticiones) * 100)}% del límite
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔄 **REINICIO DIARIO**
-• ${tiempoReinicio}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 **RECOMENDACIÓN**
-${recomendacion}
-
-${pctDiario >= 98 ? '🔴 ¡Alerta! Estás al 98% del límite. Usa modo offline.' : ''}
-${pctDiario >= 80 && pctDiario < 98 ? '🟡 Consumo elevado. Planifica tu uso de Groq.' : ''}
-${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 **CONSEJO**
-• Flashcard y Escritura usan menos tokens
-• Múltiple y Escucha usan más tokens
-• Usa modo offline para ahorrar tokens`;
-
-        await this.alert(mensaje, '🪙 Consumo de Tokens');
-    }
-
-    // ============================================================
-    // REGISTRAR MÓDULO DE FONÉTICA
-    // ============================================================
-
-    _registrarModuloFonetica() {
-        console.log('🎤 Registrando módulo de Fonética...');
-        
-        if (!window.UIFonetica) {
-            console.warn('⚠️ UIFonética no encontrado, intentando registrar más tarde...');
-            setTimeout(() => {
-                if (window.UIFonetica) {
-                    console.log('🎤 UIFonética encontrado, registrando...');
-                    this._registrarModuloFonetica();
-                }
-            }, 1000);
-            return;
-        }
-        
-        this._moduleNames['fonetica'] = '🎤 Fonética';
+        console.log('🔗 Registrando eventos del balanceador...');
         
         try {
-            if (typeof window.UIFonetica.init === 'function') {
-                window.UIFonetica.init(this);
-                console.log('✅ UIFonética inicializado correctamente');
-            } else {
-                console.warn('⚠️ UIFonética no tiene método init()');
+            if (typeof this._balanceador.onCambioModelo === 'function') {
+                this._balanceador.onCambioModelo((modelo) => {
+                    console.log(`⚖️ Balanceador: Modelo cambiado a ${modelo}`);
+                    this._actualizarIndicadorBalanceador();
+                    this.mostrarToast(`🔄 Modelo activo: ${modelo}`, 'info');
+                });
             }
+            
+            if (typeof this._balanceador.onEstadoActualizado === 'function') {
+                this._balanceador.onEstadoActualizado(() => {
+                    this._actualizarIndicadorBalanceador();
+                });
+            }
+            
+            this._balanceadorEventosRegistrados = true;
+            console.log('✅ Eventos del balanceador registrados');
         } catch (e) {
-            console.warn('⚠️ Error inicializando UIFonética:', e.message);
+            console.warn('⚠️ Error registrando eventos del balanceador:', e.message);
+            this._balanceadorEventosRegistrados = true;
         }
     }
 
-    irAFonetica() {
-        this.irAModulo('fonetica');
-    }
-
     // ============================================================
-    // REGISTRAR MÓDULO DE CARACTERES
+    // CARGAR CONTENIDO DE MÓDULO - CON MANUAL
     // ============================================================
 
-    _registrarModuloCaracteres() {
-        console.log('🀄 Registrando módulo de caracteres...');
-        
-        if (!window.UICaracteres) {
-            console.warn('⚠️ UICaracteres no encontrado, intentando registrar más tarde...');
-            setTimeout(() => {
-                if (window.UICaracteres) {
-                    console.log('🀄 UICaracteres encontrado, registrando...');
-                    this._registrarModuloCaracteres();
-                }
-            }, 1000);
+    _cargarContenidoModulo(module) {
+        if (this._cargandoModulo === module) {
+            console.log(`⏳ El módulo "${module}" ya se está cargando.`);
             return;
         }
-        
-        this._moduleNames['caracteres'] = '🀄 Caracteres';
-        
+        this._cargandoModulo = module;
+
         try {
-            if (typeof window.UICaracteres.init === 'function') {
-                window.UICaracteres.init(this);
-                console.log('✅ UICaracteres inicializado correctamente');
-            } else {
-                console.warn('⚠️ UICaracteres no tiene método init()');
+            switch(module) {
+                case 'study':
+                    if (window.UIStudy) window.UIStudy.cargar(this);
+                    break;
+                case 'grammar':
+                    if (window.UIGrammar) window.UIGrammar.cargar(this);
+                    break;
+                case 'temas':
+                    if (window.UITemas) window.UITemas.cargar(this);
+                    break;
+                case 'stories':
+                    if (window.UITemas) window.UITemas.cargarHistorias(this);
+                    break;
+                case 'stats':
+                    if (window.UIDashboard) window.UIDashboard.cargarEstadisticas(this);
+                    break;
+                case 'vigia':
+                    if (window.UIChat) window.UIChat.cargar(this);
+                    break;
+                case 'config':
+                    if (window.UIConfig) window.UIConfig.cargar(this);
+                    break;
+                case 'tools':
+                    if (window.UITools) window.UITools.cargar(this);
+                    break;
+                case 'espacio':
+                    if (window.UIEspacio) window.UIEspacio.cargar(this);
+                    break;
+                case 'manual':
+                    if (window.UIManual) {
+                        console.log('📖 Cargando módulo Manual...');
+                        window.UIManual.cargar(this);
+                    } else {
+                        console.warn('⚠️ UIManual no disponible');
+                        this.mostrarToast('⚠️ Módulo Manual cargando...', 'info');
+                        this._navegacionManualPendiente = true;
+                        this._registrarModuloManual();
+                        this._mostrarCargandoManual();
+                        setTimeout(() => {
+                            if (window.UIManual) {
+                                console.log('📖 UIManual ahora está disponible. Cargando...');
+                                this._cargarContenidoModulo('manual');
+                            } else {
+                                console.warn('⚠️ UIManual aún no disponible, reintentando...');
+                                setTimeout(() => {
+                                    if (window.UIManual) {
+                                        this._cargarContenidoModulo('manual');
+                                    } else {
+                                        this.mostrarToast('❌ No se pudo cargar el Manual. Recarga la página.', 'error');
+                                        this._mostrarErrorManual('Timeout: UIManual no disponible');
+                                    }
+                                }, 2000);
+                            }
+                        }, 500);
+                    }
+                    break;
+                case 'competiciones':
+                    if (window.SistemaCompeticiones && typeof window.SistemaCompeticiones.cargar === 'function') {
+                        window.SistemaCompeticiones.cargar(this);
+                    } else {
+                        console.warn('⚠️ SistemaCompeticiones no disponible');
+                        this.mostrarToast('⚠️ Módulo de competiciones no disponible. Revisa la consola.', 'error');
+                        this._registrarModuloCompeticiones();
+                        setTimeout(() => {
+                            if (!window.SistemaCompeticiones) {
+                                this.mostrarToast('❌ Módulo de competiciones no cargado. Recarga la página.', 'error');
+                            }
+                        }, 1000);
+                    }
+                    break;
+                case 'caracteres':
+                    if (window.UICaracteres) {
+                        window.UICaracteres.cargar(this);
+                    } else {
+                        console.warn('⚠️ UICaracteres no disponible');
+                        this.mostrarToast('⚠️ Módulo de caracteres no disponible. Revisa la consola.', 'error');
+                    }
+                    break;
+                case 'fonetica':
+                    if (window.UIFonetica) {
+                        window.UIFonetica.cargar(this);
+                    } else {
+                        console.warn('⚠️ UIFonética no disponible');
+                        this.mostrarToast('⚠️ Módulo de fonética no disponible. Revisa la consola.', 'error');
+                    }
+                    break;
+                case 'elipse':
+                    if (window.UIClipse) {
+                        console.log('🌌 Cargando módulo Elipse...');
+                        try {
+                            window.UIClipse.cargar(this);
+                        } catch (e) {
+                            console.error('❌ Error cargando UIClipse:', e);
+                            this.mostrarToast('❌ Error al cargar el Modo Elipse', 'error');
+                            this._mostrarErrorElipse(e.message);
+                        }
+                    } else {
+                        console.warn('⚠️ UIClipse NO disponible para cargar');
+                        this.mostrarToast('⚠️ Módulo Elipse cargando...', 'info');
+                        this._navegacionElipsePendiente = true;
+                        this._registrarModuloElipse();
+                        this._mostrarCargandoElipse();
+                        setTimeout(() => {
+                            if (window.UIClipse) {
+                                console.log('🌌 UIClipse ahora está disponible. Cargando...');
+                                this._cargarContenidoModulo('elipse');
+                            } else {
+                                console.warn('⚠️ UIClipse aún no disponible, reintentando en 2s...');
+                                setTimeout(() => {
+                                    if (window.UIClipse) {
+                                        this._cargarContenidoModulo('elipse');
+                                    } else {
+                                        this.mostrarToast('❌ No se pudo cargar el Modo Elipse. Recarga la página.', 'error');
+                                        this._mostrarErrorElipse('Timeout: UIClipse no disponible');
+                                    }
+                                }, 2000);
+                            }
+                        }, 500);
+                    }
+                    break;
+                case 'ondasCruzadas':
+                    console.log('🌊 Cargando módulo Ondas Cruzadas...');
+                    this._cargarOndasCruzadasConRetry(0);
+                    break;
+                case 'tutor':
+                    this._renderizarTutorDirecto();
+                    break;
+                case 'tutor_generador':
+                    this._renderizarGeneradorDirecto();
+                    break;
+                default:
+                    console.warn('⚠️ Módulo desconocido:', module);
             }
         } catch (e) {
-            console.warn('⚠️ Error inicializando UICaracteres:', e.message);
+            console.warn('⚠️ Error cargando módulo:', module, e);
+        } finally {
+            if (this._cargandoModulo === module) {
+                setTimeout(() => {
+                    this._cargandoModulo = null;
+                }, 10000);
+            }
         }
     }
 
-    irACaracteres() {
-        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
-        if (!this._esJeroglifico(idioma)) {
-            this.mostrarToast(`⚠️ El idioma "${idioma}" no es jeroglífico. Este módulo solo está disponible para idiomas asiáticos.`, 'warning');
+    // ============================================================
+    // CARGAR ONDAS CRUZADAS CON REINTENTOS
+    // ============================================================
+
+    _cargarOndasCruzadasConRetry(intento) {
+        const maxIntentos = 20;
+        if (intento > maxIntentos) {
+            console.error('❌ No se pudo cargar Ondas Cruzadas después de ' + maxIntentos + ' intentos');
+            this.mostrarToast('❌ El módulo Ondas Cruzadas no está disponible. Recarga la página.', 'error');
+            this._cargandoModulo = null;
             return;
         }
-        this.irAModulo('caracteres');
-    }
 
-    _actualizarBotonFamiliaCaracteres() {
-        const btn = document.getElementById('btnGenerarFamiliaCaracteres');
-        if (btn) {
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
-            const esJeroglifico = this._esJeroglifico(idiomaActivo);
-            btn.style.display = esJeroglifico ? 'inline-flex' : 'none';
-        }
-    }
-
-    // ============================================================
-    // REGISTRAR MÓDULO DE COMPETICIONES
-    // ============================================================
-
-    _registrarModuloCompeticiones() {
-        console.log('🏆 Registrando módulo de competiciones...');
-        
-        if (!window.SistemaCompeticiones) {
-            console.warn('⚠️ SistemaCompeticiones no encontrado, intentando registrar más tarde...');
+        if (!window.modoOndasCruzadas || !window.modoOndasCruzadas._initDone) {
+            console.log(`🌊 Esperando modoOndasCruzadas (intento ${intento + 1}/${maxIntentos})...`);
             setTimeout(() => {
-                if (window.SistemaCompeticiones) {
-                    console.log('🏆 SistemaCompeticiones encontrado, registrando...');
-                    this._registrarModuloCompeticiones();
-                }
-            }, 1000);
+                this._cargarOndasCruzadasConRetry(intento + 1);
+            }, 500);
             return;
         }
-        
-        this._moduleNames['competiciones'] = '🏆 Liga Neuro';
-        
+
+        if (!window.UIOndasCruzadas) {
+            console.log(`🌊 Esperando UIOndasCruzadas (intento ${intento + 1}/${maxIntentos})...`);
+            setTimeout(() => {
+                this._cargarOndasCruzadasConRetry(intento + 1);
+            }, 500);
+            return;
+        }
+
         try {
-            if (typeof window.SistemaCompeticiones.init === 'function') {
-                window.SistemaCompeticiones.init(this);
-                console.log('✅ SistemaCompeticiones inicializado correctamente');
+            if (!window.UIOndasCruzadas._initDone) {
+                window.UIOndasCruzadas.init(this).then(() => {
+                    window.UIOndasCruzadas.cargar(this);
+                    this._cargandoModulo = null;
+                }).catch(e => {
+                    console.error('❌ Error inicializando UIOndasCruzadas:', e);
+                    this.mostrarToast('❌ Error al inicializar Ondas Cruzadas', 'error');
+                    this._cargandoModulo = null;
+                });
             } else {
-                console.warn('⚠️ SistemaCompeticiones no tiene método init()');
+                window.UIOndasCruzadas.cargar(this);
+                this._cargandoModulo = null;
             }
         } catch (e) {
-            console.warn('⚠️ Error inicializando SistemaCompeticiones:', e.message);
+            console.error('❌ Error cargando UIOndasCruzadas:', e);
+            this.mostrarToast('❌ Error al cargar Ondas Cruzadas', 'error');
+            this._cargandoModulo = null;
         }
+    }
+
+    // ============================================================
+    // MOSTRAR CARGANDO MANUAL
+    // ============================================================
+
+    _mostrarCargandoManual() {
+        const container = document.getElementById('manualContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">📖</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
+                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Manual Interactivo...</span>
+                </div>
+                <p style="font-size:14px;color:var(--gray-light);">Preparando la Guía Suprema de Pipeline Neuro</p>
+                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarManual()" style="margin-top:12px;padding:8px 20px;">
+                    <i class="fas fa-sync"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+
+    // ============================================================
+    // REINTENTAR CARGAR MANUAL
+    // ============================================================
+
+    _reintentarCargarManual() {
+        console.log('🔄 Reintentando cargar Manual...');
+        this._navegacionManualPendiente = false;
+        this._registrarModuloManual();
+        setTimeout(() => {
+            if (window.UIManual) {
+                this._cargarContenidoModulo('manual');
+            } else {
+                this.mostrarToast('⚠️ El módulo Manual aún no está disponible. Recarga la página.', 'warning');
+                this._mostrarCargandoManual();
+            }
+        }, 500);
+    }
+
+    // ============================================================
+    // MOSTRAR ERROR DE MANUAL
+    // ============================================================
+
+    _mostrarErrorManual(mensaje) {
+        const container = document.getElementById('manualContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Manual</h3>
+                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarManual()" style="padding:8px 20px;">
+                        <i class="fas fa-sync"></i> Reintentar
+                    </button>
+                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
+                        <i class="fas fa-redo"></i> Recargar página
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     // ============================================================
@@ -1025,9 +721,12 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             { name: 'UITools', obj: window.UITools },
             { name: 'UIJSON', obj: window.UIJSON },
             { name: 'UIEspacio', obj: window.UIEspacio },
+            { name: 'UIManual', obj: window.UIManual },
             { name: 'SistemaCompeticiones', obj: window.SistemaCompeticiones },
             { name: 'UICaracteres', obj: window.UICaracteres },
-            { name: 'UIFonetica', obj: window.UIFonetica }
+            { name: 'UIFonetica', obj: window.UIFonetica },
+            { name: 'UIClipse', obj: window.UIClipse },
+            { name: 'UIOndasCruzadas', obj: window.UIOndasCruzadas }
         ];
         
         for (const mod of submodulos) {
@@ -1178,7 +877,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
     }
 
     // ============================================================
-    // NAVEGACIÓN - CORREGIDO CON SOPORTE PARA tutor_generador
+    // NAVEGACIÓN
     // ============================================================
 
     irAModulo(module) {
@@ -1214,10 +913,58 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             el.classList.remove('active');
         });
         
-        // Buscar el módulo existente
         let moduleEl = document.getElementById(module + 'Module');
         
-        // Si no existe y es tutor_generador, crearlo
+        if (!moduleEl && module === 'manual') {
+            console.log('📖 Creando módulo manual...');
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                moduleEl = document.createElement('div');
+                moduleEl.id = 'manualModule';
+                moduleEl.className = 'module-view';
+                moduleEl.innerHTML = `
+                    <div class="module-header">
+                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <h2>📖 Manual Interactivo</h2>
+                            <span class="module-breadcrumb">Dashboard / Manual Interactivo</span>
+                        </div>
+                    </div>
+                    <div class="module-content" id="manualContent">
+                    </div>
+                `;
+                mainContent.appendChild(moduleEl);
+                console.log('📦 Módulo manualModule creado');
+            }
+        }
+        
+        if (!moduleEl && module === 'ondasCruzadas') {
+            console.log('🌊 Creando módulo ondasCruzadas...');
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                moduleEl = document.createElement('div');
+                moduleEl.id = 'ondasCruzadasModule';
+                moduleEl.className = 'module-view';
+                moduleEl.innerHTML = `
+                    <div class="module-header">
+                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <h2>🌊 Modo Ondas Cruzadas</h2>
+                            <span class="module-breadcrumb">Dashboard / Ondas Cruzadas</span>
+                        </div>
+                    </div>
+                    <div class="module-content" id="ondasCruzadasContent">
+                    </div>
+                `;
+                mainContent.appendChild(moduleEl);
+                console.log('📦 Módulo ondasCruzadasModule creado');
+            }
+        }
+        
         if (!moduleEl && module === 'tutor_generador') {
             console.log('📦 Creando módulo tutor_generador...');
             const mainContent = document.getElementById('mainContent');
@@ -1243,7 +990,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             }
         }
         
-        // Si no existe y es tutor, crearlo
         if (!moduleEl && module === 'tutor') {
             console.log('📦 Creando módulo tutor...');
             const mainContent = document.getElementById('mainContent');
@@ -1268,8 +1014,32 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                 mainContent.appendChild(moduleEl);
             }
         }
+
+        if (!moduleEl && module === 'elipse') {
+            console.log('📦 Creando módulo elipse...');
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                moduleEl = document.createElement('div');
+                moduleEl.id = 'elipseModule';
+                moduleEl.className = 'module-view';
+                moduleEl.innerHTML = `
+                    <div class="module-header">
+                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <h2>🌌 Modo Elipse</h2>
+                            <span class="module-breadcrumb">Dashboard / Modo Elipse</span>
+                        </div>
+                    </div>
+                    <div class="module-content" id="elipseContent">
+                        <div id="elipseContainer"></div>
+                    </div>
+                `;
+                mainContent.appendChild(moduleEl);
+            }
+        }
         
-        // Si sigue sin existir, crear un módulo genérico
         if (!moduleEl) {
             console.log('📦 Creando módulo genérico para:', module);
             const mainContent = document.getElementById('mainContent');
@@ -1339,87 +1109,71 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
     }
 
     // ============================================================
-    // CARGAR CONTENIDO DE MÓDULO - CORREGIDO CON RENDERIZADO DIRECTO
+    // MOSTRAR PANTALLA DE CARGA PARA ELIPSE
     // ============================================================
 
-    _cargarContenidoModulo(module) {
-        try {
-            switch(module) {
-                case 'study':
-                    if (window.UIStudy) window.UIStudy.cargar(this);
-                    break;
-                case 'grammar':
-                    if (window.UIGrammar) window.UIGrammar.cargar(this);
-                    break;
-                case 'temas':
-                    if (window.UITemas) window.UITemas.cargar(this);
-                    break;
-                case 'stories':
-                    if (window.UITemas) window.UITemas.cargarHistorias(this);
-                    break;
-                case 'stats':
-                    if (window.UIDashboard) window.UIDashboard.cargarEstadisticas(this);
-                    break;
-                case 'vigia':
-                    if (window.UIChat) window.UIChat.cargar(this);
-                    break;
-                case 'config':
-                    if (window.UIConfig) window.UIConfig.cargar(this);
-                    break;
-                case 'tools':
-                    if (window.UITools) window.UITools.cargar(this);
-                    break;
-                case 'espacio':
-                    if (window.UIEspacio) window.UIEspacio.cargar(this);
-                    break;
-                case 'competiciones':
-                    if (window.SistemaCompeticiones && typeof window.SistemaCompeticiones.cargar === 'function') {
-                        window.SistemaCompeticiones.cargar(this);
-                    } else {
-                        console.warn('⚠️ SistemaCompeticiones no disponible');
-                        this.mostrarToast('⚠️ Módulo de competiciones no disponible. Revisa la consola.', 'error');
-                        this._registrarModuloCompeticiones();
-                        setTimeout(() => {
-                            if (!window.SistemaCompeticiones) {
-                                this.mostrarToast('❌ Módulo de competiciones no cargado. Recarga la página.', 'error');
-                            }
-                        }, 1000);
-                    }
-                    break;
-                case 'caracteres':
-                    if (window.UICaracteres) {
-                        window.UICaracteres.cargar(this);
-                    } else {
-                        console.warn('⚠️ UICaracteres no disponible');
-                        this.mostrarToast('⚠️ Módulo de caracteres no disponible. Revisa la consola.', 'error');
-                    }
-                    break;
-                case 'fonetica':
-                    if (window.UIFonetica) {
-                        window.UIFonetica.cargar(this);
-                    } else {
-                        console.warn('⚠️ UIFonética no disponible');
-                        this.mostrarToast('⚠️ Módulo de fonética no disponible. Revisa la consola.', 'error');
-                    }
-                    break;
-                case 'tutor':
-                    // 🔥 RENDERIZAR DIRECTAMENTE SIN DEPENDER DE UIDashboard
-                    this._renderizarTutorDirecto();
-                    break;
-                case 'tutor_generador':
-                    // 🔥 RENDERIZAR DIRECTAMENTE SIN DEPENDER DE UIDashboard
-                    this._renderizarGeneradorDirecto();
-                    break;
-                default:
-                    console.warn('⚠️ Módulo desconocido:', module);
-            }
-        } catch (e) {
-            console.warn('⚠️ Error cargando módulo:', module, e);
-        }
+    _mostrarCargandoElipse() {
+        const container = document.getElementById('elipseContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">🌌</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
+                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Modo Elipse...</span>
+                </div>
+                <p style="font-size:14px;color:var(--gray-light);">Preparando el entorno de aprendizaje expansivo</p>
+                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarElipse()" style="margin-top:12px;padding:8px 20px;">
+                    <i class="fas fa-sync"></i> Reintentar
+                </button>
+            </div>
+        `;
     }
 
     // ============================================================
-    // RENDERIZAR TUTOR DIRECTO (SIN DEPENDER DE UIDashboard)
+    // REINTENTAR CARGAR ELIPSE
+    // ============================================================
+
+    _reintentarCargarElipse() {
+        console.log('🔄 Reintentando cargar Elipse...');
+        this._navegacionElipsePendiente = false;
+        this._registrarModuloElipse();
+        setTimeout(() => {
+            if (window.UIClipse) {
+                this._cargarContenidoModulo('elipse');
+            } else {
+                this.mostrarToast('⚠️ El módulo Elipse aún no está disponible. Recarga la página.', 'warning');
+                this._mostrarCargandoElipse();
+            }
+        }, 500);
+    }
+
+    // ============================================================
+    // MOSTRAR ERROR DE ELIPSE
+    // ============================================================
+
+    _mostrarErrorElipse(mensaje) {
+        const container = document.getElementById('elipseContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Modo Elipse</h3>
+                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarElipse()" style="padding:8px 20px;">
+                        <i class="fas fa-sync"></i> Reintentar
+                    </button>
+                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
+                        <i class="fas fa-redo"></i> Recargar página
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // ============================================================
+    // RENDERIZAR TUTOR DIRECTO
     // ============================================================
 
     _renderizarTutorDirecto() {
@@ -1427,7 +1181,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         
         if (!container) {
             console.warn('⚠️ Contenedor del tutor no encontrado');
-            // Intentar crear el contenedor
             const content = document.getElementById('tutorContent');
             if (content) {
                 const newContainer = document.createElement('div');
@@ -1439,7 +1192,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         }
 
         try {
-            // Obtener datos del tutor
             let tutorInfo = null;
             let tutorModo = 'flexible';
             let intervenciones = [];
@@ -1476,10 +1228,8 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             const modoColor = tutorInfo?.color || '#6C5CE7';
             const vigiaOnline = window.vigia?.enLinea || false;
 
-            // Renderizar HTML directamente
             container.innerHTML = `
                 <div style="padding:16px;max-width:900px;margin:0 auto;">
-                    <!-- HEADER -->
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:16px 20px;background:linear-gradient(135deg, var(--primary)06, var(--secondary)06);border-radius:14px;border:2px solid var(--primary)20;">
                         <div>
                             <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
@@ -1488,7 +1238,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                             </h2>
                             <p style="font-size:13px;color:var(--gray);margin:2px 0 0;">
                                 <span style="font-weight:600;color:var(--dark);">${nombreUsuario}</span>
-                                <span style="display:inline-block;margin-left:8px;padding:2px 12px;border-radius:12px;background:linear-gradient(135deg, #6C5CE7, #A29BFE);color:white;font-size:10px;font-weight:600;">
+                                <span style="display:inline-block;margin-left:8px;padding:2px 12px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;font-size:10px;font-weight:600;">
                                     ${tutorInfo?.icono || '🧠'} ${tutorInfo?.nombre || 'Modo Flexible'}
                                 </span>
                                 ${tutorModo === 'guiado' ? '<span style="display:inline-block;margin-left:4px;padding:2px 8px;border-radius:8px;background:#6C5CE7;color:white;font-size:9px;">🔒 Guiado</span>' : ''}
@@ -1516,97 +1266,52 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                     </div>
 
                     ${pasoActual ? `
-                        <div style="
-                            background: ${pasoActual.completado ? 'var(--success)05' : 'var(--white)'};
-                            border-radius: 12px;
-                            padding: 16px 20px;
-                            border-left: 4px solid ${pasoActual.completado ? 'var(--success)' : (pasoActual.color || 'var(--primary)')};
-                            cursor: ${pasoActual.completado ? 'default' : 'pointer'};
-                            transition: all 0.3s;
-                            margin-bottom: 16px;
-                            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-                        "
-                        ${!pasoActual.completado ? `onclick="window.LearningPath?.ejecutarPasoActual()"` : ''}>
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <span style="font-size:28px;">${pasoActual.completado ? '✅' : (pasoActual.icono || '📌')}</span>
-                                <div style="flex:1;">
-                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                        <span style="font-size:16px;font-weight:700;color:${pasoActual.completado ? 'var(--success)' : 'var(--dark)'};">
-                                            ${pasoActual.titulo || pasoActual.nombre || pasoActual.tema || 'Paso sin título'}
-                                        </span>
-                                        <span style="font-size:9px;background:${pasoActual.color || 'var(--primary)'}20;color:${pasoActual.color || 'var(--primary)'};padding:1px 10px;border-radius:10px;font-weight:600;">
-                                            ${pasoActual.tipo || 'general'}
-                                        </span>
-                                        ${pasoActual.completado ? `
-                                            <span style="font-size:8px;color:var(--success);">✅ Completado</span>
-                                        ` : `
-                                            <span style="font-size:8px;color:var(--primary);">${pasoActual.porcentaje || 0}%</span>
-                                        `}
-                                    </div>
-                                    <p style="font-size:13px;color:var(--gray);margin:4px 0 0;">${pasoActual.descripcion || ''}</p>
-                                    ${!pasoActual.completado && pasoActual.porcentaje > 0 ? `
-                                        <div style="margin-top:6px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;max-width:200px;">
-                                            <div style="height:100%;width:${pasoActual.porcentaje}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:2px;transition:width 0.8s ease;"></div>
-                                        </div>
-                                    ` : ''}
+                        <div style="background:${modoColor}10;border-radius:10px;padding:14px 18px;margin-bottom:12px;border-left:4px solid ${modoColor};">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">PASO ACTUAL</div>
+                                    <div style="font-size:15px;font-weight:700;color:var(--dark);">${pasoActual.titulo || pasoActual.nombre || pasoActual.tema || 'Paso actual'}</div>
+                                    <div style="font-size:12px;color:var(--gray);">${pasoActual.descripcion || ''}</div>
                                 </div>
-                                ${!pasoActual.completado ? `
-                                    <button class="btn-primary" onclick="window.LearningPath?.ejecutarPasoActual()" 
-                                            style="padding:6px 16px;font-size:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                        <i class="fas fa-play"></i> Ir
-                                    </button>
-                                ` : `
-                                    <span style="font-size:11px;color:var(--success);font-weight:600;">✅ Completado</span>
-                                `}
+                                <div style="display:flex;gap:6px;">
+                                    ${!pasoActual.completado ? `
+                                        <button class="btn-primary" onclick="window.LearningPath?.ejecutarPasoActual()" 
+                                                style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:6px;cursor:pointer;">
+                                            <i class="fas fa-play"></i> Ejecutar
+                                        </button>
+                                    ` : `
+                                        <span style="padding:4px 12px;background:var(--success);color:white;border-radius:6px;font-size:11px;font-weight:600;">✅ Completado</span>
+                                    `}
+                                    <span style="padding:4px 12px;background:${modoColor}20;color:${modoColor};border-radius:6px;font-size:10px;font-weight:600;">${pasoActual.porcentaje || 0}%</span>
+                                </div>
                             </div>
                         </div>
                     ` : ''}
 
                     ${intervenciones.length > 0 ? `
-                        <div style="margin-bottom:16px;">
-                            <h4 style="font-size:14px;font-weight:700;color:var(--dark);margin:0 0 8px 0;">
-                                ⚠️ Intervenciones (${intervenciones.length})
-                            </h4>
-                            ${intervenciones.slice(0, 5).map((interv, idx) => `
-                                <div style="
-                                    background: var(--white);
-                                    border-radius: 8px;
-                                    padding: 10px 14px;
-                                    margin-bottom: 6px;
-                                    border-left: 3px solid ${idx === 0 ? 'var(--warning)' : 'var(--gray)'};
-                                    font-size: 13px;
-                                    color: var(--dark);
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    flex-wrap: wrap;
-                                    gap: 8px;
-                                    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-                                ">
-                                    <span style="flex:1;font-size:12px;">${interv.mensaje?.substring(0, 100) || ''}${interv.mensaje?.length > 100 ? '...' : ''}</span>
-                                    <button onclick="window.tutorNeuro?._mostrarIntervencionEspecifica(${intervenciones.indexOf(interv)})" 
-                                            style="padding:2px 12px;font-size:10px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;">
-                                        Ver
-                                    </button>
-                                </div>
-                            `).join('')}
-                            ${intervenciones.length > 5 ? `
-                                <div style="font-size:10px;color:var(--gray-light);text-align:center;padding:4px 0;">
-                                    +${intervenciones.length - 5} intervenciones más
-                                </div>
-                            ` : ''}
+                        <div style="background:var(--warning)10;border-radius:10px;padding:12px 16px;margin-bottom:12px;border:1px solid var(--warning);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                                <span style="font-weight:600;color:var(--warning);">🧠 ${intervenciones.length} intervenciones pendientes</span>
+                                <button class="btn-secondary" onclick="window.tutorNeuro?._mostrarRutaCompleta()" 
+                                        style="padding:4px 14px;font-size:11px;background:var(--warning);color:white;border:none;border-radius:4px;cursor:pointer;">
+                                    <i class="fas fa-eye"></i> Ver
+                                </button>
+                            </div>
                         </div>
                     ` : ''}
 
                     ${siguienteTema && intervenciones.length === 0 ? `
-                        <div style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px;border-left:4px solid var(--primary);">
-                            <div style="font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;margin-bottom:2px;">📌 Recomendación</div>
-                            <div style="font-size:14px;font-weight:600;color:var(--dark);">${siguienteTema.nombre || 'Tema'}</div>
-                            <div style="font-size:12px;color:var(--gray);">Nivel ${siguienteTema.nivel || 'A1'} · Progreso: ${siguienteTema.porcentaje || 0}%</div>
-                            <button class="btn-primary" onclick="window.tutorNeuro?._estudiarTemaRecomendado()" 
-                                    style="margin-top:6px;padding:4px 14px;font-size:11px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:4px;cursor:pointer;">
-                                <i class="fas fa-play"></i> Estudiar
-                            </button>
+                        <div style="background:var(--success)10;border-radius:10px;padding:12px 16px;margin-bottom:12px;border:1px solid var(--success);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                                <div>
+                                    <span style="font-weight:600;color:var(--success);">📌 Siguiente tema recomendado</span>
+                                    <span style="font-size:14px;font-weight:700;color:var(--dark);margin-left:8px;">${siguienteTema.nombre || 'Tema'}</span>
+                                </div>
+                                <button class="btn-primary" onclick="window.tutorNeuro?._estudiarTemaRecomendado()" 
+                                        style="padding:4px 14px;font-size:11px;background:linear-gradient(135deg,#00B894,#55EFC4);color:white;border:none;border-radius:4px;cursor:pointer;">
+                                    <i class="fas fa-play"></i> Estudiar
+                                </button>
+                            </div>
                         </div>
                     ` : ''}
 
@@ -1621,64 +1326,28 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                     </div>
 
                     ${tieneRuta && pasosConEstado.length > 0 ? `
-                        <div style="margin-bottom:16px;">
-                            <h4 style="font-size:13px;font-weight:700;color:var(--gray);text-transform:uppercase;margin:0 0 8px 0;">📋 Pasos de la Ruta</h4>
-                            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+                        <div style="margin-bottom:12px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--gray);margin-bottom:6px;">📌 Pasos de la ruta (${pasosConEstado.length})</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
                                 ${pasosConEstado.map((p, i) => {
-                                    let bgColor = 'var(--bg)';
-                                    let textColor = 'var(--gray)';
-                                    let estadoEmoji = '⏳';
-                                    let borderColor = 'var(--light)';
-                                    let tooltip = p.titulo || p.nombre || p.tema || `Paso ${i+1}`;
-                                    let pct = p.porcentaje || 0;
-                                    
+                                    let bg = 'var(--bg)';
+                                    let color = 'var(--gray)';
+                                    let border = 'var(--light)';
                                     if (p.esCompletado) {
-                                        bgColor = 'var(--success)15';
-                                        textColor = 'var(--success)';
-                                        estadoEmoji = '✅';
-                                        borderColor = 'var(--success)';
+                                        bg = 'var(--success)';
+                                        color = 'white';
+                                        border = 'var(--success)';
                                     } else if (p.esActivo) {
-                                        bgColor = 'var(--primary)';
-                                        textColor = 'white';
-                                        estadoEmoji = '🎯';
-                                        borderColor = 'var(--primary)';
+                                        bg = 'var(--primary)';
+                                        color = 'white';
+                                        border = 'var(--primary)';
                                     }
-                                    
                                     return `
-                                        <div style="
-                                            background: ${bgColor};
-                                            border-radius: 8px;
-                                            padding: 10px 14px;
-                                            border: 1px solid ${borderColor};
-                                            cursor: pointer;
-                                            transition: all 0.2s ease;
-                                            opacity: ${p.esCompletado ? '0.7' : '1'};
-                                        "
-                                        onclick="window.LearningPath?.irAlPaso(${i})"
-                                        onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
-                                        onmouseout="this.style.transform='none';this.style.boxShadow='none'"
-                                        title="${tooltip} - ${pct}%"
-                                        >
-                                            <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-                                                <div>
-                                                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:${p.esActivo ? '700' : '400'};color:${textColor};">
-                                                        ${estadoEmoji} ${tooltip}
-                                                        ${p.esActivo ? ' ◀' : ''}
-                                                    </div>
-                                                    ${!p.esCompletado && pct > 0 ? `
-                                                        <div style="margin-top:4px;height:3px;background:var(--bg);border-radius:2px;overflow:hidden;max-width:100px;">
-                                                            <div style="height:100%;width:${pct}%;background:${p.esActivo ? 'var(--primary)' : 'var(--gray-light)'};border-radius:2px;"></div>
-                                                        </div>
-                                                    ` : ''}
-                                                </div>
-                                                ${p.esActivo && !p.esCompletado ? `
-                                                    <button class="btn-primary" onclick="event.stopPropagation();window.LearningPath?.ejecutarPasoActual()" 
-                                                            style="padding:2px 10px;font-size:10px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:4px;cursor:pointer;">
-                                                        Ir
-                                                    </button>
-                                                ` : ''}
-                                            </div>
-                                        </div>
+                                        <span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:600;background:${bg};color:${color};border:1px solid ${border};cursor:pointer;"
+                                              onclick="window.LearningPath?.irAlPaso(${i})"
+                                              title="${p.titulo || p.nombre || p.tema || 'Paso ' + (i+1)}">
+                                            ${i+1} ${p.esCompletado ? '✅' : p.esActivo ? '▶️' : '⏳'}
+                                        </span>
                                     `;
                                 }).join('')}
                             </div>
@@ -1703,16 +1372,37 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         }
     }
 
-    // ============================================================
-    // RENDERIZAR GENERADOR DIRECTO (SIN DEPENDER DE UIDashboard)
-    // ============================================================
+    _getCargandoTutorHTML() {
+        return `
+            <div style="text-align:center;padding:40px;color:var(--gray);">
+                <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);display:block;margin-bottom:16px;"></i>
+                <p style="font-size:16px;font-weight:500;">Cargando Tutor NeuroAdaptativo...</p>
+                <p style="font-size:13px;color:var(--gray-light);">Preparando tu experiencia de aprendizaje personalizada</p>
+                <button class="btn-primary" onclick="window.uiCore._renderizarTutorDirecto()" style="margin-top:12px;">
+                    <i class="fas fa-sync"></i> Recargar
+                </button>
+            </div>
+        `;
+    }
+
+    _getCargandoGeneradorHTML() {
+        return `
+            <div style="text-align:center;padding:40px;color:var(--gray);">
+                <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);display:block;margin-bottom:16px;"></i>
+                <p style="font-size:16px;font-weight:500;">Cargando Generador NeuroAdaptativo...</p>
+                <p style="font-size:13px;color:var(--gray-light);">Preparando el generador de contenido personalizado</p>
+                <button class="btn-primary" onclick="window.uiCore._renderizarGeneradorDirecto()" style="margin-top:12px;">
+                    <i class="fas fa-sync"></i> Recargar
+                </button>
+            </div>
+        `;
+    }
 
     _renderizarGeneradorDirecto() {
         const container = document.getElementById('tutorGeneradorContainer');
         
         if (!container) {
             console.warn('⚠️ Contenedor del generador no encontrado');
-            // Intentar crear el contenedor
             const content = document.getElementById('tutorGeneradorContent');
             if (content) {
                 const newContainer = document.createElement('div');
@@ -1732,7 +1422,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
 
             container.innerHTML = `
                 <div style="padding:16px;max-width:900px;margin:0 auto;">
-                    <!-- HEADER -->
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:16px 20px;background:linear-gradient(135deg, var(--primary)06, var(--secondary)06);border-radius:14px;border:2px solid var(--primary)20;">
                         <div>
                             <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
@@ -1814,7 +1503,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                     </div>
 
                     <div style="margin-bottom:12px;">
-                        <label style="font-size:13px;font-weight:600;color:var(--dark);display:block;margin-bottom:4px;">
+                        <label style="font-size:14px;font-weight:600;color:var(--dark);display:block;margin-bottom:6px;">
                             📄 Pega aquí el JSON completado por la IA para importarlo a tu...
                         </label>
                         <div style="display:flex;gap:10px;">
@@ -1857,36 +1546,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             console.error('❌ Error renderizando generador:', e);
             container.innerHTML = this._getCargandoGeneradorHTML();
         }
-    }
-
-    // ============================================================
-    // HTML DE CARGA PARA TUTOR Y GENERADOR
-    // ============================================================
-
-    _getCargandoTutorHTML() {
-        return `
-            <div style="text-align:center;padding:40px;color:var(--gray);">
-                <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);display:block;margin-bottom:16px;"></i>
-                <p style="font-size:16px;font-weight:500;">Cargando Tutor NeuroAdaptativo...</p>
-                <p style="font-size:13px;color:var(--gray-light);">Preparando tu experiencia de aprendizaje personalizada</p>
-                <button class="btn-primary" onclick="window.uiCore._renderizarTutorDirecto()" style="margin-top:12px;">
-                    <i class="fas fa-sync"></i> Recargar
-                </button>
-            </div>
-        `;
-    }
-
-    _getCargandoGeneradorHTML() {
-        return `
-            <div style="text-align:center;padding:40px;color:var(--gray);">
-                <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);display:block;margin-bottom:16px;"></i>
-                <p style="font-size:16px;font-weight:500;">Cargando Generador NeuroAdaptativo...</p>
-                <p style="font-size:13px;color:var(--gray-light);">Preparando el generador de contenido personalizado</p>
-                <button class="btn-primary" onclick="window.uiCore._renderizarGeneradorDirecto()" style="margin-top:12px;">
-                    <i class="fas fa-sync"></i> Recargar
-                </button>
-            </div>
-        `;
     }
 
     // ============================================================
@@ -1934,6 +1593,21 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
                     await window.UIFonetica.cargar(this);
                 } catch (err) {}
             }
+            if (window.UIClipse) {
+                try {
+                    await window.UIClipse.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIOndasCruzadas) {
+                try {
+                    await window.UIOndasCruzadas.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIManual) {
+                try {
+                    await window.UIManual.cargar(this);
+                } catch (err) {}
+            }
         });
         
         window.addEventListener('favoritoActualizado', () => {
@@ -1975,6 +1649,21 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             if (window.UIFonetica) {
                 try {
                     await window.UIFonetica.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIClipse) {
+                try {
+                    await window.UIClipse.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIOndasCruzadas) {
+                try {
+                    await window.UIOndasCruzadas.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIManual) {
+                try {
+                    await window.UIManual.cargar(this);
                 } catch (err) {}
             }
         });
@@ -2033,6 +1722,24 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             if (window.UIFonetica) {
                 try {
                     await window.UIFonetica.cargar(this);
+                } catch (err) {}
+            }
+            
+            if (window.UIClipse) {
+                try {
+                    await window.UIClipse.cargar(this);
+                } catch (err) {}
+            }
+            
+            if (window.UIOndasCruzadas) {
+                try {
+                    await window.UIOndasCruzadas.cargar(this);
+                } catch (err) {}
+            }
+            
+            if (window.UIManual) {
+                try {
+                    await window.UIManual.cargar(this);
                 } catch (err) {}
             }
             
@@ -2209,6 +1916,16 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         
         window.addEventListener('balanceadorEstadoActualizado', () => {
             this._actualizarIndicadorBalanceador();
+        });
+        
+        window.addEventListener('elipseOndaGenerada', (e) => {
+            console.log('🌌 Evento elipseOndaGenerada:', e.detail);
+            this.mostrarToast(`🌌 Nueva onda generada: "${e.detail.titulo}"`, 'success');
+        });
+        
+        window.addEventListener('ondasCruzadasGenerada', (e) => {
+            console.log('🌊 Evento ondasCruzadasGenerada:', e.detail);
+            this.mostrarToast(`🌊 Nueva onda cruzada generada`, 'success');
         });
     }
 
@@ -2698,17 +2415,457 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
     }
 
     // ============================================================
+    // INDICADOR BALANCEADOR
+    // ============================================================
+
+    _crearIndicadorBalanceador() {
+        if (document.getElementById('balanceadorModeloIndicator')) {
+            this._indicadorCreado = true;
+            this._actualizarIndicadorBalanceador();
+            return;
+        }
+
+        let container = document.getElementById('vigiaCentinelaContainer');
+        if (!container) {
+            const header = document.querySelector('.header-content');
+            if (!header) {
+                console.warn('⚠️ No se encontró el header para crear el indicador');
+                return;
+            }
+            
+            container = document.createElement('div');
+            container.id = 'vigiaCentinelaContainer';
+            container.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                padding: 3px 6px;
+                background: var(--bg);
+                border-radius: 6px;
+                border: 1px solid var(--light);
+                min-width: clamp(60px, 15vw, 180px);
+                max-width: 200px;
+                flex: 1;
+                flex-shrink: 0;
+            `;
+            header.appendChild(container);
+        }
+
+        if (!document.body.contains(container)) {
+            console.warn('⚠️ Contenedor no está en el DOM, reintentando...');
+            if (this._intentosCreacionIndicador < this._maxIntentosCreacionIndicador) {
+                this._intentosCreacionIndicador++;
+                setTimeout(() => this._crearIndicadorBalanceador(), 300);
+            }
+            return;
+        }
+
+        const existing = document.getElementById('balanceadorModeloIndicator');
+        if (existing) existing.remove();
+
+        const indicador = document.createElement('div');
+        indicador.id = 'balanceadorModeloIndicator';
+        indicador.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: clamp(8px, 1.5vw, 11px);
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--bg);
+            border: 1px solid var(--light);
+            margin-top: 1px;
+            transition: all 0.5s ease;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        `;
+        
+        const modeloNombre = this._balanceador?.getModeloActivo() || 'openai/gpt-oss-120b';
+        const nombreCorto = this._isSmallMobile ? this._abreviarModelo(modeloNombre) : modeloNombre;
+        
+        indicador.innerHTML = `
+            <span class="balanceador-dot" id="balanceadorStatusDot" style="width:${this._isSmallMobile ? '6px' : '8px'};height:${this._isSmallMobile ? '6px' : '8px'};border-radius:50%;display:inline-block;background:var(--success);flex-shrink:0;"></span>
+            <span class="balanceador-nombre" id="balanceadorModeloNombre" style="font-weight:600;color:var(--dark);font-size:clamp(8px,1.5vw,11px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:clamp(60px,10vw,160px);">${nombreCorto}</span>
+            <span class="balanceador-estado" id="balanceadorModeloEstado" style="font-size:clamp(7px,1.2vw,10px);color:var(--gray);white-space:nowrap;margin-left:auto;">🟢</span>
+        `;
+
+        if (document.body.contains(container)) {
+            container.appendChild(indicador);
+        } else {
+            console.warn('⚠️ Contenedor ya no está en el DOM, reintentando...');
+            if (this._intentosCreacionIndicador < this._maxIntentosCreacionIndicador) {
+                this._intentosCreacionIndicador++;
+                setTimeout(() => this._crearIndicadorBalanceador(), 300);
+            }
+            return;
+        }
+
+        this._indicadorModelo = {
+            dot: document.getElementById('balanceadorStatusDot'),
+            nombre: document.getElementById('balanceadorModeloNombre'),
+            estado: document.getElementById('balanceadorModeloEstado')
+        };
+        this._indicadorCreado = true;
+        this._intentosCreacionIndicador = 0;
+
+        this._actualizarIndicadorBalanceador();
+        console.log('✅ Indicador del balanceador creado');
+    }
+
+    _abreviarModelo(modelo) {
+        const abreviaturas = {
+            'openai/gpt-oss-120b': 'GPT OSS',
+            'qwen/qwen3.6-27b': 'Qwen3.6',
+            'qwen/qwen3-32b': 'Qwen3',
+            'llama-3.3-70b-versatile': 'Llama 70B',
+            'llama-3.1-8b-instant': 'Llama 8B',
+            'mixtral-8x7b-32768': 'Mixtral 8x7B'
+        };
+        return abreviaturas[modelo] || modelo.split('/').pop() || modelo;
+    }
+
+    _actualizarIndicadorBalanceador() {
+        if (!this._indicadorModelo) {
+            if (!document.getElementById('balanceadorModeloIndicator')) {
+                this._crearIndicadorBalanceador();
+                return;
+            }
+            this._indicadorModelo = {
+                dot: document.getElementById('balanceadorStatusDot'),
+                nombre: document.getElementById('balanceadorModeloNombre'),
+                estado: document.getElementById('balanceadorModeloEstado')
+            };
+            if (!this._indicadorModelo.nombre) return;
+        }
+
+        const estado = this._balanceador?.getEstado();
+        if (!estado) {
+            if (this._indicadorModelo.nombre) {
+                this._indicadorModelo.nombre.textContent = '⚖️';
+                this._indicadorModelo.estado.textContent = '⏳';
+                this._indicadorModelo.dot.style.background = 'var(--gray)';
+            }
+            return;
+        }
+
+        const modelo = estado.modeloActivo || 'N/A';
+        const esPrioritario = modelo === estado.modeloPrioritario;
+        const modelosDisponibles = estado.modelosDisponibles || 0;
+        const totalModelos = estado.modelosTotal || 0;
+
+        if (this._indicadorModelo.nombre) {
+            const nombreCorto = this._isSmallMobile ? this._abreviarModelo(modelo) : modelo;
+            this._indicadorModelo.nombre.textContent = nombreCorto;
+            this._indicadorModelo.nombre.style.color = esPrioritario ? 'var(--success)' : 'var(--warning)';
+            this._indicadorModelo.nombre.title = `Modelo activo: ${modelo}`;
+        }
+
+        if (this._indicadorModelo.estado) {
+            if (esPrioritario) {
+                this._indicadorModelo.estado.textContent = this._isSmallMobile ? '🟢' : '🟢 Prioritario';
+                this._indicadorModelo.estado.style.color = 'var(--success)';
+                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--success)';
+            } else {
+                this._indicadorModelo.estado.textContent = this._isSmallMobile ? `🟡${modelosDisponibles}` : `🟡 ${modelosDisponibles}/${totalModelos}`;
+                this._indicadorModelo.estado.style.color = 'var(--warning)';
+                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--warning)';
+            }
+
+            if (modelosDisponibles === 0) {
+                this._indicadorModelo.estado.textContent = '🔴';
+                this._indicadorModelo.estado.style.color = 'var(--danger)';
+                if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--danger)';
+            }
+        }
+
+        const tooltip = `Modelo activo: ${modelo}\nPrioritario: ${estado.modeloPrioritario}\nDisponibles: ${modelosDisponibles}/${totalModelos}\n${esPrioritario ? '✅ Usando modelo prioritario' : '⚠️ Usando modelo alternativo'}`;
+        if (this._indicadorModelo.nombre) this._indicadorModelo.nombre.title = tooltip;
+        if (this._indicadorModelo.estado) this._indicadorModelo.estado.title = tooltip;
+    }
+
+    // ============================================================
+    // CONFIGURAR MODO INVERSO
+    // ============================================================
+
+    _configurarModoInverso() {
+        const headerRight = document.querySelector('.header-right');
+        if (!headerRight) return;
+        
+        const existingWrapper = document.getElementById('idiomaSelectorWrapper');
+        if (existingWrapper) existingWrapper.remove();
+        
+        if (!document.getElementById('modoInversoBtn')) {
+            const modoBtn = document.createElement('button');
+            modoBtn.id = 'modoInversoBtn';
+            modoBtn.className = 'icon-btn';
+            modoBtn.title = 'Alternar modo inverso';
+            modoBtn.style.cssText = `
+                padding: ${this._isSmallMobile ? '2px 4px' : '3px 6px'};
+                background: none;
+                border: none;
+                color: var(--gray);
+                cursor: pointer;
+                font-size: clamp(14px, 3vw, 18px);
+                border-radius: 4px;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            `;
+            modoBtn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+            
+            modoBtn.addEventListener('click', () => {
+                const activo = modoInverso.toggle();
+                this.mostrarToast(
+                    activo ? '🔄 Modo Inverso activado' : '🔄 Modo Normal',
+                    'info'
+                );
+                this._actualizarModoInversoBtn();
+                if (window.UIStudy) {
+                    window.UIStudy._renderizarFraseInteractiva();
+                }
+            });
+            
+            headerRight.appendChild(modoBtn);
+            this._actualizarModoInversoBtn();
+        }
+    }
+
+    _actualizarModoInversoBtn() {
+        const btn = document.getElementById('modoInversoBtn');
+        if (!btn) return;
+        const activo = modoInverso.isActivo();
+        btn.style.color = activo ? 'var(--secondary)' : 'var(--gray)';
+        btn.style.background = activo ? 'var(--secondary)20' : 'transparent';
+        btn.title = activo ? 'Modo Inverso activado' : 'Modo Normal';
+        if (activo) {
+            btn.style.border = '1px solid var(--secondary)';
+        } else {
+            btn.style.border = 'none';
+        }
+    }
+
+    // ============================================================
+    // INDICADOR DE TOKENS
+    // ============================================================
+
+    _crearIndicadorTokens() {
+        if (document.getElementById('tokenIndicator')) {
+            this._tokenIndicatorCreado = true;
+            this._actualizarIndicadorTokens();
+            return;
+        }
+
+        const headerRight = document.querySelector('.header-right');
+        if (!headerRight) {
+            console.warn('⚠️ No se encontró el header-right para el indicador de tokens');
+            setTimeout(() => this._crearIndicadorTokens(), 500);
+            return;
+        }
+
+        const modoBtn = document.getElementById('modoInversoBtn');
+        
+        const indicator = document.createElement('span');
+        indicator.id = 'tokenIndicator';
+        indicator.className = 'token-indicator';
+        indicator.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            padding: ${this._isSmallMobile ? '1px 4px' : '2px 8px'};
+            border-radius: ${this._isSmallMobile ? '8px' : '10px'};
+            font-size: clamp(8px, 2vw, 11px);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--light);
+            background: var(--bg);
+            color: var(--gray);
+            white-space: nowrap;
+            flex-shrink: 0;
+        `;
+        indicator.title = 'Consumo de tokens de Groq - Haz clic para detalles';
+        
+        const displayText = this._isSmallMobile ? '🪙' : '🪙 0%';
+        indicator.innerHTML = displayText;
+        
+        indicator.onclick = () => {
+            this._mostrarDetalleTokens();
+        };
+        
+        indicator.onmouseover = function() {
+            this.style.transform = 'scale(1.05)';
+            this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        };
+        indicator.onmouseout = function() {
+            this.style.transform = 'none';
+            this.style.boxShadow = 'none';
+        };
+        
+        if (modoBtn && modoBtn.parentNode) {
+            modoBtn.parentNode.insertBefore(indicator, modoBtn);
+            console.log('✅ Indicador de tokens insertado ANTES del botón Modo Inverso');
+        } else {
+            headerRight.appendChild(indicator);
+            console.log('✅ Indicador de tokens añadido al final del header');
+        }
+        
+        this._tokenIndicatorCreado = true;
+        this._actualizarIndicadorTokens();
+    }
+
+    _actualizarIndicadorTokens(tokenData) {
+        const indicator = document.getElementById('tokenIndicator');
+        if (!indicator) {
+            if (!this._tokenIndicatorCreado) {
+                this._crearIndicadorTokens();
+            }
+            return;
+        }
+
+        if (!tokenData && window.vigia && typeof window.vigia.obtenerEstadoTokens === 'function') {
+            tokenData = window.vigia.obtenerEstadoTokens();
+        }
+
+        if (!tokenData) {
+            indicator.innerHTML = this._isSmallMobile ? '🪙' : '🪙 ...';
+            indicator.style.borderColor = 'var(--light)';
+            indicator.style.color = 'var(--gray)';
+            indicator.style.background = 'var(--bg)';
+            return;
+        }
+
+        const pct = tokenData.diario?.porcentaje || 0;
+        const estado = tokenData.estado || 'normal';
+        const emoji = tokenData.emoji || '🪙';
+        const color = tokenData.color || 'var(--success)';
+        
+        const displayText = this._isSmallMobile ? 
+            (pct > 0 ? `${emoji}${pct}%` : emoji) : 
+            (pct > 0 ? `${emoji} ${pct}%` : `${emoji} 0%`);
+        
+        indicator.innerHTML = displayText;
+        indicator.style.borderColor = color;
+        indicator.style.color = color;
+        indicator.style.background = `${color}15`;
+        indicator.title = `Consumo: ${pct}% · ${tokenData.label || 'Normal'}\nRestantes: ${Math.round((tokenData.diario?.tokensRestantes || 0) / 1000)}K\nReinicio: ${tokenData.tiempoReinicio || 'N/A'}`;
+        
+        if (estado === 'critico') {
+            indicator.classList.add('critico');
+            indicator.style.animation = 'pulse-warning 1.5s ease-in-out infinite';
+        } else {
+            indicator.classList.remove('critico');
+            indicator.style.animation = 'none';
+        }
+        
+        this._ultimoEstadoTokens = tokenData;
+    }
+
+    _mostrarDetalleTokens() {
+        if (!window.vigia || typeof window.vigia.obtenerEstadoTokens !== 'function') {
+            this.mostrarToast('⚠️ No se puede obtener el estado de tokens', 'error');
+            return;
+        }
+
+        const data = window.vigia.obtenerEstadoTokens();
+        if (!data) {
+            this.mostrarToast('⚠️ No hay datos de tokens disponibles', 'error');
+            return;
+        }
+
+        const pctDiario = data.diario?.porcentaje || 0;
+        const usadoDiario = Math.round((data.diario?.usado || 0) / 1000);
+        const limiteDiario = Math.round((data.diario?.limite || 150000) / 1000);
+        const restantes = Math.round((data.diario?.tokensRestantes || 0) / 1000);
+        const pctMinuto = data.porMinuto?.porcentaje || 0;
+        const usadoMinuto = Math.round((data.porMinuto?.usado || 0) / 1000);
+        const limiteMinuto = Math.round((data.porMinuto?.limite || 20000) / 1000);
+        const peticiones = data.peticionesMinuto?.actual || 0;
+        const limitePeticiones = data.peticionesMinuto?.limite || 20;
+        const tiempoReinicio = data.tiempoReinicio || 'N/A';
+        
+        let colorBarra = 'var(--success)';
+        let mensajeEstado = '✅ Consumo normal';
+        let recomendacion = '💡 Sigue así, estás usando los tokens de forma eficiente.';
+        
+        if (pctDiario >= 95) {
+            colorBarra = 'var(--danger)';
+            mensajeEstado = '🔴 ¡Límite crítico!';
+            recomendacion = '⚠️ Cambia a modo "Flashcard" offline para ahorrar tokens.';
+        } else if (pctDiario >= 80) {
+            colorBarra = 'var(--warning)';
+            mensajeEstado = '🟠 Consumo alto';
+            recomendacion = '📊 Considera reducir el uso de ejercicios con Groq.';
+        } else if (pctDiario >= 60) {
+            colorBarra = '#FDCB6E';
+            mensajeEstado = '🟡 Consumo medio';
+            recomendacion = '📖 Puedes seguir usando Groq con moderación.';
+        } else {
+            colorBarra = 'var(--success)';
+            mensajeEstado = '🟢 Consumo bajo';
+            recomendacion = '✅ Disfruta estudiando con Groq sin preocupaciones.';
+        }
+
+        const mensaje = 
+`📊 **CONSUMO DE TOKENS GROQ**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 **LÍMITE DIARIO**
+• Usados: ${usadoDiario}K / ${limiteDiario}K tokens
+• Restantes: ${restantes}K tokens
+• Porcentaje: ${pctDiario}%
+• Estado: ${mensajeEstado}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️ **CONSUMO POR MINUTO**
+• ${usadoMinuto}K / ${limiteMinuto}K tokens
+• ${pctMinuto}% del límite
+
+📨 **PETICIONES**
+• ${peticiones} / ${limitePeticiones} por minuto
+• ${Math.round((peticiones / limitePeticiones) * 100)}% del límite
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 **REINICIO DIARIO**
+• ${tiempoReinicio}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 **RECOMENDACIÓN**
+${recomendacion}
+
+${pctDiario >= 98 ? '🔴 ¡Alerta! Estás al 98% del límite. Usa modo offline.' : ''}
+${pctDiario >= 80 && pctDiario < 98 ? '🟡 Consumo elevado. Planifica tu uso de Groq.' : ''}
+${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 **CONSEJO**
+• Flashcard y Escritura usan menos tokens
+• Múltiple y Escucha usan más tokens
+• Usa modo offline para ahorrar tokens`;
+
+        this.alert(mensaje, '🪙 Consumo de Tokens');
+    }
+
+    // ============================================================
     // MÉTODOS AUXILIARES
     // ============================================================
 
     _obtenerNivelUsuario() {
         try {
-            const infoActivo = gestorIdiomas?.getInfoActivo?.();
+            const infoActivo = window.gestorIdiomas?.getInfoActivo?.();
             if (infoActivo?.nivel) return infoActivo.nivel;
             const usuarioLocal = localStorage.getItem('pipeline_usuario');
             if (usuarioLocal) {
                 const parsed = JSON.parse(usuarioLocal);
-                const idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || 'es';
+                const idiomaActivo = window.gestorIdiomas?.getIdiomaActivo?.() || 'es';
                 const idiomaObj = parsed.idiomasObjetivo?.find(i => i.idioma === idiomaActivo);
                 if (idiomaObj?.nivel) return idiomaObj.nivel;
                 if (parsed.idiomasObjetivo?.length > 0) return parsed.idiomasObjetivo[0].nivel || 'B1';
@@ -2745,13 +2902,302 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         };
         return nombres[idioma] || idioma;
     }
+
+    irAElipse() {
+        this.irAModulo('elipse');
+    }
+
+    irAOndasCruzadas() {
+        this.irAModulo('ondasCruzadas');
+    }
+
+    irAFonetica() {
+        this.irAModulo('fonetica');
+    }
+
+    irACaracteres() {
+        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+        if (!this._esJeroglifico(idioma)) {
+            this.mostrarToast(`⚠️ El idioma "${idioma}" no es jeroglífico. Este módulo solo está disponible para idiomas asiáticos.`, 'warning');
+            return;
+        }
+        this.irAModulo('caracteres');
+    }
+
+    irAManual() {
+        this.irAModulo('manual');
+    }
+
+    _actualizarBotonFamiliaCaracteres() {
+        const btn = document.getElementById('btnGenerarFamiliaCaracteres');
+        if (btn) {
+            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+            const esJeroglifico = this._esJeroglifico(idiomaActivo);
+            btn.style.display = esJeroglifico ? 'inline-flex' : 'none';
+        }
+    }
+
+    _registrarModuloCompeticiones() {
+        console.log('🏆 Registrando módulo de competiciones...');
+        
+        if (!window.SistemaCompeticiones) {
+            console.warn('⚠️ SistemaCompeticiones no encontrado, intentando registrar más tarde...');
+            setTimeout(() => {
+                if (window.SistemaCompeticiones) {
+                    console.log('🏆 SistemaCompeticiones encontrado, registrando...');
+                    this._registrarModuloCompeticiones();
+                }
+            }, 1000);
+            return;
+        }
+        
+        this._moduleNames['competiciones'] = '🏆 Liga Neuro';
+        
+        try {
+            if (typeof window.SistemaCompeticiones.init === 'function') {
+                window.SistemaCompeticiones.init(this);
+                console.log('✅ SistemaCompeticiones inicializado correctamente');
+            } else {
+                console.warn('⚠️ SistemaCompeticiones no tiene método init()');
+            }
+        } catch (e) {
+            console.warn('⚠️ Error inicializando SistemaCompeticiones:', e.message);
+        }
+    }
+
+    _registrarModuloCaracteres() {
+        console.log('🀄 Registrando módulo de caracteres...');
+        
+        if (!window.UICaracteres) {
+            console.warn('⚠️ UICaracteres no encontrado, intentando registrar más tarde...');
+            setTimeout(() => {
+                if (window.UICaracteres) {
+                    console.log('🀄 UICaracteres encontrado, registrando...');
+                    this._registrarModuloCaracteres();
+                }
+            }, 1000);
+            return;
+        }
+        
+        this._moduleNames['caracteres'] = '🀄 Caracteres';
+        
+        try {
+            if (typeof window.UICaracteres.init === 'function') {
+                window.UICaracteres.init(this);
+                console.log('✅ UICaracteres inicializado correctamente');
+            } else {
+                console.warn('⚠️ UICaracteres no tiene método init()');
+            }
+        } catch (e) {
+            console.warn('⚠️ Error inicializando UICaracteres:', e.message);
+        }
+    }
+
+    _registrarModuloFonetica() {
+        console.log('🎤 Registrando módulo de Fonética...');
+        
+        if (!window.UIFonetica) {
+            console.warn('⚠️ UIFonética no encontrado, intentando registrar más tarde...');
+            setTimeout(() => {
+                if (window.UIFonetica) {
+                    console.log('🎤 UIFonética encontrado, registrando...');
+                    this._registrarModuloFonetica();
+                }
+            }, 1000);
+            return;
+        }
+        
+        this._moduleNames['fonetica'] = '🎤 Fonética';
+        
+        try {
+            if (typeof window.UIFonetica.init === 'function') {
+                window.UIFonetica.init(this);
+                console.log('✅ UIFonética inicializado correctamente');
+            } else {
+                console.warn('⚠️ UIFonética no tiene método init()');
+            }
+        } catch (e) {
+            console.warn('⚠️ Error inicializando UIFonética:', e.message);
+        }
+    }
+
+    // ============================================================
+    // HEADER RESPONSIVE
+    // ============================================================
+
+    _actualizarHeaderResponsive() {
+        const headerContent = document.querySelector('.header-content');
+        if (headerContent) {
+            headerContent.style.cssText = `
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 4px 8px;
+                padding: 6px 10px;
+                width: 100%;
+                box-sizing: border-box;
+            `;
+        }
+
+        const brand = document.querySelector('.brand');
+        if (brand) {
+            brand.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+                font-size: clamp(13px, 4vw, 20px);
+            `;
+            const brandSpan = brand.querySelector('span');
+            if (brandSpan) {
+                brandSpan.textContent = this._isSmallMobile ? 'Pipeline' : 'Pipeline Neuro';
+                brandSpan.style.fontSize = this._isSmallMobile ? '13px' : 'inherit';
+            }
+        }
+
+        const headerRight = document.querySelector('.header-right');
+        if (headerRight) {
+            headerRight.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 3px;
+                flex-wrap: wrap;
+                flex-shrink: 0;
+            `;
+        }
+
+        const userBadge = document.getElementById('userBadge');
+        if (userBadge) {
+            const userName = userBadge.querySelector('.user-name');
+            if (userName) {
+                userName.style.cssText = `
+                    font-size: ${this._isSmallMobile ? '11px' : '13px'};
+                    max-width: ${this._isSmallMobile ? '50px' : '80px'};
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    display: inline-block;
+                `;
+            }
+            const userAvatar = userBadge.querySelector('.user-avatar');
+            if (userAvatar) {
+                userAvatar.style.fontSize = this._isSmallMobile ? '16px' : '20px';
+            }
+        }
+
+        const vigiaIndicator = document.getElementById('vigiaIndicator');
+        const centinelaIndicator = document.getElementById('centinelaIndicator');
+        
+        for (const indicator of [vigiaIndicator, centinelaIndicator]) {
+            if (indicator) {
+                indicator.style.cssText = `
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 2px;
+                    font-size: ${this._isSmallMobile ? '8px' : (this._isMobile ? '9px' : '11px')};
+                    flex-shrink: 0;
+                `;
+                const label = indicator.querySelector('.vigia-label, .centinela-label');
+                if (label) {
+                    label.style.display = this._isSmallMobile ? 'none' : 'inline';
+                }
+                const dot = indicator.querySelector('.vigia-dot, .centinela-dot');
+                if (dot) {
+                    dot.style.width = this._isSmallMobile ? '6px' : '8px';
+                    dot.style.height = this._isSmallMobile ? '6px' : '8px';
+                }
+            }
+        }
+    }
+
+    _iniciarIndicadoresHeader() {
+        const brand = document.querySelector('.brand');
+        if (!brand) return;
+        
+        this._actualizarHeaderResponsive();
+        
+        if (!document.getElementById('vigiaIndicator')) {
+            const vigiaIndicator = document.createElement('div');
+            vigiaIndicator.id = 'vigiaIndicator';
+            vigiaIndicator.className = 'vigia-indicator';
+            vigiaIndicator.innerHTML = `
+                <div class="vigia-dot" id="vigiaDot"></div>
+                <span class="vigia-label">Vigía</span>
+                <span class="vigia-status" id="vigiaStatus">● Offline</span>
+            `;
+            brand.appendChild(vigiaIndicator);
+        }
+        
+        if (!document.getElementById('centinelaIndicator')) {
+            const centinelaIndicator = document.createElement('div');
+            centinelaIndicator.id = 'centinelaIndicator';
+            centinelaIndicator.className = 'centinela-indicator';
+            centinelaIndicator.innerHTML = `
+                <div class="centinela-dot" id="centinelaDot"></div>
+                <span class="centinela-label">Centinela</span>
+                <span class="centinela-status" id="centinelaStatus">● Activo</span>
+            `;
+            brand.appendChild(centinelaIndicator);
+        }
+        
+        const existingSelector = document.getElementById('idiomaSelectorWrapper');
+        if (existingSelector) existingWrapper.remove();
+        
+        this._crearIndicadorBalanceador();
+        this._configurarModoInverso();
+        this._crearIndicadorTokens();
+        
+        this._actualizarIndicadoresSeguro();
+        
+        window.addEventListener('resize', () => {
+            this._actualizarHeaderResponsive();
+        });
+        
+        if (this._vigiaInterval) clearInterval(this._vigiaInterval);
+        this._vigiaInterval = setInterval(() => {
+            this._actualizarIndicadoresSeguro();
+            this._actualizarBarraVigiaCentinela();
+            this._actualizarIndicadorBalanceador();
+            this._actualizarIndicadorTokens();
+        }, 3000);
+    }
+
+    // ============================================================
+    // DESTRUIR
+    // ============================================================
+
+    destroy() {
+        if (this._vigiaInterval) {
+            clearInterval(this._vigiaInterval);
+            this._vigiaInterval = null;
+        }
+        if (this._activityInterval) {
+            clearInterval(this._activityInterval);
+            this._activityInterval = null;
+        }
+        if (this._chatMetricsInterval) {
+            clearInterval(this._chatMetricsInterval);
+            this._chatMetricsInterval = null;
+        }
+        if (this._storageInterval) {
+            clearInterval(this._storageInterval);
+            this._storageInterval = null;
+        }
+        console.log('🛑 UI Core: Destruido');
+    }
 }
+
+// ============================================================
+// INSTANCIA GLOBAL
+// ============================================================
 
 window.uiCore = new UICore();
 window.ui = window.uiCore;
 
-console.log('✅ UI Core v18.22 - COMPLETO Y CORREGIDO');
-console.log('  🔥 Renderizado directo de tutor y generador SIN depender de UIDashboard');
-console.log('  🔥 _renderizarTutorDirecto() - contenido completo');
-console.log('  🔥 _renderizarGeneradorDirecto() - contenido completo');
-console.log('  🔥 Todas las funcionalidades originales preservadas');
+console.log('✅ UI Core v18.32 - CON MANUAL INTERACTIVO');
+console.log('  📖 Módulo "manual" registrado correctamente');
+console.log('  🔥 Inicialización robusta con reintentos');
+console.log('  🔥 Recuperación de instancia global');
+console.log('  🔥 Carga con reintentos progresivos');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

@@ -1,5 +1,5 @@
 // ============================================================
-// UI DASHBOARD v22.7 - CORREGIDO: ELIMINADO DUPLICADO DINÁMICO
+// UI DASHBOARD v23.7 - CON MANUAL INTERACTIVO
 // ============================================================
 
 class UIDashboard {
@@ -35,6 +35,125 @@ class UIDashboard {
             'offline': '🔴'
         };
         
+        // ============================================================
+        // TARJETAS LITE - CON MANUAL INTERACTIVO
+        // ============================================================
+        this._TARJETAS_LITE = [
+            { 
+                id: 'elipse', 
+                icono: '🌌', 
+                titulo: 'Modo Elipse', 
+                descripcion: 'Aprendizaje expansivo en ondas', 
+                color: 'linear-gradient(135deg,#6C5CE7,#00CEC9)',
+                categoria: 'aprendizaje'
+            },
+            { 
+                id: 'ondasCruzadas', 
+                icono: '🌊', 
+                titulo: 'Ondas Cruzadas', 
+                descripcion: 'Interferencia de elipses', 
+                color: 'linear-gradient(135deg,#6C5CE7,#A29BFE)',
+                categoria: 'aprendizaje'
+            },
+            { 
+                id: 'manual', 
+                icono: '📖', 
+                titulo: 'Manual Interactivo', 
+                descripcion: 'Guía completa del sistema', 
+                color: 'linear-gradient(135deg,#FDCB6E,#E17055)',
+                categoria: 'sistema'
+            },
+            { 
+                id: 'config', 
+                icono: '⚙️', 
+                titulo: 'Configuración', 
+                descripcion: 'Ajusta tu perfil y preferencias', 
+                color: 'linear-gradient(135deg,#FDCB6E,#F9CA24)',
+                categoria: 'sistema'
+            },
+            { 
+                id: 'tools', 
+                icono: '🛠️', 
+                titulo: 'Herramientas', 
+                descripcion: 'Backup y diagnóstico', 
+                color: 'linear-gradient(135deg,#636E72,#2D3436)',
+                categoria: 'sistema'
+            }
+        ];
+        
+        // ============================================================
+        // TARJETAS EXPANDIDAS
+        // ============================================================
+        this._TARJETAS_EXPANDIDAS = [
+            { 
+                id: 'study', 
+                icono: '📖', 
+                titulo: 'Estudiar', 
+                descripcion: 'Práctica con SRS', 
+                color: 'linear-gradient(135deg,#6C5CE7,#A29BFE)',
+                categoria: 'aprendizaje'
+            },
+            { 
+                id: 'grammar', 
+                icono: '📚', 
+                titulo: 'Gramática', 
+                descripcion: 'Reglas y estructuras', 
+                color: 'linear-gradient(135deg,#00CEC9,#81ECEC)',
+                categoria: 'lenguaje'
+            },
+            { 
+                id: 'temas', 
+                icono: '📂', 
+                titulo: 'Temas', 
+                descripcion: 'Organiza tu contenido', 
+                color: 'linear-gradient(135deg,#FDCB6E,#F9CA24)',
+                categoria: 'aprendizaje'
+            },
+            { 
+                id: 'espacio', 
+                icono: '⭐', 
+                titulo: 'Mi Espacio', 
+                descripcion: 'Tus favoritos', 
+                color: 'linear-gradient(135deg,#A29BFE,#6C5CE7)',
+                categoria: 'aprendizaje'
+            },
+            { 
+                id: 'vigia', 
+                icono: '👁️', 
+                titulo: 'Vigía IA', 
+                descripcion: 'Asistente inteligente', 
+                color: 'linear-gradient(135deg,#74B9FF,#0984E3)',
+                categoria: 'sistema'
+            },
+            { 
+                id: 'competiciones', 
+                icono: '🏆', 
+                titulo: 'Ligas', 
+                descripcion: 'Compite con IA', 
+                color: 'linear-gradient(135deg,#FDCB6E,#E17055)',
+                categoria: 'competiciones'
+            },
+            { 
+                id: 'caracteres', 
+                icono: '🀄', 
+                titulo: 'Caracteres', 
+                descripcion: 'Escritura jeroglífica', 
+                color: 'linear-gradient(135deg,#6C5CE7,#00CEC9)',
+                categoria: 'lenguaje'
+            },
+            { 
+                id: 'fonetica', 
+                icono: '🎤', 
+                titulo: 'Fonética', 
+                descripcion: 'Pronunciación', 
+                color: 'linear-gradient(135deg,#00B894,#55EFC4)',
+                categoria: 'lenguaje'
+            }
+        ];
+        
+        // ============================================================
+        // CATEGORÍAS
+        // ============================================================
         this._CATEGORIAS = [
             {
                 id: 'tutor',
@@ -42,7 +161,7 @@ class UIDashboard {
                 descripcion: 'Tu asistente personal de aprendizaje',
                 icono: '🧠',
                 color: 'linear-gradient(135deg, #6C5CE7, #A29BFE)',
-                modulos: [
+                tarjetas: [
                     { id: 'tutor_panel', nombre: 'Tutor NeuroAdaptativo', icono: 'fa-brain', desc: 'Aprendizaje personalizado con IA' },
                     { id: 'tutor_generador', nombre: 'Generador NeuroAdaptativo', icono: 'fa-magic', desc: 'Genera contenido personalizado con metodología neurocognitiva' }
                 ]
@@ -53,10 +172,12 @@ class UIDashboard {
                 descripcion: 'Gestiona tu contenido y progreso',
                 icono: '📚',
                 color: 'linear-gradient(135deg, #00B894, #55EFC4)',
-                modulos: [
+                tarjetas: [
                     { id: 'study', nombre: 'Estudiar', icono: 'fa-graduation-cap', desc: 'Práctica con SRS' },
                     { id: 'temas', nombre: 'Temas', icono: 'fa-folder-open', desc: 'Organiza tu contenido' },
-                    { id: 'espacio', nombre: 'Mi Espacio', icono: 'fa-star', desc: 'Tus favoritos' }
+                    { id: 'espacio', nombre: 'Mi Espacio', icono: 'fa-star', desc: 'Tus favoritos' },
+                    { id: 'elipse', nombre: '🌌 Modo Elipse', icono: 'fa-wave-square', desc: 'Aprendizaje expansivo' },
+                    { id: 'ondasCruzadas', nombre: '🌊 Ondas Cruzadas', icono: 'fa-network-wired', desc: 'Interferencia de elipses' }
                 ]
             },
             {
@@ -65,7 +186,7 @@ class UIDashboard {
                 descripcion: 'Herramientas lingüísticas avanzadas',
                 icono: '🌍',
                 color: 'linear-gradient(135deg, #00CEC9, #81ECEC)',
-                modulos: [
+                tarjetas: [
                     { id: 'grammar', nombre: 'Gramática', icono: 'fa-sitemap', desc: 'Reglas y estructuras' },
                     { id: 'caracteres', nombre: 'Caracteres', icono: 'fa-font', desc: 'Escritura jeroglífica' },
                     { id: 'fonetica', nombre: 'Fonética', icono: 'fa-microphone-alt', desc: 'Pronunciación' }
@@ -77,9 +198,11 @@ class UIDashboard {
                 descripcion: 'Control y configuración',
                 icono: '⚙️',
                 color: 'linear-gradient(135deg, #636E72, #2D3436)',
-                modulos: [
+                tarjetas: [
+                    { id: 'manual', nombre: 'Manual Interactivo', icono: 'fa-book', desc: 'Guía completa del sistema' },
                     { id: 'config', nombre: 'Configuración', icono: 'fa-sliders-h', desc: 'Ajusta tu perfil' },
-                    { id: 'tools', nombre: 'Herramientas', icono: 'fa-tools', desc: 'Backup y diagnóstico' }
+                    { id: 'tools', nombre: 'Herramientas', icono: 'fa-tools', desc: 'Backup y diagnóstico' },
+                    { id: 'vigia', nombre: 'Vigía IA', icono: 'fa-eye', desc: 'Asistente inteligente' }
                 ]
             },
             {
@@ -88,7 +211,7 @@ class UIDashboard {
                 descripcion: 'Desafía a otros aprendices',
                 icono: '🏆',
                 color: 'linear-gradient(135deg, #FDCB6E, #E17055)',
-                modulos: [
+                tarjetas: [
                     { id: 'competiciones', nombre: 'Liga Neuro', icono: 'fa-trophy', desc: 'Compite con IA' }
                 ]
             }
@@ -98,17 +221,25 @@ class UIDashboard {
     _esJeroglifico(idioma) {
         if (!idioma) return false;
         const idiomaLower = idioma.toLowerCase().trim();
-        return this._IDIOMAS_JEROGLIFICOS.some(item => 
+        return this._IDIOMAS_JEROGLIFICOS.some(item =>
             idiomaLower.includes(item) || item.includes(idiomaLower)
         );
     }
 
     _getNombreIdioma(idioma) {
         const nombres = {
-            'es': 'Español', 'en': 'Inglés', 'fr': 'Francés',
-            'de': 'Alemán', 'it': 'Italiano', 'pt': 'Portugués',
-            'zh': 'Chino', 'ja': 'Japonés', 'ko': 'Coreano',
-            'ru': 'Ruso', 'ar': 'Árabe', 'hi': 'Hindi'
+            'es': 'Español',
+            'en': 'Inglés',
+            'fr': 'Francés',
+            'de': 'Alemán',
+            'it': 'Italiano',
+            'pt': 'Portugués',
+            'zh': 'Chino',
+            'ja': 'Japonés',
+            'ko': 'Coreano',
+            'ru': 'Ruso',
+            'ar': 'Árabe',
+            'hi': 'Hindi'
         };
         return nombres[idioma] || idioma;
     }
@@ -121,13 +252,19 @@ class UIDashboard {
             'temaCompletado', 'tutorIntervencion', 'learningPathGenerado',
             'learningPathPasoCompletado', 'learningPathCompletado',
             'learningPathPasoCambiado', 'vigiaGramaticalActualizado',
-            'actividadActualizada', 'learningPathProgresoActualizado'
+            'actividadActualizada', 'learningPathProgresoActualizado',
+            'elipseOndaGenerada', 'ondasCruzadasGenerada'
         ];
         
         for (const evento of eventosRecarga) {
             window.addEventListener(evento, () => {
                 this._programarRecarga();
             });
+        }
+        
+        // Registrar el módulo manual
+        if (window.UIManual && typeof window.UIManual.init === 'function') {
+            window.UIManual.init(this);
         }
         
         setTimeout(() => {
@@ -143,7 +280,7 @@ class UIDashboard {
             }
         }, 5000);
         
-        console.log('📊 UIDashboard v22.7: Inicializado');
+        console.log('📊 UIDashboard v23.7: Inicializado (CON MANUAL INTERACTIVO)');
         return this;
     }
 
@@ -163,7 +300,7 @@ class UIDashboard {
     }
 
     // ============================================================
-    // DASHBOARD PRINCIPAL - CORREGIDO (SIN DOBLE TÍTULO)
+    // CARGA PRINCIPAL
     // ============================================================
 
     async _cargarDashboardInicial() {
@@ -177,7 +314,16 @@ class UIDashboard {
         this._ultimaActualizacion = Date.now();
         
         try {
-            console.log('📊 Cargando Dashboard v22.7...');
+            console.log('📊 Cargando Dashboard v23.7 (CON MANUAL INTERACTIVO)...');
+            
+            const dashboardGrid = document.getElementById('dashboardGrid');
+            if (!dashboardGrid) {
+                console.error('❌ dashboardGrid no encontrado');
+                this._cargando = false;
+                return;
+            }
+            
+            dashboardGrid.innerHTML = '';
             
             const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             this._idiomaActual = idiomaActivo;
@@ -199,194 +345,415 @@ class UIDashboard {
             this._actualizarTarjetaEspacio();
             this._actualizarHeaderStats(estado);
             
-            if (esJeroglifico) {
-                this._actualizarTarjetaCaracteres();
-            } else {
-                this._ocultarTarjetaCaracteres();
-            }
-            
             await this._renderizarTarjetaNeuro(stats, usuario, neuroEstado, racha);
-            
-            const dashboardGrid = document.getElementById('dashboardGrid');
-            if (!dashboardGrid) {
-                console.error('❌ dashboardGrid no encontrado');
-                this._cargando = false;
-                return;
-            }
 
-            let tokenData = null;
-            if (window.vigia && typeof window.vigia.obtenerEstadoTokens === 'function') {
-                tokenData = window.vigia.obtenerEstadoTokens();
-            }
+            const modoLite = this.core?.esModoLite?.() ?? true;
+            const esExpandido = !modoLite;
 
             let html = '';
-
-            // ============================================================
-            // ⚠️ IMPORTANTE: SOLO GENERAMOS EL HEADER UNA VEZ
-            // El header del dashboard ya existe en el HTML estático,
-            // así que NO lo generamos aquí para evitar duplicados.
-            // ============================================================
             
-            // SOLO actualizamos los valores existentes, no creamos nuevo HTML
-            // para el título "Panel de Control"
+            // ============================================================
+            // HEADER CON BOTÓN MANUAL
+            // ============================================================
+            html += `
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;padding:12px 20px;background:linear-gradient(135deg, var(--primary)06, var(--secondary)06);border-radius:14px;border:2px solid var(--primary)20;">
+                    <div>
+                        <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
+                            📊 Panel de Control
+                            <span style="font-size:11px;font-weight:400;color:var(--gray);margin-left:8px;">v23.7</span>
+                        </h2>
+                        <p style="font-size:13px;color:var(--gray);margin:4px 0 0;">
+                            Bienvenido de vuelta, <strong>${usuario?.nombre || 'Usuario'}</strong>
+                            <span style="font-size:11px;color:var(--gray-light);margin-left:8px;">🎯 ${this._obtenerNivelUsuario()}</span>
+                        </p>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn-secondary" onclick="window.uiCore.irAModulo('manual')" 
+                                style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#FDCB6E,#E17055);color:white;border:none;border-radius:6px;cursor:pointer;transition:all 0.3s;"
+                                onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(225,112,85,0.3)'" 
+                                onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                            <i class="fas fa-book"></i> 📖 Manual
+                        </button>
+                        <button onclick="window.uiCore.toggleModoDashboard()" 
+                                style="padding:6px 14px;font-size:12px;border:none;border-radius:6px;cursor:pointer;transition:all 0.3s;background:${modoLite ? 'var(--primary)' : 'var(--bg)'};color:${modoLite ? 'white' : 'var(--dark)'};"
+                                onmouseover="this.style.transform='scale(1.05)'" 
+                                onmouseout="this.style.transform='none'">
+                            <i class="fas ${modoLite ? 'fa-expand' : 'fa-compress'}"></i>
+                            ${modoLite ? 'Experto' : 'Lite'}
+                        </button>
+                    </div>
+                </div>
+            `;
 
             // ============================================================
-            // TARJETA NEURO (SIEMPRE PRIMERO)
+            // GRID DE TARJETAS LITE
             // ============================================================
-            html += await this._generarTarjetaNeuroHTML(stats, usuario, neuroEstado, racha);
-
-            // ============================================================
-            // CATEGORÍAS - COMPLETO (SIN DUPLICAR EL TÍTULO)
-            // ============================================================
-            for (const categoria of this._CATEGORIAS) {
-                let modulosFiltrados = categoria.modulos;
+            html += `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+            `;
+            
+            for (const tarjeta of this._TARJETAS_LITE) {
+                let badge = '';
+                let badgeColor = '';
+                let badgeText = '';
                 
-                if (categoria.id === 'lenguaje') {
-                    modulosFiltrados = categoria.modulos.filter(m => {
-                        if (m.id === 'caracteres' && !esJeroglifico) return false;
-                        return true;
-                    });
+                if (tarjeta.id === 'elipse' && window.modoElipse) {
+                    const estado = window.modoElipse.getEstadoElipse(this._idiomaActual);
+                    if (estado && estado.totalOndas > 0) {
+                        badge = true;
+                        badgeColor = 'rgba(108,92,231,0.9)';
+                        badgeText = `🌊 ${estado.totalOndas}`;
+                    }
+                }
+                if (tarjeta.id === 'ondasCruzadas') {
+                    try {
+                        const estado = window.modoOndasCruzadas?.getEstado?.() || {};
+                        if (estado.grafoSize > 0) {
+                            badge = true;
+                            badgeColor = 'rgba(108,92,231,0.9)';
+                            badgeText = `🌊 ${estado.grafoSize}`;
+                        }
+                    } catch (e) {}
+                }
+                if (tarjeta.id === 'manual') {
+                    try {
+                        const favs = localStorage.getItem('pipeline_manual_favoritos');
+                        if (favs) {
+                            const parsed = JSON.parse(favs);
+                            if (parsed.length > 0) {
+                                badge = true;
+                                badgeColor = 'rgba(225,112,85,0.9)';
+                                badgeText = `⭐ ${parsed.length}`;
+                            }
+                        }
+                    } catch (e) {}
+                }
+                if (tarjeta.id === 'tools') {
+                    try {
+                        const backups = JSON.parse(localStorage.getItem('pipeline_backups_locales') || '[]');
+                        if (backups.length > 0) {
+                            badge = true;
+                            badgeColor = 'rgba(99,110,114,0.9)';
+                            badgeText = `💾 ${backups.length}`;
+                        }
+                    } catch (e) {}
                 }
                 
-                if (modulosFiltrados.length === 0) continue;
-
+                const isLite = true;
+                const shadow = isLite && (tarjeta.id === 'elipse' || tarjeta.id === 'ondasCruzadas' || tarjeta.id === 'manual')
+                    ? '0 8px 32px rgba(108,92,231,0.15)'
+                    : '0 4px 16px rgba(0,0,0,0.06)';
+                
+                const borderColor = isLite && (tarjeta.id === 'elipse' || tarjeta.id === 'ondasCruzadas' || tarjeta.id === 'manual')
+                    ? '2px solid var(--primary)' 
+                    : '1px solid var(--light)';
+                
+                const onClick = tarjeta.id === 'ondasCruzadas' 
+                    ? `window.uiCore.irAModulo('ondasCruzadas')` 
+                    : `window.uiCore.irAModulo('${tarjeta.id}')`;
+                
                 html += `
-                    <div class="categoria-container" style="grid-column: 1 / -1; margin-top: 8px;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                            <span style="font-size:24px;">${categoria.icono}</span>
-                            <div>
-                                <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin:0;">${categoria.nombre}</h3>
-                                <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">${categoria.descripcion}</p>
+                    <div class="dash-card" onclick="${onClick}" 
+                         style="
+                            background:var(--white);
+                            border-radius:20px;
+                            padding:20px 16px;
+                            box-shadow:${shadow};
+                            border:${borderColor};
+                            cursor:pointer;
+                            transition:all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                            display:flex;
+                            flex-direction:column;
+                            align-items:center;
+                            text-align:center;
+                            gap:10px;
+                            min-height:160px;
+                            position:relative;
+                            overflow:hidden;
+                         "
+                         onmouseover="
+                            this.style.transform='translateY(-6px) scale(1.02)';
+                            this.style.boxShadow='0 16px 48px rgba(0,0,0,0.12)';
+                            this.style.borderColor='var(--primary)';
+                            this.querySelector('.dash-card-arrow').style.transform='translateX(6px)';
+                            this.querySelector('.dash-card-arrow').style.opacity='1';
+                         " 
+                         onmouseout="
+                            this.style.transform='none';
+                            this.style.boxShadow='${shadow}';
+                            this.style.borderColor='${isLite && (tarjeta.id === 'elipse' || tarjeta.id === 'ondasCruzadas' || tarjeta.id === 'manual') ? 'var(--primary)' : 'var(--light)'}';
+                            this.querySelector('.dash-card-arrow').style.transform='none';
+                            this.querySelector('.dash-card-arrow').style.opacity='0.5';
+                         ">
+                        
+                        ${badge ? `
+                            <div style="
+                                position:absolute;
+                                top:8px;
+                                right:8px;
+                                background:${badgeColor};
+                                color:white;
+                                padding:2px 10px;
+                                border-radius:50px;
+                                font-size:10px;
+                                font-weight:600;
+                                box-shadow:0 2px 12px rgba(0,0,0,0.15);
+                            ">
+                                ${badgeText}
                             </div>
-                            <span style="font-size:11px;color:var(--gray-light);margin-left:auto;">${modulosFiltrados.length} módulos</span>
+                        ` : ''}
+                        
+                        ${isLite && (tarjeta.id === 'elipse' || tarjeta.id === 'ondasCruzadas' || tarjeta.id === 'manual') ? `
+                            <div style="
+                                position:absolute;
+                                top:-30px;
+                                right:-30px;
+                                width:100px;
+                                height:100px;
+                                border-radius:50%;
+                                background:linear-gradient(135deg, rgba(108,92,231,0.06), rgba(0,206,201,0.06));
+                                pointer-events:none;
+                            "></div>
+                        ` : ''}
+                        
+                        <div style="
+                            width:56px;
+                            height:56px;
+                            border-radius:16px;
+                            background:${tarjeta.color};
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            font-size:28px;
+                            color:white;
+                            flex-shrink:0;
+                            box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                            transition:all 0.3s ease;
+                            position:relative;
+                            z-index:1;
+                        ">
+                            ${tarjeta.icono}
                         </div>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-                `;
-
-                for (const modulo of modulosFiltrados) {
-                    let badge = '';
-                    let extraStyles = '';
-                    let onclick = '';
-                    
-                    if (modulo.id === 'tutor_panel') {
-                        extraStyles = 'border:2px solid var(--primary);background:linear-gradient(135deg, var(--primary)04, var(--secondary)04);';
-                        onclick = `window.UIDashboard._irATutorPanel()`;
-                        try {
-                            if (window.tutorNeuro) {
-                                const pendientes = window.tutorNeuro.getIntervencionesPendientes();
-                                if (pendientes.length > 0) {
-                                    badge = `<span style="font-size:9px;background:var(--warning);color:white;padding:1px 8px;border-radius:10px;">${pendientes.length}</span>`;
-                                }
-                            }
-                        } catch(e) {}
-                    } else if (modulo.id === 'tutor_generador') {
-                        extraStyles = 'border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)04, var(--primary)04);';
-                        onclick = `window.UIDashboard._irAGenerador()`;
-                        try {
-                            const nivelActual = this._obtenerNivelUsuario();
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">🎯 ${nivelActual}</span>`;
-                        } catch(e) {}
-                    } else {
-                        onclick = `window.uiCore.irAModulo('${modulo.id}')`;
-                    }
-                    
-                    if (modulo.id === 'study') {
-                        const completadas = stats?.progreso || 0;
-                        const total = stats?.totalFrases || 1;
-                        const pct = Math.round((completadas / total) * 100);
-                        badge = `<span style="font-size:9px;color:var(--gray-light);">${pct}%</span>`;
-                    }
-                    
-                    if (modulo.id === 'temas') {
-                        const totalTemas = temas.length;
-                        const completados = temas.filter(t => t.estado === 'completado').length;
-                        badge = `<span style="font-size:9px;color:var(--gray-light);">${completados}/${totalTemas}</span>`;
-                    }
-                    
-                    if (modulo.id === 'espacio') {
-                        try {
-                            const favs = await window.gestorFavoritos?.contarFavoritos() || { frases: 0, palabras: 0 };
-                            const total = favs.frases + favs.palabras;
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">${total}</span>`;
-                        } catch (e) {
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
-                        }
-                    }
-                    
-                    if (modulo.id === 'grammar') {
-                        try {
-                            const palabras = await db.obtenerPalabrasPorIdioma(idiomaActivo);
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">${palabras.length}</span>`;
-                        } catch (e) {
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
-                        }
-                    }
-                    
-                    if (modulo.id === 'caracteres') {
-                        try {
-                            const familias = await db.obtenerFamiliasCaracteres(idiomaActivo);
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">${familias.length}</span>`;
-                        } catch (e) {
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
-                        }
-                    }
-                    
-                    if (modulo.id === 'fonetica') {
-                        try {
-                            const frases = await db.obtenerFrasesPorIdioma(idiomaActivo);
-                            const palabras = await db.obtenerPalabrasPorIdioma(idiomaActivo);
-                            let conTranscripcion = 0;
-                            let total = 0;
-                            for (const f of frases) {
-                                total++;
-                                if (f.transcripcion || f.pinyinCompleto || f.segmentacion?.pinyin) conTranscripcion++;
-                            }
-                            for (const p of palabras) {
-                                total++;
-                                if (p.transcripcion || p.pinyin) conTranscripcion++;
-                            }
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">${conTranscripcion}/${total}</span>`;
-                        } catch (e) {
-                            badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
-                        }
-                    }
-                    
-                    if (modulo.id === 'competiciones') {
-                        extraStyles = 'border:2px solid #FDCB6E;background:linear-gradient(135deg, #FDCB6E08, #E1705508);';
-                    }
-
-                    html += `
-                        <div class="dash-card" onclick="${onclick}" 
-                             style="background:var(--white);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid var(--primary);cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:12px;${extraStyles}"
-                             onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 25px rgba(0,0,0,0.1)'" 
-                             onmouseout="this.style.transform='none';this.style.boxShadow='var(--shadow)'">
-                            <div style="width:40px;height:40px;border-radius:10px;background:${categoria.color};display:flex;align-items:center;justify-content:center;font-size:18px;color:white;flex-shrink:0;">
-                                <i class="fas ${modulo.icono}"></i>
-                            </div>
-                            <div style="flex:1;min-width:0;">
-                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                    <span style="font-size:14px;font-weight:600;color:var(--dark);">${modulo.nombre}</span>
-                                    ${badge ? `<span style="font-size:9px;color:var(--gray-light);">${badge}</span>` : ''}
-                                </div>
-                                <p style="font-size:11px;color:var(--gray);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${modulo.desc}</p>
-                            </div>
-                            <div style="color:var(--gray-light);font-size:14px;flex-shrink:0;">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
+                        
+                        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;z-index:1;">
+                            <h3 style="font-size:${isLite ? '16px' : '14px'};font-weight:700;color:var(--dark);margin:0;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                ${tarjeta.titulo}
+                                ${(tarjeta.id === 'elipse' || tarjeta.id === 'ondasCruzadas' || tarjeta.id === 'manual') && isLite ? `
+                                    <span style="font-size:8px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;padding:1px 8px;border-radius:50px;font-weight:600;">⭐</span>
+                                ` : ''}
+                            </h3>
+                            <p style="font-size:12px;color:var(--gray);margin:4px 0 0;line-height:1.4;max-width:160px;margin-left:auto;margin-right:auto;">
+                                ${tarjeta.descripcion}
+                            </p>
                         </div>
-                    `;
-                }
-
-                html += `
+                        
+                        <div class="dash-card-arrow" style="color:var(--gray-light);font-size:14px;opacity:0.5;transition:all 0.3s ease;z-index:1;">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
                 `;
             }
+            
+            html += `
+                </div>
+            `;
 
             // ============================================================
-            // 🔥 ACTUALIZAMOS EL HEADER EXISTENTE EN LUGAR DE CREAR UNO NUEVO
+            // CATEGORÍAS EXPANDIDAS
             // ============================================================
-            this._actualizarHeaderExistente(usuario, idiomaActivo, estado, racha, tokenData);
+            if (esExpandido) {
+                const idsLite = new Set(this._TARJETAS_LITE.map(t => t.id));
+                
+                for (const categoria of this._CATEGORIAS) {
+                    let tarjetasFiltradas = categoria.tarjetas.filter(t => !idsLite.has(t.id));
+                    
+                    if (categoria.id === 'lenguaje') {
+                        tarjetasFiltradas = tarjetasFiltradas.filter(t => {
+                            if (t.id === 'caracteres' && !esJeroglifico) return false;
+                            return true;
+                        });
+                    }
+                    
+                    if (tarjetasFiltradas.length === 0) continue;
+
+                    html += `
+                        <div class="categoria-container" style="grid-column: 1 / -1; margin-top: 12px;">
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:0 4px;">
+                                <span style="font-size:24px;">${categoria.icono}</span>
+                                <div>
+                                    <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin:0;">${categoria.nombre}</h3>
+                                    <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">${categoria.descripcion}</p>
+                                </div>
+                                <span style="font-size:11px;color:var(--gray-light);margin-left:auto;background:var(--bg);padding:2px 14px;border-radius:50px;">${tarjetasFiltradas.length} módulos</span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+                    `;
+
+                    for (const tarjeta of tarjetasFiltradas) {
+                        let extraStyles = '';
+                        let onclick = '';
+                        let badge = '';
+                        
+                        if (tarjeta.id === 'tutor_panel') {
+                            extraStyles = 'border:2px solid var(--primary);background:linear-gradient(135deg, var(--primary)04, var(--secondary)04);';
+                            onclick = `window.UIDashboard._irATutorPanel()`;
+                            try {
+                                if (window.tutorNeuro) {
+                                    const pendientes = window.tutorNeuro.getIntervencionesPendientes();
+                                    if (pendientes.length > 0) {
+                                        badge = `<span style="font-size:9px;background:var(--warning);color:white;padding:1px 10px;border-radius:50px;">${pendientes.length}</span>`;
+                                    }
+                                }
+                            } catch(e) {}
+                        } else if (tarjeta.id === 'tutor_generador') {
+                            extraStyles = 'border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)04, var(--primary)04);';
+                            onclick = `window.UIDashboard._irAGenerador()`;
+                            try {
+                                const nivelActual = this._obtenerNivelUsuario();
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">🎯 ${nivelActual}</span>`;
+                            } catch(e) {}
+                        } else if (tarjeta.id === 'manual') {
+                            extraStyles = 'border:2px solid #E17055;background:linear-gradient(135deg, #E1705508, #FDCB6E08);';
+                            onclick = `window.uiCore.irAModulo('manual')`;
+                            try {
+                                const favs = localStorage.getItem('pipeline_manual_favoritos');
+                                if (favs) {
+                                    const parsed = JSON.parse(favs);
+                                    if (parsed.length > 0) {
+                                        badge = `<span style="font-size:9px;color:var(--gray-light);">⭐ ${parsed.length}</span>`;
+                                    }
+                                }
+                            } catch(e) {}
+                        } else {
+                            onclick = `window.uiCore.irAModulo('${tarjeta.id}')`;
+                        }
+                        
+                        if (tarjeta.id === 'study') {
+                            const completadas = stats?.progreso || 0;
+                            const total = stats?.totalFrases || 1;
+                            const pct = Math.round((completadas / total) * 100);
+                            badge = `<span style="font-size:9px;color:var(--gray-light);">${pct}%</span>`;
+                        }
+                        
+                        if (tarjeta.id === 'temas') {
+                            const totalTemas = temas.length;
+                            const completados = temas.filter(t => t.estado === 'completado').length;
+                            badge = `<span style="font-size:9px;color:var(--gray-light);">${completados}/${totalTemas}</span>`;
+                        }
+                        
+                        if (tarjeta.id === 'espacio') {
+                            try {
+                                const favs = await window.gestorFavoritos?.contarFavoritos() || { frases: 0, palabras: 0 };
+                                const total = favs.frases + favs.palabras;
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">${total}</span>`;
+                            } catch (e) {
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
+                            }
+                        }
+                        
+                        if (tarjeta.id === 'grammar') {
+                            try {
+                                const palabras = await db.obtenerPalabrasPorIdioma(idiomaActivo);
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">${palabras.length}</span>`;
+                            } catch (e) {
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
+                            }
+                        }
+                        
+                        if (tarjeta.id === 'caracteres') {
+                            try {
+                                const familias = await db.obtenerFamiliasCaracteres(idiomaActivo);
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">${familias.length}</span>`;
+                            } catch (e) {
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
+                            }
+                        }
+                        
+                        if (tarjeta.id === 'fonetica') {
+                            try {
+                                const frases = await db.obtenerFrasesPorIdioma(idiomaActivo);
+                                const palabras = await db.obtenerPalabrasPorIdioma(idiomaActivo);
+                                let conTranscripcion = 0;
+                                let total = 0;
+                                for (const f of frases) {
+                                    total++;
+                                    if (f.transcripcion || f.pinyinCompleto || f.segmentacion?.pinyin) conTranscripcion++;
+                                }
+                                for (const p of palabras) {
+                                    total++;
+                                    if (p.transcripcion || p.pinyin) conTranscripcion++;
+                                }
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">${conTranscripcion}/${total}</span>`;
+                            } catch (e) {
+                                badge = `<span style="font-size:9px;color:var(--gray-light);">0</span>`;
+                            }
+                        }
+                        
+                        if (tarjeta.id === 'competiciones') {
+                            extraStyles = 'border:2px solid #FDCB6E;background:linear-gradient(135deg, #FDCB6E08, #E1705508);';
+                        }
+
+                        html += `
+                            <div class="dash-card" onclick="${onclick}" 
+                                 style="background:var(--white);border-radius:14px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.04);border-left:4px solid var(--primary);cursor:pointer;transition:all 0.3s ease;display:flex;align-items:center;gap:14px;${extraStyles}"
+                                 onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 32px rgba(0,0,0,0.08)'" 
+                                 onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
+                                <div style="width:40px;height:40px;border-radius:12px;background:${categoria.color};display:flex;align-items:center;justify-content:center;font-size:18px;color:white;flex-shrink:0;">
+                                    <i class="fas ${tarjeta.icono}"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                        <span style="font-size:14px;font-weight:600;color:var(--dark);">${tarjeta.nombre}</span>
+                                        ${badge ? `<span style="font-size:9px;color:var(--gray-light);background:var(--bg);padding:1px 10px;border-radius:50px;">${badge}</span>` : ''}
+                                    </div>
+                                    <p style="font-size:11px;color:var(--gray);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${tarjeta.desc}</p>
+                                </div>
+                                <div style="color:var(--gray-light);font-size:12px;flex-shrink:0;transition:all 0.3s;">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            if (esExpandido && esJeroglifico) {
+                this._actualizarTarjetaCaracteres();
+            } else {
+                this._ocultarTarjetaCaracteres();
+            }
+
+            const totalModulos = modoLite ? 
+                this._TARJETAS_LITE.length : 
+                this._TARJETAS_LITE.length + this._TARJETAS_EXPANDIDAS.length;
+            
+            html += `
+                <div style="
+                    margin-top:24px;
+                    padding:12px 20px;
+                    background:${modoLite ? 'linear-gradient(135deg, var(--primary)04, var(--secondary)04)' : 'var(--bg)'};
+                    border-radius:12px;
+                    border:2px solid ${modoLite ? 'var(--primary)20' : 'var(--light)'};
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    flex-wrap:wrap;
+                    gap:10px;
+                    font-size:12px;
+                    color:var(--gray);
+                ">
+                    <span>📊 ${totalModulos} módulos · ${modoLite ? '🧘 Lite' : '🚀 Expandido'}</span>
+                    <span>🎯 ${usuario?.idiomasObjetivo?.[0]?.nivel || 'A1'}</span>
+                    <span>📈 ${stats?.progreso || 0}%</span>
+                    <span>🔥 ${racha || 0}d</span>
+                    <span>📖 ${this._TARJETAS_LITE.some(t => t.id === 'manual') ? 'Manual disponible ✅' : ''}</span>
+                </div>
+            `;
 
             dashboardGrid.innerHTML = html;
             
@@ -395,7 +762,7 @@ class UIDashboard {
             this._actualizarBadgeTutor();
             
             this._renderizadoNeuro = true;
-            console.log(`✅ Dashboard v22.7 cargado para: ${idiomaActivo}`);
+            console.log(`✅ Dashboard v23.7 cargado para: ${idiomaActivo} (CON MANUAL INTERACTIVO)`);
             
         } catch (error) {
             console.error('❌ Error cargando dashboard:', error);
@@ -405,45 +772,7 @@ class UIDashboard {
     }
 
     // ============================================================
-    // 🔥 NUEVO: ACTUALIZAR HEADER EXISTENTE (SIN DUPLICAR)
-    // ============================================================
-
-    _actualizarHeaderExistente(usuario, idiomaActivo, estado, racha, tokenData) {
-        // Actualizar el nombre del usuario
-        const dashUser = document.getElementById('dashUserName');
-        if (dashUser) dashUser.textContent = usuario?.nombre || 'Usuario';
-
-        // Actualizar el subtítulo si existe
-        const subtitle = document.getElementById('dashboardSubtitle');
-        if (subtitle) {
-            subtitle.innerHTML = `Bienvenido de vuelta, <span id="dashUserName" style="font-weight:600;">${usuario?.nombre || 'Usuario'}</span>`;
-        }
-
-        // Actualizar la barra de progreso
-        const progressFill = document.getElementById('progressFill');
-        if (progressFill) {
-            const pct = estado?.progreso || 0;
-            progressFill.style.width = pct + '%';
-        }
-        const progressLabel = document.getElementById('progressLabel');
-        if (progressLabel) {
-            progressLabel.textContent = (estado?.progreso || 0) + '%';
-        }
-
-        // Actualizar badges del header
-        const headerInfo = document.querySelector('.dashboard-header .header-info') || 
-                          document.querySelector('.dashboard-header div:first-child');
-        if (headerInfo) {
-            // Asegurar que solo hay una vez el título
-            const existingTitle = headerInfo.querySelector('h2');
-            if (existingTitle) {
-                existingTitle.textContent = '📊 Panel de Control';
-            }
-        }
-    }
-
-    // ============================================================
-    // IR AL PANEL DEL TUTOR
+    // MÉTODOS EXISTENTES - PRESERVADOS
     // ============================================================
 
     _irATutorPanel() {
@@ -453,10 +782,6 @@ class UIDashboard {
         }
     }
 
-    // ============================================================
-    // IR AL GENERADOR NEUROADAPTATIVO
-    // ============================================================
-
     _irAGenerador() {
         console.log('🧠 Abriendo Generador NeuroAdaptativo...');
         if (window.uiCore) {
@@ -464,87 +789,9 @@ class UIDashboard {
         }
     }
 
-    // ============================================================
-    // GENERAR TARJETA NEURO HTML
-    // ============================================================
-
-    async _generarTarjetaNeuroHTML(stats, usuario, neuroEstado, racha) {
-        const totalFrases = stats.totalFrases || 1;
-        const completadas = stats.progreso || 0;
-        const pctFrases = Math.round((completadas / totalFrases) * 100);
-        const neuroScore = stats.neuroScore || 0;
-        const eficiencia = stats.eficiencia || 0;
-        const totalPalabras = stats.totalPalabras || 0;
-        
-        const estadoCognitivo = this._determinarEstadoCognitivo(neuroEstado);
-        const expandido = this._panelExpandido;
-        
-        return `
-            <div id="dashNeuroContainer" style="grid-column: 1 / -1; background:var(--white);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);border:2px solid var(--primary);margin-bottom:4px;cursor:default;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:44px;height:44px;border-radius:12px;background:${estadoCognitivo.color};display:flex;align-items:center;justify-content:center;font-size:20px;color:white;flex-shrink:0;">
-                            <i class="fas ${estadoCognitivo.icono}"></i>
-                        </div>
-                        <div>
-                            <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin:0;">
-                                🧠 Estado Neuro
-                                <span style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:10px;background:${estadoCognitivo.color}20;color:${estadoCognitivo.color};margin-left:8px;">${estadoCognitivo.etiqueta}</span>
-                            </h3>
-                            <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">
-                                ⚡${neuroEstado.energia}% · 🎯${neuroEstado.foco}% · 🔥${racha} días · 📊${pctFrases}%
-                            </p>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                        <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:3px 12px;border-radius:12px;">${completadas}/${totalFrases} frases</span>
-                        <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:3px 12px;border-radius:12px;">📖 ${totalPalabras}</span>
-                        <button class="neuro-toggle-btn" onclick="window.UIDashboard.togglePanelNeuro()" 
-                                style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:14px;transition:all 0.3s;padding:4px 8px;border-radius:4px;"
-                                onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
-                            <i class="fas ${expandido ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                ${expandido ? `
-                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--light);animation:fadeUp 0.3s ease;">
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px;">
-                            <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center;">
-                                <div style="font-size:16px;font-weight:800;color:var(--primary);">${neuroEstado.energia}%</div>
-                                <div style="font-size:8px;color:var(--gray);text-transform:uppercase;">Energía</div>
-                            </div>
-                            <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center;">
-                                <div style="font-size:16px;font-weight:800;color:var(--secondary);">${neuroEstado.foco}%</div>
-                                <div style="font-size:8px;color:var(--gray);text-transform:uppercase;">Foco</div>
-                            </div>
-                            <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center;">
-                                <div style="font-size:16px;font-weight:800;color:var(--success);">${eficiencia}%</div>
-                                <div style="font-size:8px;color:var(--gray);text-transform:uppercase;">Eficiencia</div>
-                            </div>
-                            <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center;">
-                                <div style="font-size:16px;font-weight:800;color:var(--warning);">${neuroScore}%</div>
-                                <div style="font-size:8px;color:var(--gray);text-transform:uppercase;">NeuroScore</div>
-                            </div>
-                        </div>
-                        <div style="background:var(--bg);border-radius:6px;padding:8px 12px;border-left:3px solid ${estadoCognitivo.color};">
-                            <div style="font-size:9px;font-weight:600;color:var(--gray);text-transform:uppercase;margin-bottom:2px;">💡 Recomendación</div>
-                            <div style="font-size:12px;color:var(--dark);">${await this._obtenerRecomendacionLarga(stats)}</div>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // TARJETA NEURO
-    // ============================================================
-
     async _renderizarTarjetaNeuro(stats, usuario, neuroEstado, racha) {
         const container = document.getElementById('dashNeuroContainer');
         if (!container) return;
-
         this._dashNeuroContainer = container;
 
         try {
@@ -664,15 +911,9 @@ class UIDashboard {
         }
     }
 
-    togglePanelNeuro() {
-        this._panelExpandido = !this._panelExpandido;
-        this._cargarDashboardInicial();
-    }
-
     _renderizarNeuroFallback() {
         const container = document.getElementById('dashNeuroContainer');
         if (!container) return;
-
         container.innerHTML = `
             <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);">
                 <i class="fas fa-brain"></i>
@@ -697,9 +938,10 @@ class UIDashboard {
         `;
     }
 
-    // ============================================================
-    // BADGE DEL TUTOR
-    // ============================================================
+    togglePanelNeuro() {
+        this._panelExpandido = !this._panelExpandido;
+        this._cargarDashboardInicial();
+    }
 
     _actualizarBadgeTutor() {
         let badge = document.getElementById('tutorBadge');
@@ -751,10 +993,6 @@ class UIDashboard {
             } catch (e) {}
         }
     }
-
-    // ============================================================
-    // ACTIVIDAD
-    // ============================================================
 
     _actualizarActividad(core) {
         this.core = core || this.core;
@@ -871,18 +1109,14 @@ class UIDashboard {
         }
     }
 
-    // ============================================================
-    // MÉTODOS AUXILIARES
-    // ============================================================
-
     _obtenerNivelUsuario() {
         try {
-            const infoActivo = gestorIdiomas?.getInfoActivo?.();
+            const infoActivo = window.gestorIdiomas?.getInfoActivo?.();
             if (infoActivo?.nivel) return infoActivo.nivel;
             const usuarioLocal = localStorage.getItem('pipeline_usuario');
             if (usuarioLocal) {
                 const parsed = JSON.parse(usuarioLocal);
-                const idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || 'es';
+                const idiomaActivo = window.gestorIdiomas?.getIdiomaActivo?.() || 'es';
                 const idiomaObj = parsed.idiomasObjetivo?.find(i => i.idioma === idiomaActivo);
                 if (idiomaObj?.nivel) return idiomaObj.nivel;
                 if (parsed.idiomasObjetivo?.length > 0) return parsed.idiomasObjetivo[0].nivel || 'B1';
@@ -901,10 +1135,6 @@ class UIDashboard {
             return 'español';
         }
     }
-
-    // ============================================================
-    // MÉTODOS EXISTENTES
-    // ============================================================
 
     _actualizarSutil() {
         try {
@@ -1124,10 +1354,6 @@ class UIDashboard {
         if (tarjeta) tarjeta.style.display = 'none';
     }
 
-    // ============================================================
-    // MÉTODOS AUXILIARES
-    // ============================================================
-
     async _calcularEstadoNeuro() {
         try {
             const estadoCentinela = window.centinela?.getEstado?.() || {};
@@ -1234,6 +1460,18 @@ class UIDashboard {
     _getCore() {
         return this.core || window.uiCore;
     }
+
+    // ============================================================
+    // MÉTODOS PARA COMPATIBILIDAD CON UI.MANUAL
+    // ============================================================
+
+    _abrirManual() {
+        if (window.uiCore) {
+            window.uiCore.irAModulo('manual');
+        } else {
+            console.warn('⚠️ uiCore no disponible para abrir manual');
+        }
+    }
 }
 
 // ============================================================
@@ -1242,7 +1480,8 @@ class UIDashboard {
 
 window.UIDashboard = new UIDashboard();
 
-console.log('✅ UIDashboard v22.7 - CORREGIDO: ELIMINADO DUPLICADO DINÁMICO');
-console.log('  🔥 El título "Panel de Control" se genera UNA SOLA VEZ');
-console.log('  🔥 Se actualiza el header existente en lugar de crear uno nuevo');
+console.log('✅ UIDashboard v23.7 - CON MANUAL INTERACTIVO');
+console.log('  📖 Tarjeta "Manual Interactivo" en el Dashboard');
+console.log('  🔗 Botón "Manual" en el header del Dashboard');
+console.log('  📊 Badge con favoritos del manual');
 console.log('  ✅ Todas las funcionalidades originales preservadas');

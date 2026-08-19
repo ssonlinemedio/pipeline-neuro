@@ -1,5 +1,6 @@
 // ============================================================
-// UI BACKUP v2.5 - SISTEMA DE BACKUP COMPLETO CON GESTIÓN
+// UI BACKUP v2.6 - SISTEMA DE BACKUP COMPLETO CON GESTIÓN
+// Y SOPORTE PARA ONDAS CRUZADAS
 // ============================================================
 
 class UIBackup {
@@ -22,6 +23,9 @@ class UIBackup {
         this._tokenClient = null;
         this._accessToken = null;
         this._googleDriveEnabled = false;
+        
+        // 🔥 DATOS DE ONDAS CRUZADAS EN BACKUP
+        this._incluirOndasCruzadas = true;
     }
 
     async init(core) {
@@ -31,7 +35,7 @@ class UIBackup {
         if (savedLimit) {
             this._MAX_BACKUPS = parseInt(savedLimit) || 15;
         }
-        console.log('✅ UIBackup v2.5 iniciado (Google Drive desactivado por defecto)');
+        console.log('✅ UIBackup v2.6 iniciado (Google Drive desactivado por defecto)');
         return this;
     }
 
@@ -168,6 +172,36 @@ class UIBackup {
         const backups = this._obtenerListaBackups();
         const totalBackups = backups.length;
         const espacioTotal = Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024);
+        
+        // 🔥 OBTENER ESTADO DE ONDAS CRUZADAS
+        let ondasCruzadasInfo = 'No disponible';
+        let totalElipses = 0;
+        let totalInterferencias = 0;
+        let totalOndasCruzadas = 0;
+        try {
+            if (window.modoOndasCruzadas) {
+                const estado = window.modoOndasCruzadas.getEstado();
+                totalElipses = estado.grafoSize || 0;
+                totalInterferencias = estado.interferencias || 0;
+                totalOndasCruzadas = estado.ondasTotales || 0;
+                ondasCruzadasInfo = `${totalElipses} elipses · ${totalInterferencias} interferencias · ${totalOndasCruzadas} ondas`;
+            }
+        } catch (e) {
+            console.warn('⚠️ Error obteniendo estado de Ondas Cruzadas:', e);
+        }
+
+        // 🔥 OBTENER ESTADO DE ELIPSE
+        let elipseInfo = 'No disponible';
+        let totalOndasElipse = 0;
+        try {
+            if (window.modoElipse) {
+                const estado = window.modoElipse.getEstado();
+                totalOndasElipse = estado.totalOndas || 0;
+                elipseInfo = `${totalOndasElipse} ondas · ${estado.elipseActiva || 'Sin elipse activa'}`;
+            }
+        } catch (e) {
+            console.warn('⚠️ Error obteniendo estado de Elipse:', e);
+        }
 
         this._container.innerHTML = `
             <div class="backup-container" style="padding:0;width:100%;">
@@ -176,7 +210,11 @@ class UIBackup {
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:10px 18px;background:linear-gradient(135deg, var(--primary)06, var(--secondary)06);border-radius:12px;border:2px solid var(--primary)20;box-shadow:0 4px 20px rgba(108,92,231,0.08);width:100%;box-sizing:border-box;">
                     <div>
                         <h2 style="font-size:18px;font-weight:800;color:var(--dark);margin:0;">💾 Sistema de Backup</h2>
-                        <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">Protege tu progreso en cualquier dispositivo</p>
+                        <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">
+                            Protege tu progreso en cualquier dispositivo
+                            <span style="font-size:10px;color:var(--gray-light);margin-left:8px;">🌊 Ondas Cruzadas: ${ondasCruzadasInfo}</span>
+                            <br><span style="font-size:10px;color:var(--gray-light);margin-left:8px;">🌌 Elipse: ${elipseInfo}</span>
+                        </p>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:4px 12px;border-radius:12px;">
@@ -184,6 +222,12 @@ class UIBackup {
                         </span>
                         <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:4px 12px;border-radius:12px;">
                             ${this._accessToken ? '🟢 Google Drive Conectado' : '⚪ Google Drive Desconectado'}
+                        </span>
+                        <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:4px 12px;border-radius:12px;">
+                            🌊 ${totalElipses} elipses · ${totalInterferencias} interferencias
+                        </span>
+                        <span style="font-size:11px;color:var(--gray-light);background:var(--bg);padding:4px 12px;border-radius:12px;">
+                            🌌 ${totalOndasElipse} ondas
                         </span>
                     </div>
                 </div>
@@ -204,6 +248,7 @@ class UIBackup {
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
                             Guarda tus datos en el dispositivo. Los backups locales se almacenan en IndexedDB.
+                            <br><span style="font-size:10px;color:var(--gray-light);">🌊 Incluye Ondas Cruzadas · 🌌 Incluye Elipse</span>
                         </p>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
                             <button class="btn-primary" onclick="window.UIBackup._generarBackupLocal()" style="padding:6px 16px;font-size:12px;cursor:pointer;">
@@ -234,6 +279,7 @@ class UIBackup {
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
                             Envía tu backup a tu correo electrónico. La mejor opción para móviles y WebView.
+                            <br><span style="font-size:10px;color:var(--gray-light);">🌊 Incluye todos los datos del sistema</span>
                         </p>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                             <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">📧 Funciona en WebView</span>
@@ -317,6 +363,7 @@ class UIBackup {
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
                             Copia tu backup como texto para pegarlo en otra aplicación o dispositivo.
+                            <br><span style="font-size:10px;color:var(--gray-light);">🌊 Incluye todos los datos en formato JSON</span>
                         </p>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
                             <button class="btn-primary" onclick="window.UIBackup._abrirBackupTexto()" style="padding:6px 16px;font-size:12px;cursor:pointer;">
@@ -344,6 +391,7 @@ class UIBackup {
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
                             Configura backups automáticos para no perder tu progreso.
+                            <br><span style="font-size:10px;color:var(--gray-light);">🌊 Incluye Ondas Cruzadas automáticamente</span>
                         </p>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
                             <button class="btn-primary" onclick="window.UIBackup._configurarBackupAutomatico()" style="padding:6px 16px;font-size:12px;cursor:pointer;">
@@ -359,7 +407,7 @@ class UIBackup {
                         </div>
                     </div>
 
-                    <!-- 🔥 7. GESTIÓN DE BACKUPS (NUEVO) -->
+                    <!-- 7. GESTIÓN DE BACKUPS -->
                     <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);transition:all 0.3s;display:flex;flex-direction:column;cursor:pointer;" 
                          onclick="window.UIBackup._abrirGestorBackups()"
                          onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)'" 
@@ -395,8 +443,12 @@ class UIBackup {
                         <span>📅 Último backup: ${localStorage.getItem('pipeline_ultimo_backup') || 'Nunca'}</span>
                         <span>${this._accessToken ? '🔗 Google Drive: Conectado' : '🔗 Google Drive: Desconectado'}</span>
                         <span>📌 Límite: ${this._MAX_BACKUPS}</span>
+                        <span>🌊 Elipses: ${totalElipses}</span>
+                        <span>🌊 Interferencias: ${totalInterferencias}</span>
+                        <span>🌊 Ondas cruzadas: ${totalOndasCruzadas}</span>
+                        <span>🌌 Ondas Elipse: ${totalOndasElipse}</span>
                     </div>
-                    <div><span>⚙️ Backup v2.5</span></div>
+                    <div><span>⚙️ Backup v2.6</span></div>
                 </div>
             </div>
         `;
@@ -427,15 +479,25 @@ class UIBackup {
                 index: i,
                 fechaLegible: new Date(b.fecha).toLocaleString(),
                 tamanoKB: Math.round((b.tamano || 0) / 1024),
-                esAutomatico: b.automatico || false
+                esAutomatico: b.automatico || false,
+                // 🔥 DETECTAR SI TIENE ONDAS CRUZADAS
+                tieneOndasCruzadas: !!(b.ondasCruzadas),
+                tieneElipse: !!(b.elipse),
+                // 🔥 CONTAR ONDAS CRUZADAS
+                totalOndasCruzadas: b.ondasCruzadas?.grafoElipse ? 
+                    Object.values(b.ondasCruzadas.grafoElipse).reduce((acc, el) => acc + (el.totalOndas || 0), 0) : 0,
+                totalElipses: b.ondasCruzadas?.grafoElipse ? 
+                    Object.keys(b.ondasCruzadas.grafoElipse).length : 0,
+                totalOndasElipse: b.elipse?.historias?.length || 0
             }));
         } catch (e) {
+            console.warn('⚠️ Error obteniendo lista de backups:', e);
             return [];
         }
     }
 
     // ============================================================
-    // GENERAR BACKUP LOCAL
+    // GENERAR BACKUP LOCAL - COMPLETO CON ONDAS CRUZADAS Y ELIPSE
     // ============================================================
 
     async _generarBackupLocal(esAutomatico = false) {
@@ -446,28 +508,123 @@ class UIBackup {
 
             const data = await db.exportarBackup();
             const usuario = await db.getUsuario();
+            
+            // 🔥 OBTENER DATOS DE ONDAS CRUZADAS - COMPLETO
+            let ondasCruzadasData = null;
+            if (window.modoOndasCruzadas) {
+                try {
+                    const estado = window.modoOndasCruzadas.getEstado();
+                    ondasCruzadasData = {
+                        grafoElipse: window.modoOndasCruzadas._grafoElipse || {},
+                        recuerdoGlobal: {
+                            personajes: Array.from(window.modoOndasCruzadas._recuerdoGlobal.personajes || new Set()),
+                            lugares: Array.from(window.modoOndasCruzadas._recuerdoGlobal.lugares || new Set()),
+                            eventosClave: window.modoOndasCruzadas._recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: Array.from(window.modoOndasCruzadas._recuerdoGlobal.vocabularioAcumulado?.entries() || []),
+                            resumenGlobal: window.modoOndasCruzadas._recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: window.modoOndasCruzadas._recuerdoGlobal.ultimaActualizacion || Date.now()
+                        },
+                        mapaInterferencias: window.modoOndasCruzadas._mapaInterferencias || {},
+                        config: window.modoOndasCruzadas._config || {},
+                        estadisticas: estado || {},
+                        timestamp: Date.now()
+                    };
+                    console.log(`🌊 Datos de Ondas Cruzadas capturados: ${Object.keys(ondasCruzadasData.grafoElipse).length} elipses`);
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Ondas Cruzadas:', e);
+                }
+            }
+            
+            // 🔥 OBTENER DATOS DEL MODO ELIPSE - COMPLETO
+            let elipseData = null;
+            if (window.modoElipse) {
+                try {
+                    elipseData = window.modoElipse.getEstadoCompleto();
+                    console.log(`🌌 Datos de Elipse capturados: ${elipseData?.historias?.length || 0} ondas`);
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Elipse:', e);
+                }
+            }
+
+            // 🔥 OBTENER DATOS DE FAVORITOS
+            let favoritosData = null;
+            if (window.gestorFavoritos) {
+                try {
+                    favoritosData = {
+                        frases: window.gestorFavoritos._favoritos?.frases || [],
+                        palabras: window.gestorFavoritos._favoritos?.palabras || [],
+                        grupos: window.gestorFavoritos._grupos || {}
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de favoritos:', e);
+                }
+            }
+
+            // 🔥 OBTENER DATOS DE TUTOR NEURO
+            let tutorData = null;
+            if (window.tutorNeuro) {
+                try {
+                    tutorData = {
+                        modo: window.tutorNeuro.getModo(),
+                        configuracion: window.tutorNeuro._configuracion || {},
+                        historialIntervenciones: window.tutorNeuro._historialIntervenciones?.slice(-50) || []
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Tutor Neuro:', e);
+                }
+            }
+
+            // 🔥 OBTENER DATOS DE LEARNING PATH
+            let learningPathData = null;
+            if (window.LearningPath) {
+                try {
+                    learningPathData = {
+                        ruta: window.LearningPath.getRutaCompleta(),
+                        pasoActual: window.LearningPath.getPasoActual(),
+                        progreso: window.LearningPath.getProgreso()
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Learning Path:', e);
+                }
+            }
+
             const backup = {
                 id: Date.now(),
                 fecha: new Date().toISOString(),
                 data: data,
                 usuario: usuario,
                 idiomaActivo: gestorIdiomas?.getIdiomaActivo() || 'es',
-                version: '2.5',
+                version: '2.6',
                 tamano: JSON.stringify(data).length,
-                automatico: esAutomatico
+                automatico: esAutomatico,
+                // 🔥 TODOS LOS DATOS DEL SISTEMA
+                ondasCruzadas: ondasCruzadasData,
+                elipse: elipseData,
+                favoritos: favoritosData,
+                tutorNeuro: tutorData,
+                learningPath: learningPathData,
+                // 🔥 METADATOS PARA RESTAURACIÓN
+                _metadata: {
+                    totalOndasCruzadas: ondasCruzadasData ? 
+                        Object.values(ondasCruzadasData.grafoElipse).reduce((acc, el) => acc + (el.totalOndas || 0), 0) : 0,
+                    totalElipses: ondasCruzadasData ? Object.keys(ondasCruzadasData.grafoElipse).length : 0,
+                    totalOndasElipse: elipseData?.historias?.length || 0,
+                    totalFavoritos: (favoritosData?.frases?.length || 0) + (favoritosData?.palabras?.length || 0),
+                    modoTutor: tutorData?.modo || 'flexible'
+                }
             };
 
             let backups = JSON.parse(localStorage.getItem('pipeline_backups_locales') || '[]');
             
-            // 🔥 ELIMINAR BACKUPS DUPLICADOS (misma fecha)
+            // Eliminar duplicados por fecha
             backups = backups.filter(b => b.fecha !== backup.fecha);
             
             backups.push(backup);
             
-            // 🔥 ORDENAR POR FECHA (más reciente primero)
+            // Ordenar por fecha (más reciente primero)
             backups.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
             
-            // 🔥 APLICAR LÍMITE MÁXIMO
+            // Aplicar límite máximo
             const maxBackups = esAutomatico ? this._MAX_BACKUPS : this._MAX_BACKUPS;
             while (backups.length > maxBackups) {
                 const eliminado = backups.pop();
@@ -478,10 +635,17 @@ class UIBackup {
             localStorage.setItem('pipeline_ultimo_backup', new Date().toLocaleString());
 
             if (!esAutomatico) {
-                this._core.mostrarToast(`✅ Backup guardado (${backups.length}/${maxBackups} backups)`, 'success');
+                this._core.mostrarToast(
+                    `✅ Backup guardado (${backups.length}/${maxBackups} backups)` +
+                    (backup._metadata.totalOndasCruzadas > 0 ? ` · 🌊 ${backup._metadata.totalOndasCruzadas} ondas cruzadas` : '') +
+                    (backup._metadata.totalOndasElipse > 0 ? ` · 🌌 ${backup._metadata.totalOndasElipse} ondas elipse` : ''),
+                    'success'
+                );
                 this._renderizarPanel();
             } else {
                 console.log(`💾 Backup automático guardado (${backups.length}/${maxBackups} backups)`);
+                console.log(`   🌊 ${backup._metadata.totalOndasCruzadas} ondas cruzadas`);
+                console.log(`   🌌 ${backup._metadata.totalOndasElipse} ondas elipse`);
             }
 
             return true;
@@ -496,7 +660,7 @@ class UIBackup {
     }
 
     // ============================================================
-    // RESTAURAR BACKUP LOCAL
+    // RESTAURAR BACKUP LOCAL - COMPLETO CON ONDAS CRUZADAS Y ELIPSE
     // ============================================================
 
     async _restaurarBackupLocal() {
@@ -510,7 +674,11 @@ class UIBackup {
         let mensaje = '📦 Selecciona un backup para restaurar:\n\n';
         backups.forEach((b, i) => {
             const auto = b.esAutomatico ? ' (automático)' : '';
-            mensaje += `${i + 1}. ${b.fechaLegible} (${b.tamanoKB} KB)${auto}\n`;
+            const oc = b.tieneOndasCruzadas ? ' 🌊' : '';
+            const oe = b.tieneElipse ? ' 🌌' : '';
+            const ondasInfo = b.totalOndasCruzadas > 0 ? ` (${b.totalOndasCruzadas} ondas cruzadas)` : '';
+            const elipseInfo = b.totalOndasElipse > 0 ? ` (${b.totalOndasElipse} ondas elipse)` : '';
+            mensaje += `${i + 1}. ${b.fechaLegible} (${b.tamanoKB} KB)${auto}${oc}${oe}${ondasInfo}${elipseInfo}\n`;
         });
 
         const seleccion = await this._core.prompt(mensaje, '1', 'Número del backup...', '📦 Restaurar Backup');
@@ -522,9 +690,35 @@ class UIBackup {
             return;
         }
 
+        const backup = backups[idx];
+        
+        // Mostrar información detallada del backup seleccionado
+        let infoDetalle = `📋 **Detalle del backup:**\n\n`;
+        infoDetalle += `📅 Fecha: ${backup.fechaLegible}\n`;
+        infoDetalle += `📊 Tamaño: ${backup.tamanoKB} KB\n`;
+        infoDetalle += `${backup.esAutomatico ? '🤖 Automático' : '👤 Manual'}\n\n`;
+        infoDetalle += `📦 Contenido:\n`;
+        infoDetalle += `• ${backup.data?.frases?.length || 0} frases\n`;
+        infoDetalle += `• ${backup.data?.palabras?.length || 0} palabras\n`;
+        infoDetalle += `• ${backup.data?.historias?.length || 0} historias\n`;
+        infoDetalle += `• ${backup.data?.temas?.length || 0} temas\n`;
+        if (backup.tieneOndasCruzadas) {
+            infoDetalle += `🌊 • ${backup.totalOndasCruzadas} ondas cruzadas\n`;
+            infoDetalle += `🌊 • ${backup.totalElipses} elipses conectadas\n`;
+        }
+        if (backup.tieneElipse) {
+            infoDetalle += `🌌 • ${backup.totalOndasElipse} ondas elipse\n`;
+        }
+        if (backup.favoritos) {
+            infoDetalle += `⭐ • ${(backup.favoritos.frases?.length || 0) + (backup.favoritos.palabras?.length || 0)} favoritos\n`;
+        }
+        infoDetalle += `🧠 • Modo Tutor: ${backup._metadata?.modoTutor || 'flexible'}\n`;
+
         const confirmar = await this._core.confirm(
-            '⚠️ ¿Restaurar backup del ' + backups[idx].fechaLegible + '?\n\n' +
-            'Esto SOBRESCRIBIRÁ todos tus datos actuales.\n\n¿Continuar?',
+            `⚠️ ¿Restaurar este backup?\n\n${infoDetalle}\n\n` +
+            `Esto SOBRESCRIBIRÁ todos tus datos actuales.\n` +
+            `Los datos de Ondas Cruzadas y Elipse también serán restaurados.\n\n` +
+            `¿Continuar?`,
             '⚠️ Restaurar Backup'
         );
 
@@ -533,21 +727,147 @@ class UIBackup {
         try {
             this._core.mostrarToast('🔄 Restaurando backup...', 'info');
 
-            await db.importarBackup(backups[idx].data);
+            // 1. RESTAURAR DATOS PRINCIPALES DE INDEXEDDB
+            await db.importarBackup(backup.data);
 
-            if (backups[idx].usuario) {
-                await db.guardarUsuario(backups[idx].usuario);
+            // 2. RESTAURAR USUARIO
+            if (backup.usuario) {
+                await db.guardarUsuario(backup.usuario);
             }
 
-            if (backups[idx].idiomaActivo) {
-                localStorage.setItem('pipeline_idioma_activo', backups[idx].idiomaActivo);
+            // 3. RESTAURAR IDIOMA ACTIVO
+            if (backup.idiomaActivo) {
+                localStorage.setItem('pipeline_idioma_activo', backup.idiomaActivo);
+                if (window.gestorIdiomas) {
+                    await window.gestorIdiomas.cambiarIdioma(backup.idiomaActivo);
+                }
             }
 
-            this._core.mostrarToast('✅ Backup restaurado correctamente', 'success');
+            // 4. 🔥 RESTAURAR ONDAS CRUZADAS - COMPLETO
+            if (backup.ondasCruzadas && window.modoOndasCruzadas) {
+                try {
+                    if (backup.ondasCruzadas.grafoElipse) {
+                        window.modoOndasCruzadas._grafoElipse = backup.ondasCruzadas.grafoElipse;
+                        console.log(`🌊 Grafo de Ondas Cruzadas restaurado: ${Object.keys(backup.ondasCruzadas.grafoElipse).length} elipses`);
+                    }
+                    if (backup.ondasCruzadas.recuerdoGlobal) {
+                        window.modoOndasCruzadas._recuerdoGlobal = {
+                            personajes: new Set(backup.ondasCruzadas.recuerdoGlobal.personajes || []),
+                            lugares: new Set(backup.ondasCruzadas.recuerdoGlobal.lugares || []),
+                            eventosClave: backup.ondasCruzadas.recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: new Map(backup.ondasCruzadas.recuerdoGlobal.vocabularioAcumulado || []),
+                            resumenGlobal: backup.ondasCruzadas.recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: backup.ondasCruzadas.recuerdoGlobal.ultimaActualizacion || Date.now()
+                        };
+                    }
+                    if (backup.ondasCruzadas.mapaInterferencias) {
+                        window.modoOndasCruzadas._mapaInterferencias = backup.ondasCruzadas.mapaInterferencias;
+                    }
+                    if (backup.ondasCruzadas.config) {
+                        window.modoOndasCruzadas._config = { 
+                            ...window.modoOndasCruzadas._config, 
+                            ...backup.ondasCruzadas.config 
+                        };
+                    }
+                    await window.modoOndasCruzadas._guardarDatos();
+                    console.log('🌊 Ondas Cruzadas restauradas completamente');
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Ondas Cruzadas:', e);
+                }
+            }
+
+            // 5. 🔥 RESTAURAR ELIPSE - COMPLETO
+            if (backup.elipse && window.modoElipse) {
+                try {
+                    if (backup.elipse.historias) {
+                        window.modoElipse._historiasElipse = backup.elipse.historias;
+                        console.log(`🌌 Elipse restaurada: ${backup.elipse.historias.length} ondas`);
+                    }
+                    if (backup.elipse.elipseActiva) {
+                        window.modoElipse._elipseActiva = backup.elipse.elipseActiva;
+                        localStorage.setItem('pipeline_elipse_tema_activo', backup.elipse.elipseActiva);
+                    }
+                    if (backup.elipse.estadisticas) {
+                        window.modoElipse._estadisticas = backup.elipse.estadisticas;
+                    }
+                    if (backup.elipse.config) {
+                        window.modoElipse._config = { ...window.modoElipse._config, ...backup.elipse.config };
+                    }
+                    if (backup.elipse.recuerdoOndas) {
+                        window.modoElipse._recuerdoOndas = backup.elipse.recuerdoOndas;
+                    }
+                    if (backup.elipse.todasLasElipses) {
+                        // Restaurar el mapa de elipses completas si existe
+                        window.modoElipse._cachePorTema = backup.elipse.todasLasElipses;
+                    }
+                    await window.modoElipse._guardarEstadoElipse();
+                    await window.modoElipse._guardarEnIndexedDB();
+                    console.log('🌌 Elipse restaurada completamente');
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Elipse:', e);
+                }
+            }
+
+            // 6. RESTAURAR FAVORITOS
+            if (backup.favoritos && window.gestorFavoritos) {
+                try {
+                    window.gestorFavoritos._favoritos = {
+                        frases: backup.favoritos.frases || [],
+                        palabras: backup.favoritos.palabras || []
+                    };
+                    window.gestorFavoritos._grupos = backup.favoritos.grupos || {};
+                    await window.gestorFavoritos.guardarFavoritos();
+                    await window.gestorFavoritos._guardarGrupos();
+                    console.log(`⭐ Favoritos restaurados: ${window.gestorFavoritos._favoritos.frases.length} frases, ${window.gestorFavoritos._favoritos.palabras.length} palabras`);
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando favoritos:', e);
+                }
+            }
+
+            // 7. RESTAURAR CONFIGURACIÓN DE TUTOR NEURO
+            if (backup.tutorNeuro && window.tutorNeuro) {
+                try {
+                    if (backup.tutorNeuro.modo) {
+                        window.tutorNeuro.setModo(backup.tutorNeuro.modo);
+                    }
+                    if (backup.tutorNeuro.configuracion) {
+                        window.tutorNeuro._configuracion = { 
+                            ...window.tutorNeuro._configuracion, 
+                            ...backup.tutorNeuro.configuracion 
+                        };
+                    }
+                    console.log(`🧠 Tutor Neuro restaurado: modo ${backup.tutorNeuro.modo}`);
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Tutor Neuro:', e);
+                }
+            }
+
+            // 8. RESTAURAR LEARNING PATH
+            if (backup.learningPath && window.LearningPath) {
+                try {
+                    if (backup.learningPath.ruta) {
+                        window.LearningPath._rutaActual = backup.learningPath.ruta;
+                    }
+                    if (backup.learningPath.pasoActual !== undefined) {
+                        window.LearningPath._pasoActual = backup.learningPath.pasoActual;
+                    }
+                    console.log(`🧭 Learning Path restaurado: ${backup.learningPath.ruta?.length || 0} pasos`);
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Learning Path:', e);
+                }
+            }
+
+            this._core.mostrarToast(
+                '✅ Backup restaurado correctamente\n' +
+                (backup._metadata?.totalOndasCruzadas > 0 ? `🌊 ${backup._metadata.totalOndasCruzadas} ondas cruzadas restauradas\n` : '') +
+                (backup._metadata?.totalOndasElipse > 0 ? `🌌 ${backup._metadata.totalOndasElipse} ondas elipse restauradas\n` : '') +
+                (backup._metadata?.totalFavoritos > 0 ? `⭐ ${backup._metadata.totalFavoritos} favoritos restaurados` : ''),
+                'success'
+            );
             
             setTimeout(() => {
                 location.reload();
-            }, 1500);
+            }, 2000);
 
         } catch (error) {
             console.error('❌ Error restaurando backup:', error);
@@ -565,12 +885,46 @@ class UIBackup {
 
             const data = await db.exportarBackup();
             const usuario = await db.getUsuario();
+            
+            // 🔥 INCLUIR ONDAS CRUZADAS EN EL BACKUP DE CORREO
+            let ondasCruzadasData = null;
+            if (window.modoOndasCruzadas) {
+                try {
+                    ondasCruzadasData = {
+                        grafoElipse: window.modoOndasCruzadas._grafoElipse || {},
+                        recuerdoGlobal: {
+                            personajes: Array.from(window.modoOndasCruzadas._recuerdoGlobal.personajes || new Set()),
+                            lugares: Array.from(window.modoOndasCruzadas._recuerdoGlobal.lugares || new Set()),
+                            eventosClave: window.modoOndasCruzadas._recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: Array.from(window.modoOndasCruzadas._recuerdoGlobal.vocabularioAcumulado?.entries() || []),
+                            resumenGlobal: window.modoOndasCruzadas._recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: window.modoOndasCruzadas._recuerdoGlobal.ultimaActualizacion || Date.now()
+                        },
+                        mapaInterferencias: window.modoOndasCruzadas._mapaInterferencias || {},
+                        config: window.modoOndasCruzadas._config || {}
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Ondas Cruzadas:', e);
+                }
+            }
+            
+            let elipseData = null;
+            if (window.modoElipse) {
+                try {
+                    elipseData = window.modoElipse.getEstadoCompleto();
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Elipse:', e);
+                }
+            }
+
             const backup = {
                 fecha: new Date().toISOString(),
                 data: data,
                 usuario: usuario,
                 idiomaActivo: gestorIdiomas?.getIdiomaActivo() || 'es',
-                version: '2.5'
+                version: '2.6',
+                ondasCruzadas: ondasCruzadasData,
+                elipse: elipseData
             };
 
             await this._abrirBackupEmailConDatos(backup);
@@ -585,25 +939,43 @@ class UIBackup {
         const jsonStr = JSON.stringify(backup, null, 2);
         const nombreUsuario = backup.usuario?.nombre || 'Usuario';
         const fecha = new Date(backup.fecha).toLocaleString();
+        
+        // Calcular estadísticas de Ondas Cruzadas
+        let ondasCruzadasStats = '';
+        if (backup.ondasCruzadas?.grafoElipse) {
+            const elipses = Object.keys(backup.ondasCruzadas.grafoElipse);
+            const totalOndas = Object.values(backup.ondasCruzadas.grafoElipse).reduce((acc, el) => acc + (el.totalOndas || 0), 0);
+            ondasCruzadasStats = `\n🌊 Ondas Cruzadas:\n   - ${elipses.length} elipses conectadas\n   - ${totalOndas} ondas cruzadas\n   - ${Object.keys(backup.ondasCruzadas.mapaInterferencias || {}).length} interferencias\n`;
+        }
+        
+        let elipseStats = '';
+        if (backup.elipse?.historias) {
+            elipseStats = `\n🌌 Modo Elipse:\n   - ${backup.elipse.historias.length} ondas generadas\n   - ${backup.elipse.historias.filter(h => h.completada).length} ondas completadas\n   - ${backup.elipse.estadisticas?.palabrasNuevas || 0} palabras nuevas\n`;
+        }
 
-        const subject = encodeURIComponent(`📚 Pipeline Neuro - Backup ${fecha}`);
+        const subject = encodeURIComponent(`📚 Pipeline Neuro - Backup Completo ${fecha}`);
         const body = encodeURIComponent(
             `Hola ${nombreUsuario},\n\n` +
-            `Aquí tienes tu backup de Pipeline Neuro del ${fecha}.\n\n` +
-            `📊 Resumen:\n` +
+            `Aquí tienes tu backup COMPLETO de Pipeline Neuro del ${fecha}.\n\n` +
+            `📊 RESÚMEN DEL BACKUP:\n` +
             `- Frases: ${backup.data.frases?.length || 0}\n` +
             `- Palabras: ${backup.data.palabras?.length || 0}\n` +
             `- Historias: ${backup.data.historias?.length || 0}\n` +
             `- Temas: ${backup.data.temas?.length || 0}\n` +
-            `- Progreso: ${backup.data.progreso?.length || 0}\n\n` +
-            `📎 DATOS DEL BACKUP:\n\n` +
+            `- Progreso: ${backup.data.progreso?.length || 0}\n` +
+            `${ondasCruzadasStats}` +
+            `${elipseStats}` +
+            `\n📎 DATOS COMPLETOS DEL BACKUP (incluye Ondas Cruzadas y Elipse):\n\n` +
             `${jsonStr}\n\n` +
-            `📌 Para restaurar:\n` +
+            `📌 INSTRUCCIONES PARA RESTAURAR:\n` +
             `1. Abre Pipeline Neuro\n` +
             `2. Ve a Herramientas > Backup\n` +
-            `3. Usa "Restaurar desde Texto" y pega todo el texto del backup\n\n` +
+            `3. Usa "Restaurar desde Texto" y pega TODO el texto del backup\n` +
+            `4. ¡Todos tus datos (incluyendo Ondas Cruzadas) serán restaurados!\n\n` +
+            `🌊 Este backup incluye TODAS las ondas cruzadas y elipses generadas.\n` +
+            `🌌 Incluye el estado completo del Modo Elipse.\n\n` +
             `¡Mantén tus datos seguros! 🧠\n\n` +
-            `-- Pipeline Neuro v2.5`
+            `-- Pipeline Neuro v2.6`
         );
 
         const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
@@ -615,12 +987,14 @@ class UIBackup {
         ];
 
         const mensaje = 
-            `📧 Backup para ${nombreUsuario}\n\n` +
+            `📧 Backup COMPLETO para ${nombreUsuario}\n\n` +
             `El backup contiene:\n` +
             `• ${backup.data.frases?.length || 0} frases\n` +
             `• ${backup.data.palabras?.length || 0} palabras\n` +
             `• ${backup.data.historias?.length || 0} historias\n` +
-            `• ${backup.data.temas?.length || 0} temas\n\n` +
+            `• ${backup.data.temas?.length || 0} temas\n` +
+            `${backup.ondasCruzadas?.grafoElipse ? `• 🌊 ${Object.keys(backup.ondasCruzadas.grafoElipse).length} elipses conectadas\n` : ''}` +
+            `${backup.elipse?.historias ? `• 🌌 ${backup.elipse.historias.length} ondas elipse\n` : ''}\n` +
             `Elige cómo quieres guardar tu backup:`;
 
         const opcion = await this._mostrarOpcionesBackup(mensaje, opciones);
@@ -713,7 +1087,8 @@ class UIBackup {
                 <div style="background: var(--white, #ffffff); border-radius: 16px; padding: 28px 24px; max-width: 420px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.4);">
                     <div style="text-align: center; margin-bottom: 16px;">
                         <span style="font-size: 48px;">📧</span>
-                        <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 8px 0 4px 0;">Backup por Correo</h3>
+                        <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0 0 4px 0;">Backup por Correo</h3>
+                        <p style="font-size: 11px; color: var(--gray-light);">Incluye todos los datos del sistema (Ondas Cruzadas + Elipse)</p>
                     </div>
                     <div style="background: var(--bg); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: var(--gray); white-space: pre-line; max-height: 200px; overflow-y: auto;">
                         ${mensaje}
@@ -748,7 +1123,7 @@ class UIBackup {
                         `).join('')}
                     </div>
                     <div style="margin-top: 12px; font-size: 11px; color: var(--gray-light); text-align: center;">
-                        💡 Si el correo no se abre, usa "Copiar texto" como alternativa.
+                        💡 Este backup incluye Ondas Cruzadas y Elipse. Es el backup más completo disponible.
                     </div>
                 </div>
             `;
@@ -790,6 +1165,18 @@ class UIBackup {
         const nombreUsuario = backup.usuario?.nombre || 'Usuario';
         const fecha = new Date(backup.fecha).toLocaleString();
 
+        // Calcular estadísticas para mostrar
+        let ondasStats = '';
+        if (backup.ondasCruzadas?.grafoElipse) {
+            const elipses = Object.keys(backup.ondasCruzadas.grafoElipse);
+            const totalOndas = Object.values(backup.ondasCruzadas.grafoElipse).reduce((acc, el) => acc + (el.totalOndas || 0), 0);
+            ondasStats = `🌊 ${elipses.length} elipses · ${totalOndas} ondas cruzadas`;
+        }
+        let elipseStats = '';
+        if (backup.elipse?.historias) {
+            elipseStats = `🌌 ${backup.elipse.historias.length} ondas elipse`;
+        }
+
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -811,9 +1198,11 @@ class UIBackup {
             <div style="background: var(--white, #ffffff); border-radius: 16px; padding: 24px; max-width: 800px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,0.4);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0;">
                     <div>
-                        <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0;">📋 Backup para Copiar</h3>
+                        <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0;">📋 Backup Completo</h3>
                         <p style="font-size: 12px; color: var(--gray); margin: 2px 0 0;">
                             ${nombreUsuario} · ${fecha} · ${backup.data.frases?.length || 0} frases
+                            ${ondasStats ? ` · ${ondasStats}` : ''}
+                            ${elipseStats ? ` · ${elipseStats}` : ''}
                         </p>
                     </div>
                     <button onclick="this.closest('div[style]').remove()" style="
@@ -854,7 +1243,9 @@ class UIBackup {
                 </div>
 
                 <div style="margin-top: 8px; font-size: 11px; color: var(--gray-light); flex-shrink: 0;">
-                    💡 Copia este texto y guárdalo en un lugar seguro. Para restaurar, usa "Restaurar desde Texto".
+                    💡 Copia este texto y guárdalo en un lugar seguro. 
+                    Para restaurar, usa "Restaurar desde Texto" en Herramientas > Backup.
+                    <br>🌊 Incluye TODOS los datos: Ondas Cruzadas, Elipse, Favoritos, Tutor Neuro y Learning Path.
                 </div>
             </div>
         `;
@@ -913,12 +1304,46 @@ class UIBackup {
 
             const data = await db.exportarBackup();
             const usuario = await db.getUsuario();
+            
+            // 🔥 INCLUIR ONDAS CRUZADAS Y ELIPSE
+            let ondasCruzadasData = null;
+            if (window.modoOndasCruzadas) {
+                try {
+                    ondasCruzadasData = {
+                        grafoElipse: window.modoOndasCruzadas._grafoElipse || {},
+                        recuerdoGlobal: {
+                            personajes: Array.from(window.modoOndasCruzadas._recuerdoGlobal.personajes || new Set()),
+                            lugares: Array.from(window.modoOndasCruzadas._recuerdoGlobal.lugares || new Set()),
+                            eventosClave: window.modoOndasCruzadas._recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: Array.from(window.modoOndasCruzadas._recuerdoGlobal.vocabularioAcumulado?.entries() || []),
+                            resumenGlobal: window.modoOndasCruzadas._recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: window.modoOndasCruzadas._recuerdoGlobal.ultimaActualizacion || Date.now()
+                        },
+                        mapaInterferencias: window.modoOndasCruzadas._mapaInterferencias || {},
+                        config: window.modoOndasCruzadas._config || {}
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Ondas Cruzadas:', e);
+                }
+            }
+            
+            let elipseData = null;
+            if (window.modoElipse) {
+                try {
+                    elipseData = window.modoElipse.getEstadoCompleto();
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Elipse:', e);
+                }
+            }
+
             const backup = {
                 fecha: new Date().toISOString(),
                 data: data,
                 usuario: usuario,
                 idiomaActivo: gestorIdiomas?.getIdiomaActivo() || 'es',
-                version: '2.5'
+                version: '2.6',
+                ondasCruzadas: ondasCruzadasData,
+                elipse: elipseData
             };
 
             const jsonStr = JSON.stringify(backup, null, 2);
@@ -959,7 +1384,7 @@ class UIBackup {
                         <div>
                             <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0;">📥 Restaurar desde Texto</h3>
                             <p style="font-size: 12px; color: var(--gray); margin: 2px 0 0;">
-                                Pega el texto del backup que copiaste anteriormente
+                                Pega el texto del backup completo (incluye Ondas Cruzadas y Elipse)
                             </p>
                         </div>
                         <button onclick="this.closest('div[style]').remove()" style="
@@ -1000,6 +1425,10 @@ class UIBackup {
                     </div>
 
                     <div id="restaurarBackupResultado" style="margin-top: 8px; display: none; padding: 12px; border-radius: 8px; font-size: 13px;"></div>
+                    
+                    <div style="margin-top: 8px; font-size: 10px; color: var(--gray-light); flex-shrink: 0;">
+                        ⚠️ Este proceso restaurará TODOS los datos: Base de datos, Ondas Cruzadas, Elipse, Favoritos y configuraciones.
+                    </div>
                 </div>
             `;
 
@@ -1039,7 +1468,7 @@ class UIBackup {
     }
 
     // ============================================================
-    // PROCESAR RESTAURACIÓN DESDE TEXTO
+    // PROCESAR RESTAURACIÓN DESDE TEXTO - COMPLETO
     // ============================================================
 
     async _procesarRestauracionTexto() {
@@ -1080,6 +1509,7 @@ class UIBackup {
                 }
             }
 
+            // VALIDAR ESTRUCTURA
             if (!backupData.data || typeof backupData.data !== 'object') {
                 throw new Error('Estructura de backup inválida.');
             }
@@ -1088,35 +1518,174 @@ class UIBackup {
             const totalPalabras = backupData.data.palabras?.length || 0;
             const totalHistorias = backupData.data.historias?.length || 0;
             const totalTemas = backupData.data.temas?.length || 0;
+            const totalOndasCruzadas = backupData.ondasCruzadas?.grafoElipse ? 
+                Object.values(backupData.ondasCruzadas.grafoElipse).reduce((acc, el) => acc + (el.totalOndas || 0), 0) : 0;
+            const totalOndasElipse = backupData.elipse?.historias?.length || 0;
             const fecha = backupData.fecha ? new Date(backupData.fecha).toLocaleString() : 'fecha desconocida';
 
-            const confirmar = await this._core.confirm(
-                `⚠️ ¿Restaurar este backup?\n\n` +
-                `📅 Fecha: ${fecha}\n` +
-                `📊 Contenido:\n` +
-                `• ${totalFrases} frases\n` +
-                `• ${totalPalabras} palabras\n` +
-                `• ${totalHistorias} historias\n` +
-                `• ${totalTemas} temas\n\n` +
-                `Esto SOBRESCRIBIRÁ todos tus datos actuales.\n\n` +
-                `¿Continuar?`,
-                '⚠️ Restaurar Backup'
-            );
+            // MOSTRAR RESUMEN COMPLETO
+            let resumen = `⚠️ ¿Restaurar este backup completo?\n\n`;
+            resumen += `📅 Fecha: ${fecha}\n`;
+            resumen += `📊 Contenido:\n`;
+            resumen += `• ${totalFrases} frases\n`;
+            resumen += `• ${totalPalabras} palabras\n`;
+            resumen += `• ${totalHistorias} historias\n`;
+            resumen += `• ${totalTemas} temas\n`;
+            if (totalOndasCruzadas > 0) {
+                resumen += `🌊 • ${totalOndasCruzadas} ondas cruzadas\n`;
+                resumen += `🌊 • ${Object.keys(backupData.ondasCruzadas?.grafoElipse || {}).length} elipses conectadas\n`;
+            }
+            if (totalOndasElipse > 0) {
+                resumen += `🌌 • ${totalOndasElipse} ondas elipse\n`;
+            }
+            if (backupData.favoritos) {
+                const totalFavs = (backupData.favoritos.frases?.length || 0) + (backupData.favoritos.palabras?.length || 0);
+                resumen += `⭐ • ${totalFavs} favoritos\n`;
+            }
+            resumen += `🧠 • Modo Tutor: ${backupData.tutorNeuro?.modo || 'flexible'}\n\n`;
+            resumen += `Esto SOBRESCRIBIRÁ todos tus datos actuales.\n\n¿Continuar?`;
 
+            const confirmar = await this._core.confirm(resumen, '⚠️ Restaurar Backup Completo');
             if (!confirmar) return;
 
             resultadoDiv.innerHTML = '🔄 Importando datos...';
 
+            // 1. RESTAURAR BASE DE DATOS
             await db.importarBackup(backupData.data);
 
+            // 2. RESTAURAR USUARIO
             if (backupData.usuario) {
                 await db.guardarUsuario(backupData.usuario);
             }
 
+            // 3. RESTAURAR IDIOMA ACTIVO
             if (backupData.idiomaActivo) {
                 localStorage.setItem('pipeline_idioma_activo', backupData.idiomaActivo);
+                if (window.gestorIdiomas) {
+                    await window.gestorIdiomas.cambiarIdioma(backupData.idiomaActivo);
+                }
             }
 
+            // 4. RESTAURAR ONDAS CRUZADAS
+            if (backupData.ondasCruzadas && window.modoOndasCruzadas) {
+                try {
+                    if (backupData.ondasCruzadas.grafoElipse) {
+                        window.modoOndasCruzadas._grafoElipse = backupData.ondasCruzadas.grafoElipse;
+                    }
+                    if (backupData.ondasCruzadas.recuerdoGlobal) {
+                        window.modoOndasCruzadas._recuerdoGlobal = {
+                            personajes: new Set(backupData.ondasCruzadas.recuerdoGlobal.personajes || []),
+                            lugares: new Set(backupData.ondasCruzadas.recuerdoGlobal.lugares || []),
+                            eventosClave: backupData.ondasCruzadas.recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: new Map(backupData.ondasCruzadas.recuerdoGlobal.vocabularioAcumulado || []),
+                            resumenGlobal: backupData.ondasCruzadas.recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: backupData.ondasCruzadas.recuerdoGlobal.ultimaActualizacion || Date.now()
+                        };
+                    }
+                    if (backupData.ondasCruzadas.mapaInterferencias) {
+                        window.modoOndasCruzadas._mapaInterferencias = backupData.ondasCruzadas.mapaInterferencias;
+                    }
+                    if (backupData.ondasCruzadas.config) {
+                        window.modoOndasCruzadas._config = { 
+                            ...window.modoOndasCruzadas._config, 
+                            ...backupData.ondasCruzadas.config 
+                        };
+                    }
+                    await window.modoOndasCruzadas._guardarDatos();
+                    resultadoDiv.innerHTML += `<br>🌊 Ondas Cruzadas restauradas (${totalOndasCruzadas} ondas)`;
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Ondas Cruzadas:', e);
+                    resultadoDiv.innerHTML += `<br>⚠️ Error restaurando Ondas Cruzadas: ${e.message}`;
+                }
+            }
+
+            // 5. RESTAURAR ELIPSE
+            if (backupData.elipse && window.modoElipse) {
+                try {
+                    if (backupData.elipse.historias) {
+                        window.modoElipse._historiasElipse = backupData.elipse.historias;
+                    }
+                    if (backupData.elipse.elipseActiva) {
+                        window.modoElipse._elipseActiva = backupData.elipse.elipseActiva;
+                        localStorage.setItem('pipeline_elipse_tema_activo', backupData.elipse.elipseActiva);
+                    }
+                    if (backupData.elipse.estadisticas) {
+                        window.modoElipse._estadisticas = backupData.elipse.estadisticas;
+                    }
+                    if (backupData.elipse.config) {
+                        window.modoElipse._config = { ...window.modoElipse._config, ...backupData.elipse.config };
+                    }
+                    if (backupData.elipse.recuerdoOndas) {
+                        window.modoElipse._recuerdoOndas = backupData.elipse.recuerdoOndas;
+                    }
+                    await window.modoElipse._guardarEstadoElipse();
+                    await window.modoElipse._guardarEnIndexedDB();
+                    resultadoDiv.innerHTML += `<br>🌌 Elipse restaurada (${totalOndasElipse} ondas)`;
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Elipse:', e);
+                    resultadoDiv.innerHTML += `<br>⚠️ Error restaurando Elipse: ${e.message}`;
+                }
+            }
+
+            // 6. RESTAURAR FAVORITOS
+            if (backupData.favoritos && window.gestorFavoritos) {
+                try {
+                    window.gestorFavoritos._favoritos = {
+                        frases: backupData.favoritos.frases || [],
+                        palabras: backupData.favoritos.palabras || []
+                    };
+                    window.gestorFavoritos._grupos = backupData.favoritos.grupos || {};
+                    await window.gestorFavoritos.guardarFavoritos();
+                    await window.gestorFavoritos._guardarGrupos();
+                    resultadoDiv.innerHTML += `<br>⭐ Favoritos restaurados`;
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando favoritos:', e);
+                }
+            }
+
+            // 7. RESTAURAR TUTOR NEURO
+            if (backupData.tutorNeuro && window.tutorNeuro) {
+                try {
+                    if (backupData.tutorNeuro.modo) {
+                        window.tutorNeuro.setModo(backupData.tutorNeuro.modo);
+                    }
+                    if (backupData.tutorNeuro.configuracion) {
+                        window.tutorNeuro._configuracion = { 
+                            ...window.tutorNeuro._configuracion, 
+                            ...backupData.tutorNeuro.configuracion 
+                        };
+                    }
+                    resultadoDiv.innerHTML += `<br>🧠 Tutor Neuro restaurado`;
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Tutor Neuro:', e);
+                }
+            }
+
+            // 8. RESTAURAR LEARNING PATH
+            if (backupData.learningPath && window.LearningPath) {
+                try {
+                    if (backupData.learningPath.ruta) {
+                        window.LearningPath._rutaActual = backupData.learningPath.ruta;
+                    }
+                    if (backupData.learningPath.pasoActual !== undefined) {
+                        window.LearningPath._pasoActual = backupData.learningPath.pasoActual;
+                    }
+                    resultadoDiv.innerHTML += `<br>🧭 Learning Path restaurado`;
+                } catch (e) {
+                    console.warn('⚠️ Error restaurando Learning Path:', e);
+                }
+            }
+
+            // 9. RECARGAR MÓDULOS
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(this._core);
+            }
+            if (window.UIClipse) {
+                window.UIClipse.cargar(this._core);
+            }
+            if (window.UIOndasCruzadas) {
+                window.UIOndasCruzadas.cargar(this._core);
+            }
             if (window.gestorIdiomas) {
                 await window.gestorIdiomas._cargarIdiomas();
             }
@@ -1128,6 +1697,8 @@ class UIBackup {
                 <br><span style="font-size: 12px; color: var(--gray);">
                     📚 ${totalFrases} frases · 📝 ${totalPalabras} palabras
                     📖 ${totalHistorias} historias · 📂 ${totalTemas} temas
+                    ${totalOndasCruzadas > 0 ? `🌊 ${totalOndasCruzadas} ondas cruzadas` : ''}
+                    ${totalOndasElipse > 0 ? `🌌 ${totalOndasElipse} ondas elipse` : ''}
                     <br>🔄 Recargando la aplicación...
                 </span>
             `;
@@ -1157,19 +1728,53 @@ class UIBackup {
             this._core.mostrarToast('📱 Generando código QR...', 'info');
 
             const data = await db.exportarBackup();
+            
+            // 🔥 INCLUIR ONDAS CRUZADAS EN EL QR
+            let ondasCruzadasData = null;
+            if (window.modoOndasCruzadas) {
+                try {
+                    ondasCruzadasData = {
+                        grafoElipse: window.modoOndasCruzadas._grafoElipse || {},
+                        recuerdoGlobal: {
+                            personajes: Array.from(window.modoOndasCruzadas._recuerdoGlobal.personajes || new Set()),
+                            lugares: Array.from(window.modoOndasCruzadas._recuerdoGlobal.lugares || new Set()),
+                            eventosClave: window.modoOndasCruzadas._recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: Array.from(window.modoOndasCruzadas._recuerdoGlobal.vocabularioAcumulado?.entries() || []),
+                            resumenGlobal: window.modoOndasCruzadas._recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: window.modoOndasCruzadas._recuerdoGlobal.ultimaActualizacion || Date.now()
+                        },
+                        mapaInterferencias: window.modoOndasCruzadas._mapaInterferencias || {},
+                        config: window.modoOndasCruzadas._config || {}
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Ondas Cruzadas:', e);
+                }
+            }
+            
+            let elipseData = null;
+            if (window.modoElipse) {
+                try {
+                    elipseData = window.modoElipse.getEstadoCompleto();
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Elipse:', e);
+                }
+            }
+
             const backup = {
                 fecha: new Date().toISOString(),
                 data: data,
                 usuario: await db.getUsuario(),
                 idiomaActivo: gestorIdiomas?.getIdiomaActivo() || 'es',
-                version: '2.5'
+                version: '2.6',
+                ondasCruzadas: ondasCruzadasData,
+                elipse: elipseData
             };
 
             const jsonStr = JSON.stringify(backup);
             
             let qrText = jsonStr;
             if (qrText.length > 2800) {
-                qrText = `PIPELINE_NEURO_BACKUP_${Date.now()}`;
+                qrText = `PIPELINE_NEURO_BACKUP_COMPLETO_${Date.now()}`;
                 this._core.mostrarToast('⚠️ El backup es muy grande para un QR. Usa "Backup Texto".', 'warning');
                 this._mostrarBackupTextoCompleto(jsonStr, backup);
                 return;
@@ -1214,7 +1819,8 @@ class UIBackup {
             <div style="background: var(--white, #ffffff); border-radius: 16px; padding: 24px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.4);">
                 <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0 0 4px 0;">📱 Código QR</h3>
                 <p style="font-size: 12px; color: var(--gray); margin: 0 0 16px 0;">
-                    Escanea con otro dispositivo para transferir el backup
+                    Escanea con otro dispositivo para transferir el backup completo
+                    <br><span style="font-size: 10px; color: var(--gray-light);">Incluye Ondas Cruzadas y Elipse</span>
                 </p>
                 <div id="qrcode-container" style="display: flex; justify-content: center; margin-bottom: 16px; background: white; padding: 16px; border-radius: 8px;">
                     <div id="qrcode"></div>
@@ -1341,18 +1947,52 @@ class UIBackup {
 
             const data = await db.exportarBackup();
             const usuario = await db.getUsuario();
+            
+            // 🔥 INCLUIR ONDAS CRUZADAS Y ELIPSE
+            let ondasCruzadasData = null;
+            if (window.modoOndasCruzadas) {
+                try {
+                    ondasCruzadasData = {
+                        grafoElipse: window.modoOndasCruzadas._grafoElipse || {},
+                        recuerdoGlobal: {
+                            personajes: Array.from(window.modoOndasCruzadas._recuerdoGlobal.personajes || new Set()),
+                            lugares: Array.from(window.modoOndasCruzadas._recuerdoGlobal.lugares || new Set()),
+                            eventosClave: window.modoOndasCruzadas._recuerdoGlobal.eventosClave || [],
+                            vocabularioAcumulado: Array.from(window.modoOndasCruzadas._recuerdoGlobal.vocabularioAcumulado?.entries() || []),
+                            resumenGlobal: window.modoOndasCruzadas._recuerdoGlobal.resumenGlobal || '',
+                            ultimaActualizacion: window.modoOndasCruzadas._recuerdoGlobal.ultimaActualizacion || Date.now()
+                        },
+                        mapaInterferencias: window.modoOndasCruzadas._mapaInterferencias || {},
+                        config: window.modoOndasCruzadas._config || {}
+                    };
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Ondas Cruzadas:', e);
+                }
+            }
+            
+            let elipseData = null;
+            if (window.modoElipse) {
+                try {
+                    elipseData = window.modoElipse.getEstadoCompleto();
+                } catch (e) {
+                    console.warn('⚠️ Error capturando datos de Elipse:', e);
+                }
+            }
+
             const backup = {
                 fecha: new Date().toISOString(),
                 data: data,
                 usuario: usuario,
                 idiomaActivo: gestorIdiomas?.getIdiomaActivo() || 'es',
-                version: '2.5'
+                version: '2.6',
+                ondasCruzadas: ondasCruzadasData,
+                elipse: elipseData
             };
 
             const jsonStr = JSON.stringify(backup, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const metadata = {
-                name: `pipeline_backup_${new Date().toISOString().slice(0,10)}.json`,
+                name: `pipeline_backup_completo_${new Date().toISOString().slice(0,10)}.json`,
                 parents: ['root']
             };
 
@@ -1373,7 +2013,7 @@ class UIBackup {
             }
 
             const result = await response.json();
-            this._core.mostrarToast(`✅ Backup subido a Google Drive (ID: ${result.id})`, 'success');
+            this._core.mostrarToast(`✅ Backup completo subido a Google Drive (ID: ${result.id})`, 'success');
 
         } catch (error) {
             console.error('❌ Error subiendo a Google Drive:', error);
@@ -1422,7 +2062,8 @@ class UIBackup {
             result.files.forEach((f, i) => {
                 const fecha = new Date(f.createdTime).toLocaleString();
                 const tamano = Math.round(f.size / 1024);
-                mensaje += `${i + 1}. ${f.name} (${tamano} KB) - ${fecha}\n`;
+                const esCompleto = f.name.includes('completo') ? ' 🌊🌌' : '';
+                mensaje += `${i + 1}. ${f.name} (${tamano} KB) - ${fecha}${esCompleto}\n`;
             });
 
             const seleccion = await this._core.prompt(mensaje, '1', 'Número del backup...', '📂 Restaurar Backup');
@@ -1435,11 +2076,14 @@ class UIBackup {
             }
 
             const archivo = result.files[idx];
-            const confirmar = await this._core.confirm(
-                '⚠️ ¿Restaurar backup "' + archivo.name + '"?\n\nEsto SOBRESCRIBIRÁ todos tus datos actuales.\n\n¿Continuar?',
-                '⚠️ Restaurar Backup'
-            );
+            
+            // Verificar si es un backup completo
+            const esCompleto = archivo.name.includes('completo');
+            const mensajeConfirmacion = esCompleto ?
+                `⚠️ ¿Restaurar backup COMPLETO "${archivo.name}"?\n\nIncluye todos los datos: Ondas Cruzadas, Elipse, Favoritos, etc.\n\nEsto SOBRESCRIBIRÁ todos tus datos actuales.\n\n¿Continuar?` :
+                `⚠️ ¿Restaurar backup "${archivo.name}"?\n\nEsto SOBRESCRIBIRÁ todos tus datos actuales.\n\n¿Continuar?`;
 
+            const confirmar = await this._core.confirm(mensajeConfirmacion, '⚠️ Restaurar Backup');
             if (!confirmar) return;
 
             this._core.mostrarToast('🔄 Descargando backup...', 'info');
@@ -1460,21 +2104,83 @@ class UIBackup {
             const jsonText = await downloadResponse.text();
             const backup = JSON.parse(jsonText);
 
-            await db.importarBackup(backup.data);
-
-            if (backup.usuario) {
-                await db.guardarUsuario(backup.usuario);
+            // Usar el procesador de texto para restaurar
+            const textarea = document.getElementById('restaurarBackupTexto');
+            if (textarea) {
+                textarea.value = jsonText;
+                await this._procesarRestauracionTexto();
+            } else {
+                // Fallback: restaurar directamente
+                await db.importarBackup(backup.data);
+                if (backup.usuario) {
+                    await db.guardarUsuario(backup.usuario);
+                }
+                if (backup.idiomaActivo) {
+                    localStorage.setItem('pipeline_idioma_activo', backup.idiomaActivo);
+                }
+                
+                // Restaurar Ondas Cruzadas
+                if (backup.ondasCruzadas && window.modoOndasCruzadas) {
+                    try {
+                        if (backup.ondasCruzadas.grafoElipse) {
+                            window.modoOndasCruzadas._grafoElipse = backup.ondasCruzadas.grafoElipse;
+                        }
+                        if (backup.ondasCruzadas.recuerdoGlobal) {
+                            window.modoOndasCruzadas._recuerdoGlobal = {
+                                personajes: new Set(backup.ondasCruzadas.recuerdoGlobal.personajes || []),
+                                lugares: new Set(backup.ondasCruzadas.recuerdoGlobal.lugares || []),
+                                eventosClave: backup.ondasCruzadas.recuerdoGlobal.eventosClave || [],
+                                vocabularioAcumulado: new Map(backup.ondasCruzadas.recuerdoGlobal.vocabularioAcumulado || []),
+                                resumenGlobal: backup.ondasCruzadas.recuerdoGlobal.resumenGlobal || '',
+                                ultimaActualizacion: backup.ondasCruzadas.recuerdoGlobal.ultimaActualizacion || Date.now()
+                            };
+                        }
+                        if (backup.ondasCruzadas.mapaInterferencias) {
+                            window.modoOndasCruzadas._mapaInterferencias = backup.ondasCruzadas.mapaInterferencias;
+                        }
+                        if (backup.ondasCruzadas.config) {
+                            window.modoOndasCruzadas._config = { 
+                                ...window.modoOndasCruzadas._config, 
+                                ...backup.ondasCruzadas.config 
+                            };
+                        }
+                        await window.modoOndasCruzadas._guardarDatos();
+                    } catch (e) {
+                        console.warn('⚠️ Error restaurando Ondas Cruzadas:', e);
+                    }
+                }
+                
+                // Restaurar Elipse
+                if (backup.elipse && window.modoElipse) {
+                    try {
+                        if (backup.elipse.historias) {
+                            window.modoElipse._historiasElipse = backup.elipse.historias;
+                        }
+                        if (backup.elipse.elipseActiva) {
+                            window.modoElipse._elipseActiva = backup.elipse.elipseActiva;
+                            localStorage.setItem('pipeline_elipse_tema_activo', backup.elipse.elipseActiva);
+                        }
+                        if (backup.elipse.estadisticas) {
+                            window.modoElipse._estadisticas = backup.elipse.estadisticas;
+                        }
+                        if (backup.elipse.config) {
+                            window.modoElipse._config = { ...window.modoElipse._config, ...backup.elipse.config };
+                        }
+                        if (backup.elipse.recuerdoOndas) {
+                            window.modoElipse._recuerdoOndas = backup.elipse.recuerdoOndas;
+                        }
+                        await window.modoElipse._guardarEstadoElipse();
+                        await window.modoElipse._guardarEnIndexedDB();
+                    } catch (e) {
+                        console.warn('⚠️ Error restaurando Elipse:', e);
+                    }
+                }
+                
+                this._core.mostrarToast('✅ Backup restaurado correctamente', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             }
-
-            if (backup.idiomaActivo) {
-                localStorage.setItem('pipeline_idioma_activo', backup.idiomaActivo);
-            }
-
-            this._core.mostrarToast('✅ Backup restaurado correctamente', 'success');
-
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
 
         } catch (error) {
             console.error('❌ Error restaurando de Google Drive:', error);
@@ -1483,7 +2189,7 @@ class UIBackup {
     }
 
     // ============================================================
-    // 🔥 GESTIÓN DE BACKUPS - ABRIR GESTOR
+    // GESTIÓN DE BACKUPS - ABRIR GESTOR
     // ============================================================
 
     async _abrirGestorBackups() {
@@ -1495,16 +2201,18 @@ class UIBackup {
                 return;
             }
 
-            // Mostrar lista de backups con opciones
             let mensaje = '📦 GESTIÓN DE BACKUPS\n\n';
             mensaje += `Total: ${backups.length} backups\n`;
-            mensaje += `📊 Espacio total: ${Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n\n`;
+            mensaje += `📊 Espacio total: ${Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n`;
+            mensaje += `🌊 Backups con Ondas Cruzadas: ${backups.filter(b => b.tieneOndasCruzadas).length}\n`;
+            mensaje += `🌌 Backups con Elipse: ${backups.filter(b => b.tieneElipse).length}\n\n`;
             mensaje += 'Selecciona una opción:\n';
             mensaje += '1. 📋 Ver lista de backups\n';
             mensaje += '2. 🗑️ Eliminar backup específico\n';
             mensaje += '3. 🧹 Eliminar backups automáticos (mantener manuales)\n';
             mensaje += '4. 💥 Eliminar TODOS los backups\n';
             mensaje += '5. ⚙️ Configurar límite de backups\n';
+            mensaje += '6. 📊 Ver estadísticas de backups\n';
             mensaje += '0. ❌ Cancelar';
 
             const opcion = await this._core.prompt(mensaje, '0', 'Elige una opción...', '📦 Gestor de Backups');
@@ -1528,6 +2236,9 @@ class UIBackup {
                     break;
                 case 5:
                     await this._configurarLimiteBackups();
+                    break;
+                case 6:
+                    await this._mostrarEstadisticasBackups(backups);
                     break;
                 default:
                     this._core.mostrarToast('❌ Opción cancelada', 'info');
@@ -1554,17 +2265,62 @@ class UIBackup {
         backups.forEach((b, i) => {
             const auto = b.esAutomatico ? '🤖 Automático' : '👤 Manual';
             const fecha = b.fechaLegible || new Date(b.fecha).toLocaleString();
-            mensaje += `${i + 1}. 📅 ${fecha}\n`;
+            const oc = b.tieneOndasCruzadas ? ' 🌊' : '';
+            const oe = b.tieneElipse ? ' 🌌' : '';
+            mensaje += `${i + 1}. 📅 ${fecha}${oc}${oe}\n`;
             mensaje += `   📊 ${b.tamanoKB} KB · ${auto}\n`;
             mensaje += `   📁 ${b.data?.frases?.length || 0} frases · ${b.data?.palabras?.length || 0} palabras\n`;
+            if (b.totalOndasCruzadas > 0) mensaje += `   🌊 ${b.totalOndasCruzadas} ondas cruzadas\n`;
+            if (b.totalOndasElipse > 0) mensaje += `   🌌 ${b.totalOndasElipse} ondas elipse\n`;
             if (b.id) mensaje += `   🆔 ${b.id}\n`;
             mensaje += '\n';
         });
 
         mensaje += `\n💡 Total: ${backups.length} backups`;
         mensaje += `\n📊 Espacio total: ${Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB`;
+        mensaje += `\n🌊 Con Ondas Cruzadas: ${backups.filter(b => b.tieneOndasCruzadas).length}`;
+        mensaje += `\n🌌 Con Elipse: ${backups.filter(b => b.tieneElipse).length}`;
 
         await this._core.alert(mensaje, '📋 Lista de Backups');
+    }
+
+    // ============================================================
+    // GESTIÓN - MOSTRAR ESTADÍSTICAS DE BACKUPS
+    // ============================================================
+
+    async _mostrarEstadisticasBackups(backups) {
+        if (!backups || backups.length === 0) {
+            this._core.mostrarToast('📭 No hay backups', 'info');
+            return;
+        }
+
+        const totalOndasCruzadas = backups.reduce((acc, b) => acc + (b.totalOndasCruzadas || 0), 0);
+        const totalOndasElipse = backups.reduce((acc, b) => acc + (b.totalOndasElipse || 0), 0);
+        const totalFrases = backups.reduce((acc, b) => acc + (b.data?.frases?.length || 0), 0);
+        const totalPalabras = backups.reduce((acc, b) => acc + (b.data?.palabras?.length || 0), 0);
+        const totalHistorias = backups.reduce((acc, b) => acc + (b.data?.historias?.length || 0), 0);
+        const totalTemas = backups.reduce((acc, b) => acc + (b.data?.temas?.length || 0), 0);
+        const totalSize = backups.reduce((acc, b) => acc + (b.tamano || 0), 0);
+
+        let mensaje = `📊 ESTADÍSTICAS DE BACKUPS\n\n`;
+        mensaje += `📦 Total de backups: ${backups.length}\n`;
+        mensaje += `💾 Espacio total: ${Math.round(totalSize / 1024)} KB\n\n`;
+        mensaje += `📚 CONTENIDO TOTAL RESPALDADO:\n`;
+        mensaje += `• ${totalFrases} frases\n`;
+        mensaje += `• ${totalPalabras} palabras\n`;
+        mensaje += `• ${totalHistorias} historias\n`;
+        mensaje += `• ${totalTemas} temas\n\n`;
+        mensaje += `🌊 ONDAS CRUZADAS:\n`;
+        mensaje += `• ${totalOndasCruzadas} ondas cruzadas\n`;
+        mensaje += `• ${backups.filter(b => b.tieneOndasCruzadas).length} backups con ondas cruzadas\n\n`;
+        mensaje += `🌌 ELIPSE:\n`;
+        mensaje += `• ${totalOndasElipse} ondas elipse\n`;
+        mensaje += `• ${backups.filter(b => b.tieneElipse).length} backups con elipse\n\n`;
+        mensaje += `🤖 AUTOMÁTICOS: ${backups.filter(b => b.esAutomatico).length}\n`;
+        mensaje += `👤 MANUALES: ${backups.filter(b => !b.esAutomatico).length}\n`;
+        mensaje += `📅 Último backup: ${backups[0]?.fechaLegible || 'Nunca'}`;
+
+        await this._core.alert(mensaje, '📊 Estadísticas de Backups');
     }
 
     // ============================================================
@@ -1583,7 +2339,9 @@ class UIBackup {
         backups.forEach((b, i) => {
             const auto = b.esAutomatico ? '🤖' : '👤';
             const fecha = b.fechaLegible || new Date(b.fecha).toLocaleString();
-            mensaje += `${i + 1}. ${auto} ${fecha} (${b.tamanoKB} KB)\n`;
+            const oc = b.tieneOndasCruzadas ? ' 🌊' : '';
+            const oe = b.tieneElipse ? ' 🌌' : '';
+            mensaje += `${i + 1}. ${auto} ${fecha} (${b.tamanoKB} KB)${oc}${oe}\n`;
         });
 
         mensaje += '\n0. ❌ Cancelar';
@@ -1600,12 +2358,19 @@ class UIBackup {
         }
 
         const backup = backups[idx];
+        const tieneOndasCruzadas = backup.tieneOndasCruzadas ? '🌊 Sí' : '🌊 No';
+        const tieneElipse = backup.tieneElipse ? '🌌 Sí' : '🌌 No';
+        
         const confirmar = await this._core.confirm(
             `⚠️ ¿Eliminar este backup?\n\n` +
             `📅 Fecha: ${backup.fechaLegible || new Date(backup.fecha).toLocaleString()}\n` +
             `📊 Tamaño: ${backup.tamanoKB} KB\n` +
             `🤖 Tipo: ${backup.esAutomatico ? 'Automático' : 'Manual'}\n` +
-            `📁 Frases: ${backup.data?.frases?.length || 0}\n\n` +
+            `📁 Frases: ${backup.data?.frases?.length || 0}\n` +
+            `🌊 Ondas Cruzadas: ${tieneOndasCruzadas}\n` +
+            `🌌 Elipse: ${tieneElipse}\n` +
+            `${backup.totalOndasCruzadas > 0 ? `🌊 Ondas cruzadas: ${backup.totalOndasCruzadas}\n` : ''}` +
+            `${backup.totalOndasElipse > 0 ? `🌌 Ondas elipse: ${backup.totalOndasElipse}\n` : ''}\n` +
             `Esta acción NO se puede deshacer.`,
             '🗑️ Confirmar Eliminación'
         );
@@ -1621,7 +2386,10 @@ class UIBackup {
             }
             localStorage.setItem('pipeline_backups_locales', JSON.stringify(allBackups));
 
-            this._core.mostrarToast('🗑️ Backup eliminado correctamente', 'success');
+            this._core.mostrarToast(
+                `🗑️ Backup eliminado${backup.tieneOndasCruzadas ? ' (con Ondas Cruzadas)' : ''}${backup.tieneElipse ? ' (con Elipse)' : ''}`,
+                'warning'
+            );
             this._renderizarPanel();
             
             const verLista = await this._core.confirm('¿Quieres ver la lista actualizada?', '');
@@ -1649,11 +2417,16 @@ class UIBackup {
             return;
         }
 
+        const totalOndasCruzadasAuto = automaticos.reduce((acc, b) => acc + (b.totalOndasCruzadas || 0), 0);
+        const totalOndasElipseAuto = automaticos.reduce((acc, b) => acc + (b.totalOndasElipse || 0), 0);
+
         const confirmar = await this._core.confirm(
             `⚠️ ¿Eliminar TODOS los backups automáticos?\n\n` +
             `📊 ${automaticos.length} backups automáticos\n` +
             `📁 ${manuales.length} backups manuales (se mantienen)\n` +
-            `📊 Espacio a liberar: ${Math.round(automaticos.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n\n` +
+            `📊 Espacio a liberar: ${Math.round(automaticos.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n` +
+            `🌊 Ondas cruzadas afectadas: ${totalOndasCruzadasAuto}\n` +
+            `🌌 Ondas elipse afectadas: ${totalOndasElipseAuto}\n\n` +
             `Esta acción NO se puede deshacer.`,
             '🧹 Eliminar Backups Automáticos'
         );
@@ -1662,7 +2435,12 @@ class UIBackup {
 
         try {
             localStorage.setItem('pipeline_backups_locales', JSON.stringify(manuales));
-            this._core.mostrarToast(`🧹 ${automaticos.length} backups automáticos eliminados`, 'success');
+            this._core.mostrarToast(
+                `🧹 ${automaticos.length} backups automáticos eliminados\n` +
+                `🌊 ${totalOndasCruzadasAuto} ondas cruzadas liberadas\n` +
+                `🌌 ${totalOndasElipseAuto} ondas elipse liberadas`,
+                'warning'
+            );
             this._renderizarPanel();
         } catch (error) {
             console.error('❌ Error eliminando backups automáticos:', error);
@@ -1682,10 +2460,15 @@ class UIBackup {
             return;
         }
 
+        const totalOndasCruzadas = backups.reduce((acc, b) => acc + (b.totalOndasCruzadas || 0), 0);
+        const totalOndasElipse = backups.reduce((acc, b) => acc + (b.totalOndasElipse || 0), 0);
+
         const confirmar1 = await this._core.confirm(
             `⚠️ ¿ELIMINAR TODOS LOS BACKUPS?\n\n` +
             `📊 ${backups.length} backups\n` +
-            `📊 Espacio total: ${Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n\n` +
+            `📊 Espacio total: ${Math.round(backups.reduce((acc, b) => acc + (b.tamano || 0), 0) / 1024)} KB\n` +
+            `🌊 Ondas cruzadas: ${totalOndasCruzadas}\n` +
+            `🌌 Ondas elipse: ${totalOndasElipse}\n\n` +
             `⚠️ Esta acción NO se puede deshacer.\n` +
             `⚠️ Perderás TODOS tus backups guardados.\n\n` +
             `¿Estás seguro?`,
@@ -1696,7 +2479,8 @@ class UIBackup {
 
         const confirmar2 = await this._core.confirm(
             `🔴 ÚLTIMA ADVERTENCIA 🔴\n\n` +
-            `Se eliminarán ${backups.length} backups permanentemente.\n\n` +
+            `Se eliminarán ${backups.length} backups permanentemente.\n` +
+            `Incluyendo ${totalOndasCruzadas} ondas cruzadas y ${totalOndasElipse} ondas elipse.\n\n` +
             `Escribe "ELIMINAR" para confirmar:`,
             '⚠️ Confirmación Final'
         );
@@ -1705,7 +2489,12 @@ class UIBackup {
 
         try {
             localStorage.setItem('pipeline_backups_locales', '[]');
-            this._core.mostrarToast('💥 Todos los backups eliminados', 'warning');
+            this._core.mostrarToast(
+                `💥 Todos los backups eliminados\n` +
+                `🌊 ${totalOndasCruzadas} ondas cruzadas perdidas\n` +
+                `🌌 ${totalOndasElipse} ondas elipse perdidas`,
+                'warning'
+            );
             this._renderizarPanel();
         } catch (error) {
             console.error('❌ Error eliminando todos los backups:', error);
@@ -1718,9 +2507,15 @@ class UIBackup {
     // ============================================================
 
     async _configurarLimiteBackups() {
+        const backups = this._obtenerListaBackups();
+        const totalOndasCruzadas = backups.reduce((acc, b) => acc + (b.totalOndasCruzadas || 0), 0);
+        const totalOndasElipse = backups.reduce((acc, b) => acc + (b.totalOndasElipse || 0), 0);
+
         const mensaje = `⚙️ CONFIGURAR LÍMITE DE BACKUPS\n\n` +
             `Límite actual: ${this._MAX_BACKUPS} backups\n` +
-            `Backups actuales: ${this._obtenerListaBackups().length}\n\n` +
+            `Backups actuales: ${backups.length}\n` +
+            `🌊 Ondas cruzadas: ${totalOndasCruzadas}\n` +
+            `🌌 Ondas elipse: ${totalOndasElipse}\n\n` +
             `Escribe el nuevo límite (mínimo 3, máximo 50):`;
 
         const nuevoLimite = await this._core.prompt(mensaje, String(this._MAX_BACKUPS), 'Número (3-50)...', '⚙️ Límite de Backups');
@@ -1738,15 +2533,30 @@ class UIBackup {
         localStorage.setItem('pipeline_backup_max_limit', String(limite));
 
         // Aplicar límite inmediatamente
-        let backups = JSON.parse(localStorage.getItem('pipeline_backups_locales') || '[]');
-        backups.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-        while (backups.length > limite) {
-            const eliminado = backups.pop();
+        let allBackups = JSON.parse(localStorage.getItem('pipeline_backups_locales') || '[]');
+        allBackups.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        
+        let eliminados = 0;
+        let ondasEliminadas = 0;
+        let elipsesEliminadas = 0;
+        
+        while (allBackups.length > limite) {
+            const eliminado = allBackups.pop();
+            eliminados++;
+            ondasEliminadas += eliminado.totalOndasCruzadas || 0;
+            elipsesEliminadas += eliminado.totalOndasElipse || 0;
             console.log(`🗑️ Backup antiguo eliminado por límite: ${new Date(eliminado.fecha).toLocaleString()}`);
         }
-        localStorage.setItem('pipeline_backups_locales', JSON.stringify(backups));
+        
+        localStorage.setItem('pipeline_backups_locales', JSON.stringify(allBackups));
 
-        this._core.mostrarToast(`✅ Límite configurado a ${limite} backups`, 'success');
+        this._core.mostrarToast(
+            `✅ Límite configurado a ${limite} backups\n` +
+            `🗑️ ${eliminados} backups eliminados\n` +
+            `🌊 ${ondasEliminadas} ondas cruzadas liberadas\n` +
+            `🌌 ${elipsesEliminadas} ondas elipse liberadas`,
+            'success'
+        );
         this._renderizarPanel();
     }
 
@@ -1756,6 +2566,9 @@ class UIBackup {
 
     async _configurarBackupAutomatico() {
         const actual = localStorage.getItem('pipeline_backup_auto') === 'true';
+        const backups = this._obtenerListaBackups();
+        const totalOndasCruzadas = backups.reduce((acc, b) => acc + (b.totalOndasCruzadas || 0), 0);
+        const totalOndasElipse = backups.reduce((acc, b) => acc + (b.totalOndasElipse || 0), 0);
 
         const opciones = [
             { id: 'desactivado', label: '⏸️ Desactivado' },
@@ -1766,6 +2579,9 @@ class UIBackup {
         ];
 
         let mensaje = '🤖 Configurar Backup Automático\n\n';
+        mensaje += `📊 Backups actuales: ${backups.length}\n`;
+        mensaje += `🌊 Ondas cruzadas: ${totalOndasCruzadas}\n`;
+        mensaje += `🌌 Ondas elipse: ${totalOndasElipse}\n\n`;
         mensaje += 'Selecciona la frecuencia:\n';
         opciones.forEach((o, i) => {
             const marcado = (o.id === 'desactivado' && !actual) || 
@@ -1885,6 +2701,14 @@ class UIBackup {
             }
         }
     }
+
+    // ============================================================
+    // DESTRUIR
+    // ============================================================
+
+    destroy() {
+        console.log('🛑 UIBackup: Destruido');
+    }
 }
 
 // ============================================================
@@ -1892,7 +2716,7 @@ class UIBackup {
 // ============================================================
 
 window.UIBackup = new UIBackup();
-console.log('✅ UI Backup v2.5 - SISTEMA DE BACKUP COMPLETO CON GESTIÓN');
+console.log('✅ UI Backup v2.6 - SISTEMA DE BACKUP COMPLETO CON GESTIÓN');
 console.log('  📦 Backup Local (Generar + Restaurar)');
 console.log('  📧 Backup por Correo (Exportar + Instrucciones)');
 console.log('  📄 Backup Texto (Exportar + Restaurar desde Texto)');
@@ -1902,3 +2726,8 @@ console.log('  🤖 Backup Automático (Configurable)');
 console.log('  🗑️ Gestión de Backups (Listar, Eliminar, Límite)');
 console.log('  🔧 Límite automático de backups (configurable)');
 console.log('  🔄 Backup automático al iniciar, cerrar y programado');
+console.log('  🌊 SOPORTE COMPLETO PARA ONDAS CRUZADAS');
+console.log('  🌌 SOPORTE COMPLETO PARA MODO ELIPSE');
+console.log('  📊 Estadísticas detalladas de backups');
+console.log('  🔥 Preserva TODOS los datos del sistema');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

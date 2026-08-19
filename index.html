@@ -2,25 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pipeline Neuro v22.2 - Balanceador de Carga Groq</title>
-    
+    <title>Pipeline Neuro v22.3 - Balanceador de Carga Groq</title>
     <!-- ============================================================ -->
     <!-- FAVICON Y ICONOS PARA TODOS LOS DISPOSITIVOS -->
     <!-- ============================================================ -->
     
-    <!-- Favicon estándar (todos los navegadores) -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     
-    <!-- Favicon PNG para navegadores modernos -->
     <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48x48.png">
     <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64x64.png">
     <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128x128.png">
     
-    <!-- Apple Touch Icon (iOS, Safari) -->
     <link rel="apple-touch-icon" sizes="57x57" href="icons/apple-touch-icon-57x57.png">
     <link rel="apple-touch-icon" sizes="60x60" href="icons/apple-touch-icon-60x60.png">
     <link rel="apple-touch-icon" sizes="72x72" href="icons/apple-touch-icon-72x72.png">
@@ -31,23 +28,17 @@
     <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152x152.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
     
-    <!-- Android Chrome -->
     <link rel="icon" type="image/png" sizes="192x192" href="icons/android-icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/android-icon-512x512.png">
     
-    <!-- Microsoft Windows -->
     <meta name="msapplication-TileColor" content="#6C5CE7">
     <meta name="msapplication-TileImage" content="icons/mstile-150x150.png">
     <meta name="msapplication-config" content="browserconfig.xml">
     
-    <!-- Color de la barra de navegación en móviles -->
     <meta name="theme-color" content="#6C5CE7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- ============================================================ -->
-    <!-- META TAGS PARA COMPARTIR EN REDES SOCIALES -->
-    <!-- ============================================================ -->
     <meta property="og:title" content="Pipeline Neuro - Aprendizaje de Idiomas con IA">
     <meta property="og:description" content="Sistema de aprendizaje de idiomas con neurociencia y balanceador de carga Groq">
     <meta property="og:image" content="icons/og-image.png">
@@ -57,9 +48,6 @@
     <meta name="twitter:description" content="Aprende idiomas con neurociencia e IA">
     <meta name="twitter:image" content="icons/og-image.png">
     
-    <!-- ============================================================ -->
-    <!-- ESTILOS -->
-    <!-- ============================================================ -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -1096,7 +1084,6 @@
             animation: spin 1s linear infinite;
         }
 
-        /* OFFline banner */
         .offline-banner {
             position: fixed;
             bottom: 0;
@@ -1126,6 +1113,53 @@
             border-radius: 12px;
             font-size: 12px;
         }
+        
+        /* ============================================================
+           ESTILOS PARA ONDAS CRUZADAS
+           ============================================================ */
+        
+        .onda-cruzada-badge {
+            background: linear-gradient(135deg, #6C5CE7, #00CEC9);
+            color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .onda-cruzada-card {
+            border-left: 4px solid #6C5CE7;
+            transition: all 0.3s ease;
+        }
+        
+        .onda-cruzada-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(108,92,231,0.15);
+        }
+        
+        .onda-cruzada-card .conexion-tag {
+            font-size: 8px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 2px;
+        }
+        
+        .onda-cruzada-card .conexion-tag.fuerte {
+            background: var(--success)20;
+            color: var(--success);
+        }
+        
+        .onda-cruzada-card .conexion-tag.media {
+            background: var(--warning)20;
+            color: var(--warning);
+        }
+        
+        .onda-cruzada-card .conexion-tag.debil {
+            background: var(--bg);
+            color: var(--gray);
+        }
     </style>
 </head>
 <body>
@@ -1140,7 +1174,7 @@
                     <i class="fas fa-brain"></i>
                 </div>
                 <h1>Pipeline Neuro</h1>
-                <p>v22.2 · Balanceador de Carga Groq</p>
+                <p>v22.3 · Balanceador de Carga Groq</p>
             </div>
 
             <form id="registroForm">
@@ -1352,239 +1386,13 @@
             
             <!-- ===== DASHBOARD ===== -->
             <div id="dashboardView" class="view active">
-                <!-- ============================================================
-                     HEADER DEL DASHBOARD - TÍTULO ÚNICO (SOLO UNA VEZ)
-                     ============================================================ -->
                 <div class="dashboard-header">
                     <h2>📊 Panel de Control</h2>
                     <p id="dashboardSubtitle">Bienvenido de vuelta, <span id="dashUserName">Usuario</span></p>
                 </div>
                 
                 <div class="dashboard-grid" id="dashboardGrid">
-                    <!-- Tarjeta: Estudiar -->
-                    <div class="dash-card" data-module="study">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>Estudiar</h3>
-                            <p class="dash-card-meta" id="dashStudyMeta">0 frases · 0%</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashStudyProgress" style="width:0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Gramática -->
-                    <div class="dash-card" data-module="grammar">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#00CEC9,#81ECEC);">
-                            <i class="fas fa-sitemap"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>Gramática</h3>
-                            <p class="dash-card-meta" id="dashGrammarMeta">0 palabras · 0 familias</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashGrammarProgress" style="width:0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: TEMAS -->
-                    <div class="dash-card" data-module="temas">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#F9CA24);">
-                            <i class="fas fa-folder-open"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>📚 Temas</h3>
-                            <p class="dash-card-meta" id="dashTemasMeta">0 temas</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashTemasProgress" style="width:0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Vigía -->
-                    <div class="dash-card" data-module="vigia">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#74B9FF,#0984E3);">
-                            <i class="fas fa-eye"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>Vigía IA</h3>
-                            <p class="dash-card-meta" id="dashVigiaMeta">● Offline</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashVigiaProgress" style="width:0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- TARJETA: NEURO DASHBOARD -->
-                    <div class="dash-card" id="dashNeuroContainer" style="border:2px solid var(--primary);cursor:default;">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#A29BFE);">
-                            <i class="fas fa-brain"></i>
-                        </div>
-                        <div class="dash-card-content" style="flex:1;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <h3 style="font-size:14px;margin:0;">🧠 Estado Neuro</h3>
-                                <button class="neuro-toggle-btn" onclick="window.UIDashboard._togglePanelNeuro()">
-                                    <i class="fas fa-chevron-down"></i>
-                                </button>
-                            </div>
-                            <p class="dash-card-meta" style="font-size:11px;color:var(--gray);margin:2px 0 4px;">
-                                ⚡ Cargando...
-                            </p>
-                            <div class="dash-card-progress" style="margin-top:4px;">
-                                <div class="dash-progress-bar" style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;">
-                                    <div class="dash-progress-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#6C5CE7,#00CEC9);border-radius:2px;transition:width 0.5s ease;"></div>
-                                </div>
-                            </div>
-                            <div style="font-size:10px;color:var(--gray-light);margin-top:3px;">
-                                💡 Haz clic en la flecha para ver detalles
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Mi Espacio -->
-                    <div class="dash-card" data-module="espacio" style="border:2px solid var(--secondary);">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#A29BFE,#6C5CE7);">
-                            <i class="fas fa-user-circle"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>⭐ Mi Espacio</h3>
-                            <p class="dash-card-meta" id="dashEspacioMeta">0 frases · 0 palabras</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashEspacioProgress" style="width:0%;background:linear-gradient(90deg,#A29BFE,#6C5CE7);"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Competiciones -->
-                    <div class="dash-card" data-module="competiciones" style="border:2px solid #FDCB6E;">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#E17055);">
-                            <i class="fas fa-trophy"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>🏆 Ligas</h3>
-                            <p class="dash-card-meta" id="dashCompeticionesMeta">0 partidas · 0 victorias</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashCompeticionesProgress" style="width:0%;background:linear-gradient(90deg,#FDCB6E,#E17055);"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Configuración -->
-                    <div class="dash-card" data-module="config">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#FDCB6E,#F9CA24);">
-                            <i class="fas fa-sliders-h"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>⚙️ Configuración</h3>
-                            <p class="dash-card-meta">Nivel · Perfil · Preferencias</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" style="width:100%;background:var(--gray);"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: Herramientas -->
-                    <div class="dash-card" data-module="tools">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#636E72,#2D3436);">
-                            <i class="fas fa-tools"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>Herramientas</h3>
-                            <p class="dash-card-meta">Backup · Checkpoints · Diagnóstico</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" style="width:100%;background:var(--gray);"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta: CARACTERES -->
-                    <div class="dash-card" data-module="caracteres" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#6C5CE7,#00CEC9);">
-                            <i class="fas fa-characters"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>🀄 Caracteres</h3>
-                            <p class="dash-card-meta" id="dashCaracteresMeta">0 familias · 0 palabras</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashCaracteresProgress" style="width:0%;background:linear-gradient(90deg,#6C5CE7,#00CEC9);"></div>
-                                </div>
-                            </div>
-                            <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">
-                                🧠 Supervisado por Vigía Gramatical
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-
-                    <!-- TARJETA: FONÉTICA -->
-                    <div class="dash-card" data-module="fonetica" style="border:2px solid var(--secondary);background:linear-gradient(135deg, var(--secondary)05, var(--primary)05);">
-                        <div class="dash-card-icon" style="background:linear-gradient(135deg,#00B894,#55EFC4);">
-                            <i class="fas fa-microphone-alt"></i>
-                        </div>
-                        <div class="dash-card-content">
-                            <h3>🎤 Fonética</h3>
-                            <p class="dash-card-meta" id="dashFoneticaMeta">0 elementos · 0%</p>
-                            <div class="dash-card-progress">
-                                <div class="dash-progress-bar">
-                                    <div class="dash-progress-fill" id="dashFoneticaProgress" style="width:0%;background:linear-gradient(90deg,#00B894,#55EFC4);"></div>
-                                </div>
-                            </div>
-                            <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">
-                                🔊 Práctica de pronunciación
-                            </div>
-                        </div>
-                        <div class="dash-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
+                    <!-- EL CONTENIDO SE RENDERIZA DINÁMICAMENTE DESDE ui.dashboard.js -->
                 </div>
             </div>
 
@@ -1840,7 +1648,6 @@
                                 <span>Limpiar Datos</span>
                                 <small>Eliminar todo</small>
                             </button>
-                            <!-- Tarjeta especial: Balanceador de Carga -->
                             <button class="tool-card" style="border:2px solid var(--primary);background:linear-gradient(135deg, var(--primary)08, var(--secondary)08);" onclick="ui._mostrarEstadoBalanceador()">
                                 <i class="fas fa-balance-scale"></i>
                                 <span>⚖️ Balanceador Groq</span>
@@ -1848,6 +1655,56 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ===== 🌌 MÓDULO: MODO ELIPSE ===== -->
+            <div id="elipseModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🌌 Modo Elipse</h2>
+                        <span class="module-breadcrumb">Dashboard / Modo Elipse</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="elipseContent">
+                        <div id="elipseContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 🌊 MÓDULO: ONDAS CRUZADAS ===== -->
+            <div id="ondasCruzadasModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🌊 Modo Ondas Cruzadas</h2>
+                        <span class="module-breadcrumb">Dashboard / Ondas Cruzadas</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="ondasCruzadasContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== 📖 MÓDULO: MANUAL INTERACTIVO ===== -->
+            <div id="manualModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📖 Manual Interactivo</h2>
+                        <span class="module-breadcrumb">Dashboard / Manual Interactivo</span>
+                    </div>
+                </div>
+                <div class="module-content" id="manualContent">
+                    <!-- El contenido se renderiza desde ui.manual.js -->
                 </div>
             </div>
 
@@ -1906,133 +1763,151 @@
         <span id="offlineTimer"></span>
     </div>
 
-<!-- ============================================================ -->
-<!-- SCRIPTS - ORDEN CORRECTO DE CARGA -->
-<!-- ============================================================ -->
+    <!-- ============================================================ -->
+    <!-- SCRIPTS - ORDEN CORREGIDO CON GESTOR DE PROGRESO -->
+    <!-- ============================================================ -->
 
-<!-- 0. BALANCEADOR DE CARGA GROQ (NUEVO) -->
-<script src="js/core/balanceadorGroq.js"></script>
+    <!-- 0. BALANCEADOR DE CARGA GROQ -->
+    <script src="js/core/balanceadorGroq.js"></script>
 
-<!-- 1. VALIDADOR DE IDIOMAS (NUEVO - CRUCIAL) -->
-<script src="js/core/validadorIdiomas.js"></script>
+    <!-- 1. VALIDADOR DE IDIOMAS -->
+    <script src="js/core/validadorIdiomas.js"></script>
 
-<!-- 2. FUNCIONES GLOBALES PARA REGISTRO -->
-<script>
-window._seleccionarModoTutorRegistro = function(modo) {
-    document.querySelectorAll('.tutor-modo-option').forEach(el => {
-        el.classList.remove('selected');
-        el.style.border = '3px solid var(--light)';
-        el.style.boxShadow = 'none';
-        el.style.background = 'var(--white)';
-    });
-    
-    const selected = document.querySelector(`.tutor-modo-option[data-modo="${modo}"]`);
-    if (selected) {
-        selected.classList.add('selected');
-        selected.style.border = '3px solid var(--primary)';
-        selected.style.boxShadow = '0 0 0 3px var(--primary)20';
-        selected.style.background = 'var(--primary)04';
-    }
-    
-    localStorage.setItem('pipeline_tutor_modo', modo);
-    
-    const nombres = {
-        'guiado': '🚀 Modo Guiado',
-        'flexible': '🧠 Modo Flexible',
-        'libre': '📴 Modo Libre'
-    };
-    
-    if (window.uiCore && window.uiCore.mostrarToast) {
-        window.uiCore.mostrarToast(`✅ Modo seleccionado: ${nombres[modo] || modo}`, 'success');
-    } else {
-        console.log(`✅ Modo seleccionado: ${nombres[modo] || modo}`);
-    }
-    
-    if (window.tutorNeuro) {
-        try {
-            window.tutorNeuro.setModo(modo);
-            console.log(`🧠 Modo Tutor actualizado a: ${modo}`);
-        } catch (e) {
-            console.warn('⚠️ Error actualizando modo del tutor:', e);
-        }
-    }
-};
+    <!-- 2. FUNCIONES GLOBALES PARA REGISTRO -->
+    <script>
+        window._seleccionarModoTutorRegistro = function(modo) {
+            document.querySelectorAll('.tutor-modo-option').forEach(el => {
+                el.classList.remove('selected');
+                el.style.border = '3px solid var(--light)';
+                el.style.boxShadow = 'none';
+                el.style.background = 'var(--white)';
+            });
+            
+            const selected = document.querySelector(`.tutor-modo-option[data-modo="${modo}"]`);
+            if (selected) {
+                selected.classList.add('selected');
+                selected.style.border = '3px solid var(--primary)';
+                selected.style.boxShadow = '0 0 0 3px var(--primary)20';
+                selected.style.background = 'var(--primary)04';
+            }
+            
+            localStorage.setItem('pipeline_tutor_modo', modo);
+            
+            const nombres = {
+                'guiado': '🚀 Modo Guiado',
+                'flexible': '🧠 Modo Flexible',
+                'libre': '📴 Modo Libre'
+            };
+            
+            if (window.uiCore && window.uiCore.mostrarToast) {
+                window.uiCore.mostrarToast(`✅ Modo seleccionado: ${nombres[modo] || modo}`, 'success');
+            } else {
+                console.log(`✅ Modo seleccionado: ${nombres[modo] || modo}`);
+            }
+            
+            if (window.tutorNeuro) {
+                try {
+                    window.tutorNeuro.setModo(modo);
+                    console.log(`🧠 Modo Tutor actualizado a: ${modo}`);
+                } catch (e) {
+                    console.warn('⚠️ Error actualizando modo del tutor:', e);
+                }
+            }
+        };
 
-document.addEventListener('DOMContentLoaded', function() {
-    const modoGuardado = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
-    setTimeout(function() {
-        const opcion = document.querySelector(`.tutor-modo-option[data-modo="${modoGuardado}"]`);
-        if (opcion) {
-            window._seleccionarModoTutorRegistro(modoGuardado);
-        }
-    }, 300);
-});
-</script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modoGuardado = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
+            setTimeout(function() {
+                const opcion = document.querySelector(`.tutor-modo-option[data-modo="${modoGuardado}"]`);
+                if (opcion) {
+                    window._seleccionarModoTutorRegistro(modoGuardado);
+                }
+            }, 300);
+        });
+    </script>
 
-<!-- 3. MÓDULOS CORE -->
-<script src="js/core/modoInverso.js"></script>
-<script src="js/core/gestorIdiomas.js"></script>
-<script src="js/core/gestorNiveles.js"></script>
+    <!-- 3. MÓDULOS CORE -->
+    <script src="js/core/modoInverso.js"></script>
+    <script src="js/core/gestorIdiomas.js"></script>
+    <script src="js/core/gestorNiveles.js"></script>
 
-<!-- 4. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
-<script src="js/database.js"></script>
-<script src="js/vigia.js"></script>
-<script src="js/centinela.js"></script>
-<script src="js/pipeline.js"></script>
-<script src="js/gramatica.js"></script>
+    <!-- 4. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
+    <script src="js/database.js"></script>
+    <script src="js/vigia.js"></script>
+    <script src="js/centinela.js"></script>
+    <script src="js/pipeline.js"></script>
+    <script src="js/gramatica.js"></script>
 
-<!-- 5. MÓDULOS CORE QUE DEPENDEN DE DB -->
-<script src="js/core/gestorFavoritos.js"></script>
-<script src="js/core/toastEducativo.js"></script>
+    <!-- 5. MÓDULOS CORE QUE DEPENDEN DE DB -->
+    <script src="js/core/gestorFavoritos.js"></script>
+    <script src="js/core/toastEducativo.js"></script>
 
-<!-- 6. VIGÍA GENERATOR (NUEVO) -->
-<script src="js/vigiaGenerator.js"></script>
+    <!-- 6. GESTOR DE PROGRESO DE HISTORIAS/ONDAS (SIMBIOSIS) -->
+    <script src="js/core/gestorProgresoHistorias.js"></script>
 
-<!-- 7. FONÉTICA -->
-<script src="js/fonetica.js"></script>
+    <!-- 7. VIGÍA GENERATOR -->
+    <script src="js/vigiaGenerator.js"></script>
 
-<!-- 8. UI - MÓDULOS BASE -->
-<script src="js/ui/ui.dialogs.js"></script>
-<script src="js/ui/ui.core.js"></script>
-<script src="js/ui/ui.dashboard.js"></script>
-<script src="js/ui/ui.study.js"></script>
-<script src="js/ui/ui.grammar.js"></script>
-<script src="js/ui/ui.chat.js"></script>
-<script src="js/ui/ui.config.js"></script>
-<script src="js/ui/ui.tools.js"></script>
-<script src="js/ui/ui.json.js"></script>
+    <!-- 8. FONÉTICA -->
+    <script src="js/fonetica.js"></script>
 
-<!-- 9. UI - BACKUP -->
-<script src="js/ui/ui.backup.js"></script>
+    <!-- 9. 🌌 MODO ELIPSE -->
+    <script src="js/modoElipse.js"></script>
 
-<!-- 10. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
-<script src="js/ui/ui.temas.core.js"></script>
-<script src="js/ui/ui.temas.render.js"></script>
-<script src="js/ui/ui.temas.actions.js"></script>
-<script src="js/ui/ui.espacio.core.js"></script>
-<script src="js/ui/ui.espacio.render.js"></script>
-<script src="js/ui/ui.espacio.actions.js"></script>
-<script src="js/ui/ui.caracteres.core.js"></script>
-<script src="js/ui/ui.caracteres.render.js"></script>
-<script src="js/ui/ui.caracteres.actions.js"></script>
+    <!-- 10. 🌊 MODO ONDAS CRUZADAS -->
+    <script src="js/modoOndasCruzadas.js"></script>
 
-<!-- 11. UI - FONÉTICA -->
-<script src="js/ui/ui.fonetica.js"></script>
+    <!-- 11. UI - MÓDULOS BASE -->
+    <script src="js/ui/ui.dialogs.js"></script>
+    <script src="js/ui/ui.core.js"></script>
+    <script src="js/ui/ui.dashboard.js"></script>
+    <script src="js/ui/ui.study.js"></script>
+    <script src="js/ui/ui.grammar.js"></script>
+    <script src="js/ui/ui.chat.js"></script>
+    <script src="js/ui/ui.config.js"></script>
+    <script src="js/ui/ui.tools.js"></script>
+    <script src="js/ui/ui.json.js"></script>
 
-<!-- 12. PROXY UI -->
-<script src="js/ui.js"></script>
+    <!-- 12. UI - BACKUP -->
+    <script src="js/ui/ui.backup.js"></script>
 
-<!-- 13. COMPETICIONES -->
-<script src="js/competiciones.js"></script>
+    <!-- 13. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
+    <script src="js/ui/ui.temas.core.js"></script>
+    <script src="js/ui/ui.temas.render.js"></script>
+    <script src="js/ui/ui.temas.actions.js"></script>
+    <script src="js/ui/ui.espacio.core.js"></script>
+    <script src="js/ui/ui.espacio.render.js"></script>
+    <script src="js/ui/ui.espacio.actions.js"></script>
+    <script src="js/ui/ui.caracteres.core.js"></script>
+    <script src="js/ui/ui.caracteres.render.js"></script>
+    <script src="js/ui/ui.caracteres.actions.js"></script>
 
-<!-- 14. TUTOR NEURO -->
-<script src="js/tutorNeuro.js"></script>
+    <!-- 14. UI - FONÉTICA -->
+    <script src="js/ui/ui.fonetica.js"></script>
 
-<!-- 15. LEARNING PATH -->
-<script src="js/learningPath.js"></script>
+    <!-- 15. 🌊 UI - ONDAS CRUZADAS -->
+    <script src="js/ui/ui.ondasCruzadas.js"></script>
 
-<!-- 16. APP (INICIALIZACIÓN PRINCIPAL) -->
-<script src="js/app.js"></script>
+    <!-- 16. 🌌 UI - ELIPSE (VERSIÓN CON SIMBIOSIS) -->
+    <script src="js/ui/ui.elipse.js"></script>
+
+    <!-- 17. 📖 UI - MANUAL INTERACTIVO -->
+    <script src="js/ui/ui.manual.js"></script>
+
+    <!-- 18. PROXY UI -->
+    <script src="js/ui.js"></script>
+
+    <!-- 19. COMPETICIONES -->
+    <script src="js/competiciones.js"></script>
+
+    <!-- 20. TUTOR NEURO -->
+    <script src="js/tutorNeuro.js"></script>
+
+    <!-- 21. LEARNING PATH -->
+    <script src="js/learningPath.js"></script>
+
+    <!-- 22. APP (INICIALIZACIÓN PRINCIPAL) -->
+    <script src="js/app.js"></script>
 
 </body>
 </html>

@@ -1,5 +1,5 @@
 // ============================================================
-// VIGÍA v22.0 - CON BALANCEADOR DE CARGA Y MONITOREO DE TOKENS
+// VIGÍA v22.3 - COMPLETO SIN HEALTH CHECKS
 // ============================================================
 
 class Vigia {
@@ -48,12 +48,12 @@ class Vigia {
         this._balanceadorFallback = false;
         
         // ============================================================
-        // 🔥 NUEVO: MONITOREO DE TOKENS
+        // MONITOREO DE TOKENS
         // ============================================================
         this._limitesTokens = {
-            diario: 150000, // Límite diario de tokens (ajustable)
-            porMinuto: 20000, // Límite por minuto
-            peticionesPorMinuto: 20 // Límite de peticiones por minuto
+            diario: 150000,
+            porMinuto: 20000,
+            peticionesPorMinuto: 20
         };
         this._tokensUsados = {
             diario: 0,
@@ -157,12 +157,12 @@ class Vigia {
     }
 
     // ============================================================
-    // INICIALIZACIÓN
+    // INICIALIZACIÓN (SIN HEALTH CHECKS)
     // ============================================================
 
     async init() {
         if (this._initDone) return this;
-        console.log('🔄 Vigía v22.0: Inicializando con balanceador de carga y monitoreo de tokens...');
+        console.log('🔄 Vigía v22.3: Inicializando (SIN HEALTH CHECKS)...');
         
         try {
             // Inicializar balanceador si está disponible
@@ -189,7 +189,6 @@ class Vigia {
                 this._apiKeyValidada = await this._validarApiKey();
                 this.enLinea = this._apiKeyValidada;
                 if (this.enLinea) {
-                    // Inicializar contador de tokens con el día actual
                     this._ultimoResetDiario = new Date().toDateString();
                 }
             } else {
@@ -204,8 +203,10 @@ class Vigia {
         await this._obtenerIdiomaNativo();
         await this._cargarPerfilUsuario();
         this._initDone = true;
-        this._iniciarHealthCheck();
-        this._iniciarFeedbackProactivo();
+        
+        // 🔥 NO SE INICIAN HEALTH CHECKS NI FEEDBACK PROACTIVO
+        // this._iniciarHealthCheck();  // ELIMINADO
+        // this._iniciarFeedbackProactivo(); // ELIMINADO
         
         // Registrar eventos del balanceador
         this._registrarEventosBalanceador();
@@ -214,6 +215,8 @@ class Vigia {
         console.log(`   🌍 Nativo: ${this._idiomaNativo}`);
         console.log(`   ⚖️ Modelo activo: ${this._balanceador?.getModeloActivo() || this.modelo}`);
         console.log(`   🪙 Límite diario: ${this._limitesTokens.diario} tokens`);
+        console.log(`   🔥 Health Checks: DESACTIVADOS (sin peticiones automáticas)`);
+        console.log(`   🔥 Feedback Proactivo: DESACTIVADO`);
         if (this.enLinea) {
             this._ultimaPeticionExitosa = Date.now();
             this._offlineDesde = 0;
@@ -253,7 +256,6 @@ class Vigia {
             this.modelo = modelo;
             this._modeloUsadoEnPeticion = modelo;
             
-            // Notificar al usuario
             if (window.uiCore) {
                 const esPrioritario = modelo === this._balanceador.getModeloPrioritario();
                 window.uiCore.mostrarToast(
@@ -266,11 +268,43 @@ class Vigia {
         });
         
         this._balanceador.onEstadoActualizado((estado) => {
-            // Actualizar indicadores si está disponible
             if (window.uiCore && window.uiCore._actualizarIndicadorBalanceador) {
                 window.uiCore._actualizarIndicadorBalanceador();
             }
         });
+    }
+
+    // ============================================================
+    // 🔥 OBTENER MODELO DEL BALANCEADOR
+    // ============================================================
+
+    async _obtenerModeloDelBalanceador() {
+        if (!this._balanceador || !this._balanceador._initDone) {
+            return this.modelo;
+        }
+
+        try {
+            if (typeof this._balanceador.obtenerModeloParaPeticion === 'function') {
+                const modelo = await this._balanceador.obtenerModeloParaPeticion();
+                if (modelo) {
+                    this._usandoBalanceador = true;
+                    this._modeloUsadoEnPeticion = modelo;
+                    return modelo;
+                }
+            }
+            
+            const modeloActivo = this._balanceador.getModeloActivo();
+            if (modeloActivo) {
+                this._usandoBalanceador = true;
+                this._modeloUsadoEnPeticion = modeloActivo;
+                return modeloActivo;
+            }
+            
+            return this.modelo;
+        } catch (e) {
+            console.warn('⚠️ Vigía: Error obteniendo modelo del balanceador:', e.message);
+            return this.modelo;
+        }
     }
 
     // ============================================================
@@ -311,7 +345,7 @@ class Vigia {
     }
 
     // ============================================================
-    // 🔥 REGISTRAR CONSUMO DE TOKENS
+    // REGISTRAR CONSUMO DE TOKENS
     // ============================================================
 
     registrarConsumoTokens(tokensUsados) {
@@ -319,61 +353,52 @@ class Vigia {
         
         const ahora = Date.now();
         
-        // Resetear contador por minuto
         if (ahora - this._tokensUsados.ultimoResetMinuto > 60000) {
             this._tokensUsados.porMinuto = 0;
             this._tokensUsados.ultimoResetMinuto = ahora;
             this._tokensUsados.peticionesMinuto = 0;
         }
         
-        // Resetear contador de peticiones por minuto
         if (ahora - this._tokensUsados.ultimoResetPeticiones > 60000) {
             this._tokensUsados.peticionesMinuto = 0;
             this._tokensUsados.ultimoResetPeticiones = ahora;
         }
         
-        // Resetear contador diario si es un nuevo día
         const hoy = new Date().toDateString();
         if (this._ultimoResetDiario !== hoy) {
             this._tokensUsados.diario = 0;
             this._ultimoResetDiario = hoy;
             this._alertaLimiteMostrada = false;
             this._tokensRestantesMostrados = 0;
-            // Resetear también el límite de peticiones diarias del Centinela
             if (centinela && typeof centinela.resetearContadorDiario === 'function') {
                 centinela.resetearContadorDiario();
             }
             console.log('🔄 Contador diario de tokens reseteados');
         }
         
-        // Actualizar consumo
         this._tokensUsados.diario += tokensUsados;
         this._tokensUsados.porMinuto += tokensUsados;
         this._tokensUsados.peticionesMinuto++;
         
-        // Verificar alertas
         this._verificarAlertasTokens();
         
-        // Disparar evento de actualización
         window.dispatchEvent(new CustomEvent('tokensActualizados', {
             detail: this.obtenerEstadoTokens()
         }));
         
-        // También actualizar la UI
         if (window.uiCore && typeof window.uiCore._actualizarIndicadorTokens === 'function') {
             window.uiCore._actualizarIndicadorTokens(this.obtenerEstadoTokens());
         }
     }
 
     // ============================================================
-    // 🔥 VERIFICAR ALERTAS DE TOKENS
+    // VERIFICAR ALERTAS DE TOKENS
     // ============================================================
 
     _verificarAlertasTokens() {
         const pctDiario = this._calcularPorcentajeDiario();
         const pctMinuto = this._calcularPorcentajeMinuto();
         
-        // 🔥 ALERTA CRÍTICA: Cuando queda 2% o menos
         if (pctDiario >= 98 && !this._alertaLimiteMostrada) {
             this._alertaLimiteMostrada = true;
             const tokensRestantes = Math.round((this._limitesTokens.diario - this._tokensUsados.diario) / 1000);
@@ -387,7 +412,6 @@ class Vigia {
             }
         }
         
-        // 🔥 ALERTA DE PETICIONES POR MINUTO
         if (this._tokensUsados.peticionesMinuto >= this._limitesTokens.peticionesPorMinuto * 0.9) {
             if (!this._alertaPeticionesMostrada) {
                 this._alertaPeticionesMostrada = true;
@@ -403,7 +427,6 @@ class Vigia {
             this._alertaPeticionesMostrada = false;
         }
         
-        // 🔥 ALERTA DE TOKENS POR MINUTO
         if (pctMinuto >= 90) {
             if (window.uiCore && Date.now() - this._ultimoFeedback > 30000) {
                 window.uiCore.mostrarToast(
@@ -415,18 +438,15 @@ class Vigia {
             }
         }
         
-        // Si baja del 95%, resetear alerta de límite
         if (pctDiario < 95) {
             this._alertaLimiteMostrada = false;
         }
         
-        // Mostrar token restante cada 10%
         const pctRedondeado = Math.floor(pctDiario / 10) * 10;
         if (pctRedondeado > 0 && pctRedondeado !== this._tokensRestantesMostrados) {
             this._tokensRestantesMostrados = pctRedondeado;
             const tokensRestantes = Math.round((this._limitesTokens.diario - this._tokensUsados.diario) / 1000);
             if (pctRedondeado > 60 && pctRedondeado < 95) {
-                // Solo notificar cambios significativos
                 if (window.uiCore && Date.now() - this._ultimoFeedback > 60000) {
                     window.uiCore.mostrarToast(
                         `🪙 Tokens restantes: ${tokensRestantes}K (${Math.round(100 - pctDiario)}%)`,
@@ -439,7 +459,7 @@ class Vigia {
     }
 
     // ============================================================
-    // 🔥 CALCULAR PORCENTAJES DE TOKENS
+    // CALCULAR PORCENTAJES DE TOKENS
     // ============================================================
 
     _calcularPorcentajeDiario() {
@@ -465,7 +485,7 @@ class Vigia {
     }
 
     // ============================================================
-    // 🔥 OBTENER ESTADO DE TOKENS
+    // OBTENER ESTADO DE TOKENS
     // ============================================================
 
     obtenerEstadoTokens() {
@@ -533,7 +553,7 @@ class Vigia {
     }
 
     // ============================================================
-    // 🔥 CONSULTAR GROQ CON BALANCEADOR Y REGISTRO DE TOKENS
+    // 🔥 CONSULTAR GROQ CON BALANCEADOR
     // ============================================================
 
     async _consultarGroq(prompt, formato) {
@@ -546,35 +566,8 @@ class Vigia {
             throw new Error('Vigía offline o API Key inválida');
         }
 
-        // ============================================================
         // OBTENER MODELO DEL BALANCEADOR
-        // ============================================================
-        let modelo = this.modelo;
-        let modeloUsado = null;
-        let usandoBalanceador = false;
-
-        if (this._balanceador && this._balanceador._initDone) {
-            try {
-                modeloUsado = await this._balanceador.obtenerModeloParaPeticion();
-                if (modeloUsado) {
-                    modelo = modeloUsado;
-                    usandoBalanceador = true;
-                    this._modeloUsadoEnPeticion = modelo;
-                    console.log(`📡 Vigía: Petición usando modelo ${modelo} (balanceado)`);
-                }
-            } catch (e) {
-                console.warn('⚠️ Vigía: Error obteniendo modelo del balanceador:', e.message);
-                usandoBalanceador = false;
-            }
-        }
-
-        // Si no hay balanceador o falló, usar el modelo por defecto
-        if (!modelo) {
-            modelo = this.modelo;
-            console.warn(`📡 Vigía: Usando modelo por defecto ${modelo}`);
-        }
-
-        // Actualizar el modelo de Vigía
+        let modelo = await this._obtenerModeloDelBalanceador();
         this.modelo = modelo;
 
         // Verificar límite de peticiones por minuto
@@ -609,14 +602,10 @@ class Vigia {
             clearTimeout(timeoutId);
             this._ultimaPeticionExitosa = Date.now();
             
-            // ============================================================
             // MANEJO DE ERRORES Y BALANCEO
-            // ============================================================
-            
             if (response.status === 429) {
-                // Límite de tasa excedido - marcar modelo como agotado
                 console.warn(`⚠️ Vigía: Límite de tasa excedido en ${modelo}`);
-                if (usandoBalanceador && this._balanceador) {
+                if (this._balanceador) {
                     const estado = this._balanceador.getEstadoModelo(modelo);
                     if (estado) {
                         estado.disponible = false;
@@ -624,12 +613,10 @@ class Vigia {
                         estado.tokensDisponibles = 0;
                         this._balanceador._notificarCambioEstado();
                     }
-                    // Intentar con otro modelo automáticamente
-                    const nuevoModelo = await this._balanceador.obtenerModeloDisponible();
+                    const nuevoModelo = await this._obtenerModeloDelBalanceador();
                     if (nuevoModelo && nuevoModelo !== modelo) {
                         console.log(`⚖️ Vigía: Reintentando con modelo ${nuevoModelo}`);
                         this.modelo = nuevoModelo;
-                        // Reintentar la petición con el nuevo modelo
                         return this._consultarGroq(prompt, formato);
                     }
                 }
@@ -646,8 +633,7 @@ class Vigia {
             }
             
             if (!response.ok) {
-                // Marcar modelo como no disponible
-                if (usandoBalanceador && this._balanceador) {
+                if (this._balanceador) {
                     const estado = this._balanceador.getEstadoModelo(modelo);
                     if (estado) {
                         estado.disponible = false;
@@ -660,18 +646,14 @@ class Vigia {
 
             const data = await response.json();
             
-            // ============================================================
-            // REGISTRAR USO DE TOKENS EN EL BALANCEADOR Y EN VIGÍA
-            // ============================================================
+            // REGISTRAR USO DE TOKENS
             if (data.usage) {
                 const tokensUsados = data.usage.total_tokens || 0;
                 
-                // Registrar en el balanceador
-                if (usandoBalanceador && this._balanceador) {
+                if (this._balanceador) {
                     this._balanceador.registrarUsoTokens(modelo, tokensUsados);
                 }
                 
-                // 🔥 REGISTRAR EN VIGÍA PARA MONITOREO
                 if (tokensUsados > 0) {
                     this.registrarConsumoTokens(tokensUsados);
                     console.log(`📊 Vigía: ${tokensUsados} tokens usados en ${modelo}`);
@@ -903,7 +885,6 @@ Responde SOLO con la transcripción fonética:`;
             }
             if (response.status === 429) {
                 console.warn('⚠️ Vigía: Límite de tasa excedido');
-                // Marcar modelo como agotado en el balanceador
                 if (this._balanceador) {
                     const estado = this._balanceador.getEstadoModelo(this.modelo);
                     if (estado) {
@@ -949,36 +930,29 @@ Responde SOLO con la transcripción fonética:`;
         } catch (e) { console.warn('⚠️ Error cargando perfil de usuario:', e); }
     }
 
-    _iniciarHealthCheck() {
-        if (this._healthCheckInterval) clearInterval(this._healthCheckInterval);
-        this._healthCheckInterval = setInterval(() => this._verificarEstadoConexion(), 30000);
-        console.log('🔄 Vigía: Health check iniciado (cada 30s)');
-    }
+    // 🔥 HEALTH CHECK ELIMINADO - NO SE USA
+    // _iniciarHealthCheck() { ... }
 
-    async _verificarEstadoConexion() {
-        if (this._verificandoConexion) return;
-        this._verificandoConexion = true;
-        try {
-            if (!this.apiKey || !this._apiKeyValidada) {
-                if (this.enLinea) { this.enLinea = false; this._offlineDesde = Date.now(); this._notificarCambioEstado('offline', 'Sin API Key válida'); }
-                this._verificandoConexion = false; return;
-            }
-            const ahora = Date.now();
-            if (this.enLinea && ahora - this._ultimaPeticionExitosa > 60000) {
-                const prueba = await this._probarConexion();
-                if (!prueba) { this.enLinea = false; this._offlineDesde = ahora; this._notificarCambioEstado('offline', 'Conexión perdida'); }
-            }
-            if (!this.enLinea && this._reconexionIntentos < this._maxReconexionIntentos) {
-                if (ahora - this._offlineDesde > this._reconexionBackoff) {
-                    await this._intentarReconexion();
-                }
-            }
-            if (this._reconexionIntentos >= this._maxReconexionIntentos && Date.now() - this._offlineDesde > 600000) {
-                this._reconexionIntentos = 0;
-            }
-        } catch (e) { console.warn('⚠️ Vigía: Error en health check:', e); }
-        this._verificandoConexion = false;
-    }
+    // 🔥 FEEDBACK PROACTIVO ELIMINADO - NO SE USA
+    // _iniciarFeedbackProactivo() { ... }
+
+    // 🔥 VERIFICAR ESTADO DE CONEXIÓN ELIMINADO - NO SE USA
+    // async _verificarEstadoConexion() { ... }
+
+    // 🔥 ANALIZAR Y FEEDBACK ELIMINADO - NO SE USA
+    // async _analizarYFeedback() { ... }
+
+    // 🔥 ANALIZAR VOCABULARIO REPETIDO ELIMINADO - NO SE USA
+    // async _analizarVocabularioRepetido() { ... }
+
+    // 🔥 GENERAR RECOMENDACIONES ELIMINADO - NO SE USA
+    // _generarRecomendaciones() { ... }
+
+    // 🔥 ENCOLAR FEEDBACK ELIMINADO - NO SE USA
+    // _encolarFeedback() { ... }
+
+    // 🔥 PROCESAR COLA FEEDBACK ELIMINADO - NO SE USA
+    // async _procesarColaFeedback() { ... }
 
     async _intentarReconexion() {
         if (this._reconectando || this._reconexionIntentos >= this._maxReconexionIntentos) return;
@@ -1028,104 +1002,6 @@ Responde SOLO con la transcripción fonética:`;
         } else if (estado === 'online' && window.uiCore?.mostrarToast) {
             window.uiCore.mostrarToast('🟢 Vigía: Reconectado', 'success');
         }
-    }
-
-    _iniciarFeedbackProactivo() {
-        if (this._feedbackInterval) clearInterval(this._feedbackInterval);
-        this._feedbackInterval = setInterval(() => this._analizarYFeedback(), 300000);
-        setTimeout(() => this._analizarYFeedback(), 5000);
-        console.log('🔄 Vigía: Feedback proactivo activado (cada 5 minutos)');
-    }
-
-    async _analizarYFeedback() {
-        try {
-            const stats = await this.getEstadisticasIdioma();
-            if (!stats) return;
-            const analisis = await this._analizarVocabularioRepetido();
-            if (!analisis) return;
-            const recomendaciones = this._generarRecomendaciones(stats, analisis);
-            if (recomendaciones.length > 0) {
-                this._encolarFeedback(recomendaciones);
-                this._procesarColaFeedback();
-            }
-        } catch (e) { console.warn('⚠️ Vigía: Error en feedback proactivo:', e); }
-    }
-
-    async _analizarVocabularioRepetido() {
-        try {
-            const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
-            const frases = await db.obtenerFrasesPorIdioma(idioma);
-            const progreso = await db.obtenerTodoProgreso();
-            const frecuenciaPalabras = {};
-            for (const f of frases) {
-                if (!f.palabras) continue;
-                for (const w of f.palabras) {
-                    const texto = w.palabra || w.hanzi;
-                    if (!texto) continue;
-                    frecuenciaPalabras[texto] = (frecuenciaPalabras[texto] || 0) + 1;
-                }
-            }
-            const totalPalabras = Object.keys(frecuenciaPalabras).length;
-            const palabrasRepetidas = Object.entries(frecuenciaPalabras).filter(([_, count]) => count > 3).sort((a, b) => b[1] - a[1]).slice(0, 10);
-            const historias = await db.obtenerHistoriasPorIdioma(idioma);
-            return { totalPalabrasUnicas: totalPalabras, palabrasRepetidas, totalHistorias: historias.length };
-        } catch (e) { return null; }
-    }
-
-    _generarRecomendaciones(stats, analisis) {
-        const recomendaciones = [];
-        if (!analisis) return recomendaciones;
-        const minutosDesdeUltimo = Math.floor((Date.now() - this._ultimoFeedback) / 60000);
-        if (analisis.palabrasRepetidas.length > 0 && minutosDesdeUltimo > 5) {
-            recomendaciones.push({
-                tipo: 'repeticion', prioridad: 'alta',
-                mensaje: `📢 Has usado "${analisis.palabrasRepetidas[0][0]}" ${analisis.palabrasRepetidas[0][1]} veces!`,
-                detalle: 'Estás repitiendo mucho las mismas palabras. Genera historias sobre temas diferentes.',
-                accion: 'generar', accionTexto: '🧠 Generar nuevo tema',
-                sugerencia: 'Prueba con "/generar [tema]" para ampliar vocabulario.'
-            });
-        }
-        if (stats?.coberturaNivel < 40 && minutosDesdeUltimo > 10) {
-            recomendaciones.push({
-                tipo: 'nuevas_palabras', prioridad: 'media',
-                mensaje: `📖 Te faltan ${stats.palabrasRestantes || 0} palabras para completar el nivel ${stats.nivel || 'A1'}.`,
-                detalle: 'Para subir al siguiente nivel, necesitas ampliar tu vocabulario.',
-                accion: 'generar_json', accionTexto: '📄 Generar JSON',
-                sugerencia: 'Usa /jsonnuevo [tema] para añadir vocabulario nuevo.'
-            });
-        }
-        if (stats?.progreso > 70 && stats?.coberturaNivel > 60 && minutosDesdeUltimo > 15) {
-            recomendaciones.push({
-                tipo: 'felicitacion', prioridad: 'baja',
-                mensaje: '🎉 ¡Estás progresando muy bien!',
-                detalle: `Has alcanzado ${stats.progreso}% de frases y ${stats.coberturaNivel}% de vocabulario.`,
-                accion: 'examen', accionTexto: '📝 Hacer examen',
-                sugerencia: '¡Ya casi estás listo para el examen!'
-            });
-        }
-        return recomendaciones;
-    }
-
-    _encolarFeedback(recomendaciones) {
-        for (const rec of recomendaciones) {
-            const existe = this._feedbackPendiente.some(f => f.tipo === rec.tipo && (Date.now() - f.timestamp < 300000));
-            if (!existe) { rec.timestamp = Date.now(); this._feedbackPendiente.push(rec); }
-        }
-        if (this._feedbackPendiente.length > 10) this._feedbackPendiente = this._feedbackPendiente.slice(-10);
-    }
-
-    async _procesarColaFeedback() {
-        if (this._toastActivo || this._feedbackPendiente.length === 0) return;
-        this._toastActivo = true;
-        const rec = this._feedbackPendiente.shift();
-        try {
-            if (window.uiCore?.mostrarToast) window.uiCore.mostrarToast(rec.mensaje, rec.prioridad === 'alta' ? 'warning' : 'info');
-            await db.guardarMensaje('assistant', `💡 **${rec.mensaje}**\n\n${rec.detalle}\n\n💬 ${rec.sugerencia}`);
-            this._ultimoFeedback = Date.now();
-            await new Promise(r => setTimeout(r, 3000));
-        } catch (e) { console.warn('⚠️ Error mostrando feedback:', e); }
-        this._toastActivo = false;
-        setTimeout(() => this._procesarColaFeedback(), 1000);
     }
 
     async getPalabrasRequeridas(idioma, nivel) {
@@ -1286,7 +1162,6 @@ Responde SOLO con la transcripción fonética:`;
             throw new Error('Vigía offline');
         }
 
-        // Verificar límite de tokens antes de hacer la petición
         const estadoTokens = this.obtenerEstadoTokens();
         if (estadoTokens.diario.porcentaje >= 98) {
             throw new Error('Límite de tokens diario casi alcanzado. Usa validación offline.');
@@ -2529,18 +2404,13 @@ Responde en JSON:
 var vigia = new Vigia();
 var vigiaGramatical = new VigiaGramatical();
 
-console.log('✅ Vigía v22.0 - CON BALANCEADOR DE CARGA Y MONITOREO DE TOKENS');
+console.log('✅ Vigía v22.3 - COMPLETO SIN HEALTH CHECKS');
+console.log('  🔥 Health Checks: ELIMINADOS (sin peticiones automáticas)');
+console.log('  🔥 Feedback Proactivo: ELIMINADO');
+console.log('  🔥 Verificación de conexión: ELIMINADA');
+console.log('  🔥 SOLO peticiones bajo demanda del usuario');
 console.log('  ⚖️ Balanceador de carga integrado');
-console.log('  🔄 Prioridad: openai/gpt-oss-120b');
-console.log('  📊 Monitorización de modelos en tiempo real');
-console.log('  🚨 Reconexión automática en caso de agotamiento');
-console.log('  🔥 Transcripción fonética para idiomas alfabéticos');
-console.log('  🔥 Integración con idioma nativo del usuario');
-console.log('  🪙 MONITOREO DE TOKENS:');
-console.log('     📊 Límite diario: 150.000 tokens');
-console.log('     ⏱️ Límite por minuto: 20.000 tokens');
-console.log('     📈 Peticiones por minuto: 20');
-console.log('     🔔 Alerta al 98% de consumo');
-console.log('     🎯 Color dinámico según consumo');
-console.log('     🔄 Reinicio automático diario');
+console.log('  🪙 Monitorización de tokens');
+console.log('  📊 Transcripción fonética');
+console.log('  🧠 Vigía Gramatical incluido');
 console.log('  ✅ TODAS las funcionalidades originales preservadas');

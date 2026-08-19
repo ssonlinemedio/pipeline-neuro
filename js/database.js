@@ -1,5 +1,5 @@
 // ============================================================
-// DATABASE v17.9 - CON TRANSCRIPCIÓN FONÉTICA
+// DATABASE v17.10 - CON REAPERTURA AUTOMÁTICA
 // ============================================================
 
 class Database {
@@ -11,6 +11,11 @@ class Database {
         this._initializing = false;
         this._initPromise = null;
         this._idiomaActual = null;
+        this._reconectando = false;
+        this._intentosReconexion = 0;
+        this._maxIntentosReconexion = 3;
+        this._dbCerrado = false;
+        
         this.stores = {
             usuarios: '++id, nombre, idiomaNativo, idiomasObjetivo, nivel, estiloAprendizaje',
             configuracion: '++id, clave, valor, timestamp, usuarioId',
@@ -43,10 +48,14 @@ class Database {
         };
         this._ultimaCache = 0;
         this._tiempoCache = 5000;
-        this._IDIOMAS_JEROGLIFICOS = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean'];
-        this._reconectando = false;
-        this._intentosReconexion = 0;
-        this._maxIntentosReconexion = 3;
+        this._IDIOMAS_JEROGLIFICOS = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean', 'mandarin', 'mandarín'];
+        
+        // Escuchar eventos de cierre de la DB
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // No cerramos la DB, solo marcamos
+            }
+        });
     }
 
     _esJeroglifico(idioma) {
@@ -57,9 +66,48 @@ class Database {
         );
     }
 
+    // ============================================================
+    // VERIFICAR Y REABRIR DB SI ESTÁ CERRADA
+    // ============================================================
+
+    async _verificarYReabrirDB() {
+        try {
+            // Si la DB está cerrada o no existe, reinicializar
+            if (!this.db || this._dbCerrado || !this.db.objectStoreNames || this.db.objectStoreNames.length === 0) {
+                console.log('🔄 Database cerrada, reabriendo...');
+                this.db = null;
+                this._initialized = false;
+                await this.init();
+                return true;
+            }
+            
+            // Verificar que la DB esté abierta con una operación simple
+            try {
+                const tx = this.db.transaction('configuracion', 'readonly');
+                const store = tx.objectStore('configuracion');
+                const req = store.get(1);
+                await new Promise((resolve) => {
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => resolve();
+                });
+                return true;
+            } catch (e) {
+                console.warn('⚠️ Database no responde, reabriendo...');
+                this.db = null;
+                this._initialized = false;
+                await this.init();
+                return true;
+            }
+        } catch (error) {
+            console.error('❌ Error verificando DB:', error);
+            return false;
+        }
+    }
+
     async init() {
-        if (this._initialized && this.db) {
+        if (this._initialized && this.db && this.db.objectStoreNames && this.db.objectStoreNames.length > 0) {
             console.log('✅ Database ya inicializada');
+            this._dbCerrado = false;
             return this;
         }
         
@@ -72,7 +120,7 @@ class Database {
         
         this._initPromise = new Promise(async (resolve, reject) => {
             try {
-                console.log('📀 Inicializando Database v17.9...');
+                console.log('📀 Inicializando Database v17.10...');
                 
                 if (this.db) {
                     try {
@@ -98,7 +146,8 @@ class Database {
                 }
                 
                 this._initialized = true;
-                console.log('✅ Database v17.9 inicializada correctamente');
+                this._dbCerrado = false;
+                console.log('✅ Database v17.10 inicializada correctamente');
                 console.log(`   📊 Stores disponibles: ${this.db.objectStoreNames.length}`);
                 resolve(this);
                 
@@ -130,6 +179,25 @@ class Database {
                 
                 req.onsuccess = (event) => {
                     this.db = event.target.result;
+                    this._dbCerrado = false;
+                    
+                    // Manejar cierre inesperado
+                    this.db.onclose = () => {
+                        console.warn('⚠️ Database cerrada inesperadamente');
+                        this._dbCerrado = true;
+                        this._initialized = false;
+                        this.db = null;
+                    };
+                    
+                    // Manejar error de versión
+                    this.db.onversionchange = () => {
+                        console.warn('⚠️ Versión de Database cambiando, cerrando...');
+                        this.db.close();
+                        this._dbCerrado = true;
+                        this._initialized = false;
+                        this.db = null;
+                    };
+                    
                     console.log('✅ Database abierta correctamente');
                     console.log(`   📊 Versión: ${this.db.version}`);
                     console.log(`   📊 Stores: ${Array.from(this.db.objectStoreNames).join(', ')}`);
@@ -209,11 +277,18 @@ class Database {
         }
     }
 
+    // ============================================================
+    // TRANSACCIÓN SEGURA CON REAPERTURA AUTOMÁTICA
+    // ============================================================
+
     async _tx(storeName, mode, cb) {
         return new Promise(async (resolve, reject) => {
             try {
+                // Verificar y reabrir DB si está cerrada
+                await this._verificarYReabrirDB();
+                
                 if (!this.db || !this.db.objectStoreNames || this.db.objectStoreNames.length === 0) {
-                    console.warn('⚠️ Database cerrada, reinicializando...');
+                    console.warn('⚠️ Database no disponible, reinicializando...');
                     const reconectado = await this._reconectar();
                     if (!reconectado) {
                         reject(new Error('❌ No se pudo reconectar la base de datos'));
@@ -258,6 +333,10 @@ class Database {
             }
         });
     }
+
+    // ============================================================
+    // MÉTODOS CRUD (MANTENIDOS)
+    // ============================================================
 
     async get(store, id) {
         try {
@@ -609,7 +688,7 @@ class Database {
     }
 
     // ============================================================
-    // PALABRAS - CON TRANSCRIPCIÓN
+    // PALABRAS
     // ============================================================
     
     async guardarPalabra(palabra) {
@@ -703,7 +782,7 @@ class Database {
     }
 
     // ============================================================
-    // FRASES - CON TRANSCRIPCIÓN
+    // FRASES
     // ============================================================
     
     async guardarFrase(frase) {
@@ -1499,8 +1578,9 @@ class Database {
 
 const db = new Database();
 
-console.log('✅ Database v17.9 - CON TRANSCRIPCIÓN FONÉTICA');
-console.log('  🔥 Versión: 20');
+console.log('✅ Database v17.10 - CON REAPERTURA AUTOMÁTICA');
+console.log('  🔥 Reabre la DB automáticamente si está cerrada');
+console.log('  🔥 Manejo de errores de conexión');
+console.log('  🔥 Reconexión automática con backoff');
 console.log('  📝 Campos: transcripcion en frases y palabras');
 console.log('  🔄 Compatibilidad con pinyin existente');
-console.log('  📊 Soporte para idiomas alfabéticos y jeroglíficos');

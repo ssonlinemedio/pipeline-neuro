@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.10 - INDEPENDIENTE POR IDIOMA
+// UI TEMAS ACTIONS v2.19 - CORREGIDO: MANEJO DE HISTORIAS COMPLETADAS Y DUPLICADOS
 // ============================================================
 
 class UITemasActions {
@@ -26,7 +26,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // ESTUDIAR HISTORIA
+    // 🔥 ESTUDIAR HISTORIA - CORREGIDO: MANEJO DE HISTORIAS COMPLETADAS
     // ============================================================
 
     static async estudiarHistoria(historiaId) {
@@ -49,11 +49,66 @@ class UITemasActions {
             await db.update('historias', historia);
         }
 
-        await pipeline.estudiarHistoria(historiaId);
+        // 🔥 VERIFICAR SI LA HISTORIA ESTÁ COMPLETADA
+        const estaCompletada = historia.estado === 'completada' || historia._completada === true;
+        const rcnActual = historia._rcnPromedio || 0;
+
+        if (estaCompletada) {
+            console.log(`✅ Historia "${historia.titulo}" ya está completada (RCN: ${rcnActual.toFixed(1)})`);
+
+            const frases = await db.obtenerFrasesPorHistoria(historiaId);
+            const totalFrases = frases.length;
+            let frasesCompletadas = 0;
+            for (const f of frases) {
+                const progreso = await db.obtenerProgreso(f.id);
+                if (progreso && (progreso.rcn >= 4 || progreso.estado === 'completada')) {
+                    frasesCompletadas++;
+                }
+            }
+
+            const esOnda = historia._esOnda === true;
+            const esBase = historia._esBase === true || historia._esOnda === false;
+            const tipoLabel = esOnda ? '🌊 Onda' : esBase ? '🌟 Base' : '📄 Historia';
+
+            const opcion = await core?.confirm(
+                `✅ **"${historia.titulo}" ya está completada**\n\n` +
+                `📊 **Estadísticas:**\n` +
+                `• ${tipoLabel} · Nivel ${historia.nivel || 'A1'}\n` +
+                `• RCN: ${rcnActual.toFixed(1)} / 5.0\n` +
+                `• Frases: ${frasesCompletadas}/${totalFrases} completadas\n` +
+                `• ${frasesCompletadas === totalFrases ? '✅ 100% completada' : `🔄 ${Math.round((frasesCompletadas/totalFrases)*100)}% progreso`}\n\n` +
+                `¿Qué quieres hacer?\n` +
+                `• "Aceptar" → Volver a estudiar la historia (el progreso se mantendrá)\n` +
+                `• "Cancelar" → Volver al módulo anterior`,
+                `📖 Historia Completada`
+            );
+
+            if (opcion) {
+                await pipeline.estudiarHistoria(historiaId, 'tema');
+                if (core) {
+                    core.irAModulo('study');
+                    core.mostrarToast(`📖 Repasando: "${historia.titulo}"`, 'info');
+                }
+            }
+            return;
+        }
+
+        // 🔥 HISTORIA NO COMPLETADA - ESTUDIO NORMAL
+        const esOnda = historia._esOnda === true;
+        const origen = esOnda ? 'elipse' : 'tema';
+        
+        console.log(`📖 Estudiando historia "${historia.titulo}" con origen: ${origen}`);
+        
+        await pipeline.estudiarHistoria(historiaId, origen);
+        
+        if (window.UIStudy) {
+            window.UIStudy._origenHistoriaActual = origen;
+            console.log(`   📌 Origen guardado en UIStudy: ${origen}`);
+        }
     }
 
     // ============================================================
-    // EXPORTAR TEMA (CON VERSIÓN)
+    // EXPORTAR TEMA
     // ============================================================
 
     static async exportarTema(temaId) {
@@ -88,6 +143,8 @@ class UITemasActions {
                     titulo: h.titulo,
                     nivel: h.nivel,
                     version_estandar: h._version_estandar || data.meta.version_estandar,
+                    esOnda: h._esOnda || false,
+                    esImportada: h._importadoDesdeJSON || h._esImportada || false,
                     frases: frases.map(f => ({
                         original: f.original,
                         traduccion: f.traduccion,
@@ -119,7 +176,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // EXPORTAR HISTORIA (CON VERSIÓN)
+    // EXPORTAR HISTORIA
     // ============================================================
 
     static async exportarHistoria(historiaId) {
@@ -139,6 +196,8 @@ class UITemasActions {
                     nivel: historia.nivel,
                     version_estandar: historia._version_estandar || 'v2.0',
                     nombre_version: historia._nombre_version || 'Estándar',
+                    esOnda: historia._esOnda || false,
+                    esImportada: historia._importadoDesdeJSON || historia._esImportada || false,
                     fechaExportacion: new Date().toISOString(),
                     version: '22.0'
                 },
@@ -146,6 +205,8 @@ class UITemasActions {
                     titulo: historia.titulo,
                     nivel: historia.nivel,
                     version_estandar: historia._version_estandar || 'v2.0',
+                    esOnda: historia._esOnda || false,
+                    esImportada: historia._importadoDesdeJSON || historia._esImportada || false,
                     frases: frases.map(f => ({
                         original: f.original,
                         traduccion: f.traduccion,
@@ -247,14 +308,13 @@ class UITemasActions {
     }
 
     // ============================================================
-    // GENERAR TEMA PREDEFINIDO (CON IDIOMA CORRECTO)
+    // GENERAR TEMA PREDEFINIDO
     // ============================================================
 
     static async generarTemaPredefinido(temaId, temaNombre, nivel) {
         const core = window.UITemas._core;
         const idiomaActivo = gestorIdiomas.getIdiomaActivo() || 'es';
         
-        // OBTENER VERSIÓN
         const versionEstandar = window.UITemas._obtenerVersionEstandar(idiomaActivo);
         const nombreVersion = window.UITemas._obtenerNombreVersion(idiomaActivo, versionEstandar);
         const palabrasRequeridas = window.gestorIdiomas?._obtenerPalabrasPorVersion?.(idiomaActivo, versionEstandar, nivel) || 2000;
@@ -273,7 +333,6 @@ class UITemasActions {
             numTemasRecomendados = 8;
         }
 
-        // 🔥 USAR LA NUEVA FUNCIÓN PARA OBTENER/CREAR EL TEMA CON EL IDIOMA CORRECTO
         const temaConIdioma = await window.UITemas._obtenerOCrearTemaPredefinidoPorIdioma(temaId, idiomaActivo);
         const dbId = temaConIdioma ? temaConIdioma.id : null;
         let temaGuardado = temaConIdioma;
@@ -387,12 +446,12 @@ class UITemasActions {
                 "fecha_generacion": new Date().toISOString(),
                 "version": "22.0",
                 "_esPredefinido": true,
-                "_esImportado": true
+                "_esImportado": true,
+                "_completado": false
             },
             "historias": []
         };
 
-        // Crear historias con placeholders
         for (let i = 1; i <= numHistorias; i++) {
             const historia = { 
                 id: i, 
@@ -504,7 +563,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // IMPORTAR TEMA COMPLETO CON LOADING
+    // IMPORTAR TEMA COMPLETO CON LOADING - CORREGIDO: VERIFICACIÓN DE DUPLICADOS
     // ============================================================
 
     static async importarTemaCompletoConLoading(data, temaId, temaNombre) {
@@ -521,25 +580,70 @@ class UITemasActions {
             const esJeroglifico = window.UITemas._esJeroglifico(idioma);
             const versionEstandar = data.meta?.version_estandar || window.UITemas._obtenerVersionEstandar(idioma);
             const nombreVersion = data.meta?.nombre_version || window.UITemas._obtenerNombreVersion(idioma, versionEstandar);
+            const completado = data.meta?._completado || false;
 
             UITemasActions._actualizarLoading(10, '📂 Preparando tema...', 'Creando estructura del tema');
 
-            // 🔥 USAR LA NUEVA FUNCIÓN CON IDIOMA
-            const temaConIdioma = await window.UITemas._obtenerOCrearTemaPredefinidoPorIdioma(temaId, idioma);
-            let temaGuardado = temaConIdioma;
+            const esIdPredefinido = /^[a-c][1-2]_\d+$/.test(String(temaId)) || /^[A-C][1-2]_\d+$/.test(String(temaId));
+            let temaGuardado = null;
+            let temaIdReal = null;
+
+            if (esIdPredefinido) {
+                const temaConIdioma = await window.UITemas._obtenerOCrearTemaPredefinidoPorIdioma(temaId, idioma);
+                temaGuardado = temaConIdioma;
+            } else {
+                const temaExistente = await db.obtenerTema(parseInt(temaId));
+                if (temaExistente) {
+                    if (temaExistente.idioma && temaExistente.idioma !== idioma) {
+                        console.warn(`⚠️ El tema "${temaExistente.nombre}" es de idioma "${temaExistente.idioma}", cambiando a "${idioma}"`);
+                        temaExistente.idioma = idioma;
+                        await db.update('temas', temaExistente);
+                    }
+                    temaGuardado = temaExistente;
+                    temaIdReal = temaExistente.id;
+                    console.log(`📂 Tema manual encontrado: "${temaGuardado.nombre}" (ID: ${temaIdReal})`);
+                } else {
+                    const nuevoTema = {
+                        nombre: temaNombre || 'Tema sin nombre',
+                        descripcion: data.meta?.descripcion || '',
+                        idioma: idioma,
+                        nivel: nivel,
+                        icono: '📁',
+                        fechaCreacion: new Date().toISOString(),
+                        estado: 'en_curso',
+                        historiasIds: [],
+                        palabrasClave: [],
+                        _version_estandar: versionEstandar,
+                        _nombre_version: nombreVersion,
+                        _esManual: true,
+                        origen: 'manual'
+                    };
+                    const id = await db.guardarTema(nuevoTema);
+                    temaGuardado = await db.obtenerTema(id);
+                    temaIdReal = temaGuardado.id;
+                    console.log(`📂 Nuevo tema manual creado: "${temaGuardado.nombre}" (ID: ${temaIdReal})`);
+                }
+            }
 
             if (!temaGuardado) {
                 throw new Error('No se pudo crear/obtener el tema con el idioma correcto');
             }
 
-            const temaIdReal = temaGuardado.id;
-            console.log(`📂 USANDO TEMA: "${temaGuardado.nombre}" (ID: ${temaIdReal})`);
+            const temaIdRealFinal = temaGuardado.id;
+            const temaOriginalId = temaGuardado._temaOriginalId || temaId;
+            console.log(`📂 USANDO TEMA: "${temaGuardado.nombre}" (ID: ${temaIdRealFinal})`);
             console.log(`📌 Versión: ${temaGuardado._nombre_version || nombreVersion}`);
 
             let totalFrases = 0;
             let totalPalabras = 0;
             let totalReglas = 0;
+            let historiasDuplicadas = 0;
+            let historiasImportadas = 0;
             const historiasIds = [];
+
+            // 🔥 VERIFICAR DUPLICADOS - Obtener títulos existentes
+            const historiasExistentes = await db.obtenerHistoriasPorTema(temaIdRealFinal);
+            const titulosExistentes = new Set(historiasExistentes.map(h => h.titulo?.toLowerCase().trim()));
 
             UITemasActions._actualizarLoading(20, '📖 Procesando historias...', `0/${data.historias.length} historias`);
 
@@ -556,16 +660,50 @@ class UITemasActions {
                     `${historiasProcesadas}/${data.historias.length} historias`
                 );
 
+                // 🔥 VERIFICAR DUPLICADO - Usar título y también contenido
+                const tituloNormalizado = (historiaData.titulo || 'Historia sin título').toLowerCase().trim();
+                let esDuplicado = titulosExistentes.has(tituloNormalizado);
+
+                // Verificar por contenido si hay frases
+                if (!esDuplicado && historiaData.frases && historiaData.frases.length > 0) {
+                    const primerasFrases = historiaData.frases.slice(0, 3).map(f => f.original?.toLowerCase().trim() || '');
+                    const frasesUnicas = primerasFrases.filter(f => f.length > 0);
+                    
+                    if (frasesUnicas.length > 0) {
+                        for (const hExistente of historiasExistentes) {
+                            const frasesExistentes = await db.obtenerFrasesPorHistoria(hExistente.id);
+                            const primerasExistentes = frasesExistentes.slice(0, 3).map(f => f.original?.toLowerCase().trim() || '');
+                            const coincidencias = primerasExistentes.filter(f => frasesUnicas.includes(f));
+                            if (coincidencias.length >= 2) {
+                                esDuplicado = true;
+                                console.warn(`⚠️ Historia duplicada por contenido: "${historiaData.titulo}"`);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (esDuplicado) {
+                    console.warn(`⚠️ Historia duplicada omitida: "${historiaData.titulo}"`);
+                    historiasDuplicadas++;
+                    continue;
+                }
+                titulosExistentes.add(tituloNormalizado);
+                historiasImportadas++;
+
                 const historiaObj = {
                     titulo: historiaData.titulo || 'Historia sin título',
-                    temaId: temaIdReal,
+                    temaId: temaIdRealFinal,
                     idioma: idioma,
                     nivel: nivel,
                     fechaCreacion: new Date().toISOString(),
                     estado: 'en_curso',
                     frases: historiaData.frases ? historiaData.frases.length : 0,
                     _version_estandar: versionEstandar,
-                    _nombre_version: nombreVersion
+                    _nombre_version: nombreVersion,
+                    _esOnda: historiaData.esOnda || false,
+                    _esImportada: true,
+                    _importadoDesdeJSON: true
                 };
 
                 const historiaId = await db.guardarHistoria(historiaObj);
@@ -626,7 +764,8 @@ class UITemasActions {
                             explicacionGramatical: fraseData.explicacion_gramatical || null,
                             tipoRegla: fraseData.tipo_regla || null,
                             familiaSemantica: 'Seleccionadas por Usuario',
-                            _version_estandar: versionEstandar
+                            _version_estandar: versionEstandar,
+                            _esImportada: true
                         };
 
                         const palabrasFrase = [];
@@ -672,7 +811,8 @@ class UITemasActions {
                                     neuroScore: 0.5,
                                     nivelDominio: 'nuevo',
                                     fechaCreacion: Date.now(),
-                                    _version_estandar: versionEstandar
+                                    _version_estandar: versionEstandar,
+                                    _esImportada: true
                                 };
                                 palabraId = await db.guardarPalabra(nuevaPalabra);
                                 totalPalabras++;
@@ -717,12 +857,16 @@ class UITemasActions {
                     await db.update('historias', {
                         ...historiaObj,
                         id: historiaId,
-                        frases: frasesPorHistoria.length
+                        frases: frasesPorHistoria.length,
+                        _esImportada: true,
+                        _importadoDesdeJSON: true
                     });
                 }
             }
 
+            // ============================================================
             // SINCRONIZAR CARACTERES
+            // ============================================================
             let caracteresImportados = 0;
             let palabrasDerivadasGuardadas = 0;
 
@@ -802,7 +946,8 @@ class UITemasActions {
                                 ejemploFrase: frasesDeLaHistoria.length > 0 ? frasesDeLaHistoria[0] : '',
                                 familiaSemanticaPrincipal: 'Caracteres Raíz',
                                 temaFamilia: temaNombre,
-                                _version_estandar: versionEstandar
+                                _version_estandar: versionEstandar,
+                                _esImportada: true
                             };
 
                             try {
@@ -832,7 +977,6 @@ class UITemasActions {
                             }
                         }
 
-                        // GUARDAR PALABRAS DERIVADAS
                         if (idRaiz && item.palabras_relacionadas) {
                             const derivadasArray = item.palabras_relacionadas || [];
                             
@@ -883,7 +1027,8 @@ class UITemasActions {
                                     traduccionFrase: '',
                                     familiaSemanticaPrincipal: 'Caracteres Raíz',
                                     temaFamilia: temaNombre,
-                                    _version_estandar: versionEstandar
+                                    _version_estandar: versionEstandar,
+                                    _esImportada: true
                                 };
 
                                 try {
@@ -914,30 +1059,58 @@ class UITemasActions {
                 }
             }
 
+            // ============================================================
             // ACTUALIZAR TEMA
+            // ============================================================
             UITemasActions._actualizarLoading(97, '💾 Guardando cambios...', 'Actualizando tema');
 
             if (temaGuardado) {
                 const todasHistoriasIds = [...new Set([...temaGuardado.historiasIds, ...historiasIds])];
+                // 🔥 RECALCULAR PROGRESO REAL
+                const historiasActualizadas = await db.obtenerHistoriasPorTema(temaIdRealFinal);
+                let completadas = 0;
+                for (const h of historiasActualizadas) {
+                    if (h.estado === 'completada' || h._completada === true) {
+                        completadas++;
+                    }
+                }
+                const total = historiasActualizadas.length;
+                const progreso = total > 0 ? Math.round((completadas / total) * 100) : 0;
+                
                 await db.update('temas', {
                     ...temaGuardado,
                     historiasIds: todasHistoriasIds,
                     frases: (temaGuardado.frases || 0) + totalFrases,
-                    estado: 'en_curso',
+                    estado: completado ? 'completado' : 'en_curso',
                     _tieneContenido: true,
-                    _esPredefinido: true,
-                    _esImportado: true,
-                    origen: 'importado',
+                    _esPredefinido: temaGuardado._esPredefinido || false,
+                    _esImportado: temaGuardado._esImportado || false,
+                    origen: temaGuardado.origen || (temaGuardado._esPredefinido ? 'predefinido' : 'manual'),
                     _caracteresSincronizados: temaGuardado._caracteresSincronizados || false,
                     _fechaSincronizacion: temaGuardado._fechaSincronizacion || null,
                     _caracteresSincronizadosCount: temaGuardado._caracteresSincronizadosCount || 0,
                     _version_estandar: versionEstandar,
                     _nombre_version: nombreVersion,
-                    _idioma_original: idioma
+                    _idioma_original: idioma,
+                    _completado: completado,
+                    _historiasImportadas: true,
+                    _progreso: progreso,
+                    _historiasCompletadas: completadas,
+                    _historiasTotales: total
                 });
+
+                if (temaGuardado._temaOriginalId) {
+                    await window.UITemas._marcarTemaCompletado(
+                        idioma,
+                        temaGuardado._temaOriginalId,
+                        completado
+                    );
+                }
             }
 
+            // ============================================================
             // ACTUALIZAR MÓDULOS
+            // ============================================================
             UITemasActions._actualizarLoading(98, '🔄 Actualizando módulos...', 'Gramática, Pipeline y Vigía');
 
             if (window.gramatica) {
@@ -958,7 +1131,9 @@ class UITemasActions {
                 }
             }
 
+            // ============================================================
             // ACTUALIZAR UI
+            // ============================================================
             UITemasActions._actualizarLoading(99, '🔄 Actualizando interfaz...', 'Caracteres, Mi Espacio y Dashboard');
 
             if (window.UICaracteres) {
@@ -976,32 +1151,35 @@ class UITemasActions {
 
             window.UITemas._volverTemas();
 
-            // OCULTAR LOADING Y MOSTRAR RESUMEN
             UITemasActions._actualizarLoading(100, '✅ ¡Importación completada!', '');
 
             await new Promise(r => setTimeout(r, 500));
             UITemasActions._ocultarLoading();
 
             const mensaje = `✅ Tema "${temaNombre}" importado correctamente\n\n` +
-                `📚 Historias: ${historiasIds.length}\n` +
+                `📚 Historias: ${historiasImportadas}\n` +
                 `📝 Frases: ${totalFrases}\n` +
                 `📖 Palabras: ${totalPalabras}\n` +
                 `📋 Reglas gramaticales: ${totalReglas}\n` +
+                (historiasDuplicadas > 0 ? `⏭️ Duplicados omitidos: ${historiasDuplicadas}\n` : '') +
                 (esJeroglifico && caracteresImportados > 0 ? 
                     `\n🀄 Caracteres sincronizados: ${caracteresImportados}\n` +
                     `📝 Palabras derivadas añadidas: ${palabrasDerivadasGuardadas}` : '') +
                 `\n📌 Versión: ${nombreVersion}\n` +
                 `\n🌍 Idioma: ${idioma}\n` +
+                `\n${completado ? '✅ Tema marcado como completado' : '📖 Tema marcado como en curso'}\n` +
                 `\n💡 Los caracteres están disponibles en el módulo "Caracteres" y las palabras en "Mi Espacio"`;
 
             window.UITemas._core?.alert(mensaje, '✅ Importación Completada');
 
             return { 
-                historias: historiasIds.length, 
+                historias: historiasImportadas, 
                 frases: totalFrases, 
                 palabras: totalPalabras,
                 caracteres: caracteresImportados,
-                derivadas: palabrasDerivadasGuardadas
+                derivadas: palabrasDerivadasGuardadas,
+                completado: completado,
+                duplicados: historiasDuplicadas
             };
 
         } catch (error) {
@@ -1022,7 +1200,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // SINCORNIZAR CARACTERES TEMA
+    // SINCRONIZAR CARACTERES TEMA
     // ============================================================
 
     static async sincronizarCaracteresTema(temaId) {
@@ -1080,7 +1258,6 @@ class UITemasActions {
         await new Promise(r => setTimeout(r, 300));
 
         try {
-            // OBTENER TODAS LAS FRASES DEL TEMA
             UITemasActions._actualizarLoading(20, '📖 Extrayendo frases...', 'Cargando contenido del tema');
 
             const historias = await db.obtenerHistoriasPorTema(temaId);
@@ -1105,7 +1282,6 @@ class UITemasActions {
                 return;
             }
 
-            // EXTRAER CARACTERES
             UITemasActions._actualizarLoading(40, '🀄 Extrayendo caracteres...', 'Analizando las frases');
 
             const caracteresMap = new Map();
@@ -1154,7 +1330,6 @@ class UITemasActions {
                 return;
             }
 
-            // GUARDAR CARACTERES
             UITemasActions._actualizarLoading(60, '💾 Guardando caracteres...', `${caracteresMap.size} caracteres a procesar`);
 
             let caracteresImportados = 0;
@@ -1259,7 +1434,6 @@ class UITemasActions {
                     }
                 }
 
-                // GUARDAR PALABRAS DERIVADAS
                 if (idRaiz) {
                     const derivadasArray = Array.from(dataChar.palabras);
                     
@@ -1337,7 +1511,6 @@ class UITemasActions {
                 }
             }
 
-            // ACTUALIZAR MÓDULOS Y UI
             UITemasActions._actualizarLoading(95, '🔄 Actualizando módulos...', 'Gramática y caracteres');
 
             if (window.gramatica) {
@@ -1363,7 +1536,6 @@ class UITemasActions {
                 window.UIDashboard._cargarDashboardInicial(core);
             }
 
-            // GUARDAR MARCA DE SINCRONIZACIÓN
             UITemasActions._actualizarLoading(98, '💾 Guardando estado...', 'Marcando tema como sincronizado');
 
             const temaActualizado = await db.obtenerTema(temaId);
@@ -1377,7 +1549,6 @@ class UITemasActions {
                 console.log(`✅ Tema "${temaActualizado.nombre}" marcado como sincronizado (${caracteresImportados} caracteres) con ${nombreVersion}`);
             }
 
-            // MOSTRAR RESULTADO
             UITemasActions._actualizarLoading(100, '✅ ¡Sincronización completada!', '');
 
             await new Promise(r => setTimeout(r, 500));
@@ -1398,6 +1569,185 @@ class UITemasActions {
         } catch (error) {
             UITemasActions._ocultarLoading();
             console.error('❌ Error sincronizando caracteres:', error);
+            core?.mostrarToast('❌ Error: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================================
+    // 🌌 GENERAR ONDA ELIPSE CON REAPERTURA AUTOMÁTICA
+    // ============================================================
+
+    static async generarOndaElipse(temaId) {
+        const core = window.UITemas._core;
+        if (!window.modoElipse) {
+            core?.mostrarToast('❌ Modo Elipse no disponible', 'error');
+            return;
+        }
+
+        const tema = await db.obtenerTema(temaId);
+        if (!tema) {
+            core?.mostrarToast('❌ Tema no encontrado', 'error');
+            return;
+        }
+
+        const historias = await db.obtenerHistoriasPorTema(temaId);
+        if (historias.length === 0) {
+            core?.mostrarToast('❌ El tema no tiene historias. Importa o genera contenido primero.', 'error');
+            return;
+        }
+
+        const elipseEstado = window.modoElipse.getEstadoElipse(temaId);
+        const ondasGeneradas = elipseEstado?.totalOndas || 0;
+        const maxOndas = window.modoElipse._config?.maxOndas || 10;
+
+        const estaCompletado = tema.estado === 'completado' || tema._completado === true;
+        const todasOndasGeneradas = ondasGeneradas >= maxOndas;
+
+        if (estaCompletado || todasOndasGeneradas) {
+            const mensaje = estaCompletado 
+                ? `⚠️ El tema "${tema.nombre}" está completado.`
+                : `⚠️ Has alcanzado el límite de ondas (${maxOndas}).`;
+            
+            const confirmar = await core?.confirm(
+                `${mensaje}\n\n` +
+                `Si generas una nueva onda, el tema se REABRIRÁ y pasará a estado "En curso".\n\n` +
+                `¿Quieres continuar?`,
+                '🔄 Reabrir Tema'
+            );
+            if (!confirmar) return;
+            
+            tema.estado = 'en_curso';
+            tema._completado = false;
+            delete tema._fechaCompletado;
+            await db.update('temas', tema);
+            
+            const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
+            const temaOriginalId = tema._temaOriginalId || tema.id;
+            const key = `${idioma}_${temaOriginalId}`;
+            window.UITemas._temaCompletadoCache[key] = false;
+            if (window.UITemas._temasCompletadosPorIdioma[idioma]) {
+                window.UITemas._temasCompletadosPorIdioma[idioma][temaOriginalId] = false;
+            }
+            
+            window.dispatchEvent(new CustomEvent('temaCompletado', {
+                detail: { 
+                    idioma: idioma,
+                    temaId: temaOriginalId,
+                    temaDbId: tema.id,
+                    completado: false,
+                    tema: tema,
+                    origen: 'elipse',
+                    reabiertoPorNuevaOnda: true
+                }
+            }));
+            
+            core?.mostrarToast(`🔄 Tema "${tema.nombre}" reabierto`, 'info');
+        }
+
+        core?.mostrarToast(`🌌 Generando nueva onda para "${tema.nombre}" (${ondasGeneradas + 1}/${maxOndas})...`, 'info');
+
+        try {
+            const plantilla = await window.modoElipse.generarPlantillaOnda(temaId);
+            
+            if (plantilla) {
+                core?.mostrarToast(`🌌 Plantilla de onda generada para "${tema.nombre}"`, 'success');
+                
+                if (core) {
+                    core.abrirModal('🌌 Plantilla de Onda Elipse - ' + tema.nombre);
+                    const textarea = document.getElementById('jsonTextarea');
+                    if (textarea) {
+                        textarea.value = JSON.stringify(plantilla, null, 2);
+                        textarea.readOnly = false;
+                        textarea.style.minHeight = '400px';
+                        textarea.style.fontSize = '12px';
+                        textarea.style.fontFamily = 'monospace';
+                    }
+                    
+                    const importBtn = document.getElementById('jsonImport');
+                    if (importBtn) {
+                        const newImportBtn = importBtn.cloneNode(true);
+                        importBtn.parentNode.replaceChild(newImportBtn, importBtn);
+                        newImportBtn.onclick = async function() {
+                            const jsonText = document.getElementById('jsonTextarea').value;
+                            if (jsonText) {
+                                try {
+                                    const data = JSON.parse(jsonText);
+                                    
+                                    const primeraFrase = data.historias?.[0]?.frases?.[0]?.original || '';
+                                    if (primeraFrase.includes('[') || primeraFrase.includes('Frase') || primeraFrase.includes('frase')) {
+                                        core?.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Completa el JSON con la IA y luego importa.', 'warning');
+                                        return;
+                                    }
+                                    
+                                    const historiaId = await window.modoElipse.importarOnda(temaId, data);
+                                    if (historiaId) {
+                                        core.cerrarModal();
+                                        core.mostrarToast('🌌 Onda importada correctamente', 'success');
+                                        
+                                        window.dispatchEvent(new CustomEvent('elipseNuevaOndaGenerada', {
+                                            detail: {
+                                                temaId: temaId,
+                                                historiaId: historiaId,
+                                                titulo: data.historias?.[0]?.titulo || 'Nueva Onda'
+                                            }
+                                        }));
+                                        
+                                        window.UITemas._verTemaDetalle(temaId);
+                                        if (window.UIDashboard) {
+                                            window.UIDashboard._cargarDashboardInicial(core);
+                                        }
+                                        if (window.UIClipse) {
+                                            setTimeout(() => {
+                                                window.UIClipse.cargar(core);
+                                            }, 500);
+                                        }
+                                    }
+                                } catch (e) {
+                                    core.mostrarToast('❌ Error: ' + e.message, 'error');
+                                }
+                            }
+                        };
+                    }
+                    
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.cssText = `
+                        background: var(--bg);
+                        border-radius: 8px;
+                        padding: 12px 16px;
+                        margin-bottom: 12px;
+                        font-size: 12px;
+                        color: var(--gray);
+                        border-left: 4px solid var(--primary);
+                    `;
+                    infoDiv.innerHTML = `
+                        <strong>📋 Instrucciones:</strong><br>
+                        1. Copia este JSON y envíalo a Groq/ChatGPT con las instrucciones que contiene.<br>
+                        2. La IA completará el JSON con una nueva historia (onda).<br>
+                        3. Cuando la IA te devuelva el JSON completado, pégalo aquí y pulsa <strong>"Importar"</strong>.<br>
+                        4. La nueva onda se añadirá automáticamente a la elipse.<br>
+                        <br>
+                        <span style="font-size:11px;color:var(--gray-light);">
+                            💡 Nivel: ${plantilla.meta?.nivel || 'A1'} · Palabras nuevas: ${plantilla.meta?.num_palabras_nuevas || 3}
+                        </span>
+                        <br>
+                        <span style="font-size:10px;color:var(--success);">
+                            🔥 SIN CONSUMO DE TOKENS - Solo generas la plantilla, la IA externa la completa.
+                        </span>
+                        <br>
+                        <span style="font-size:10px;color:var(--primary);">
+                            🔄 Al importar, el tema se REABRIRÁ automáticamente si estaba completado.
+                        </span>
+                    `;
+                    const modalBody = document.querySelector('.modal-body');
+                    if (modalBody) {
+                        modalBody.insertBefore(infoDiv, modalBody.firstChild);
+                    }
+                }
+            } else {
+                core?.mostrarToast('❌ No se pudo generar la plantilla de onda', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error generando onda:', error);
             core?.mostrarToast('❌ Error: ' + error.message, 'error');
         }
     }
@@ -1966,4 +2316,10 @@ class UITemasActions {
 // ============================================================
 
 window.UITemasActions = UITemasActions;
-console.log('✅ UITemas Actions v2.10 - INDEPENDIENTE POR IDIOMA');
+console.log('✅ UITemas Actions v2.19 - MANEJO DE HISTORIAS COMPLETADAS Y DUPLICADOS');
+console.log('  🔥 estudiarHistoria: maneja historias completadas con diálogo de finalización');
+console.log('  🔥 Verificación de duplicados al importar historias (por título y contenido)');
+console.log('  🔥 Recalculo de progreso real del tema al importar');
+console.log('  🔥 SOLO dos orígenes: "elipse" o "tema"');
+console.log('  🔥 Sincronización consistente entre Modo Elipse y Temas');
+console.log('  🔥 Todas las funcionalidades originales preservadas');

@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS CORE v4.1 - CORREGIDO Y FUNCIONAL
+// UI TEMAS CORE v4.11 - CON LISTENER DE ESTADO DE HISTORIAS Y VERIFICACIÓN DE TEMA
 // ============================================================
 
 class UITemasCore {
@@ -25,8 +25,8 @@ class UITemasCore {
         this._temaSeleccionadoParaJSON = null;
         this.ULTIMA_IMPORTACION = null;
         this._generandoTemaPredefinido = false;
+        this._pestanaActiva = 'todos';
 
-        // Constantes
         this.NIVELES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         this.EMOJIS_NIVEL = { 'A1': '🌱', 'A2': '🌿', 'B1': '🌳', 'B2': '🌲', 'C1': '🏔️', 'C2': '🗻' };
         this.COLORES_NIVEL = { 'A1': '#6C5CE7', 'A2': '#0984E3', 'B1': '#00B894', 'B2': '#FDCB6E', 'C1': '#E17055', 'C2': '#FD79A8' };
@@ -35,7 +35,6 @@ class UITemasCore {
         this.IDIOMAS_JEROGLIFICOS = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean', 'mandarin', 'mandarín'];
         this.FAMILIAS_SEMANTICAS = ['Transporte', 'Comida y Bebida', 'Familia', 'Casa y Hogar', 'Ropa', 'Animales', 'Naturaleza', 'Tiempo y Clima', 'Salud', 'Trabajo', 'Educación', 'Deportes', 'Arte', 'Música', 'Tecnología', 'Viajes', 'Compras', 'Comunicación', 'Emociones', 'Rutina', 'Ciudad', 'Cultura', 'Historia', 'Ciencia'];
         
-        // TEMAS PREDEFINIDOS CON SOPORTE PARA VERSIONES
         this.TEMAS_PREDEFINIDOS = {
             'v2.0': {
                 'A1': [
@@ -164,6 +163,297 @@ class UITemasCore {
         };
         
         this._VERSION_DEFECTO = 'v3.0';
+        
+        // ============================================================
+        // LISTENER PARA SINCRONIZAR TEMAS COMPLETADOS Y REAPERTURA
+        // ============================================================
+        this._configurarListenerSincronizacion();
+        
+        // 🔥 NUEVO: LISTENER PARA ESTADO DE HISTORIAS
+        this._configurarListenerEstadoHistorias();
+    }
+
+    // ============================================================
+    // CONFIGURAR LISTENER PARA SINCRONIZACIÓN
+    // ============================================================
+
+    _configurarListenerSincronizacion() {
+        window.addEventListener('temaCompletado', async (e) => {
+            const detail = e.detail;
+            if (!detail) return;
+            
+            console.log(`🔄 Sincronizando estado de tema: ${detail.temaId} (${detail.idioma}) → ${detail.completado}`);
+            
+            const key = `${detail.idioma}_${detail.temaId}`;
+            this._temaCompletadoCache[key] = detail.completado;
+            
+            if (!this._temasCompletadosPorIdioma[detail.idioma]) {
+                this._temasCompletadosPorIdioma[detail.idioma] = {};
+            }
+            this._temasCompletadosPorIdioma[detail.idioma][detail.temaId] = detail.completado;
+            
+            await this._actualizarDesbloqueos(detail.idioma);
+            
+            if (this.modoVistaTemas === 'lista') {
+                await this._renderTemas();
+            } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
+                const temaDbId = detail.temaDbId || detail.temaId;
+                if (temaDbId === this.temaSeleccionado || detail.temaId === this.temaSeleccionado) {
+                    await this._verTemaDetalle(this.temaSeleccionado);
+                } else {
+                    await this._renderTemas();
+                }
+            }
+            
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(this._core);
+            }
+            if (window.UIClipse) {
+                setTimeout(() => {
+                    try {
+                        window.UIClipse.cargar(this._core);
+                    } catch (e) {}
+                }, 300);
+            }
+        });
+        
+        window.addEventListener('historiaCompletada', async (e) => {
+            const detail = e.detail;
+            if (!detail) return;
+            
+            console.log(`🔄 Historia completada: ${detail.historiaTitulo} (${detail.temaId})`);
+            
+            if (this.modoVistaTemas === 'lista') {
+                await this._renderTemas();
+            } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
+                const temaId = detail.temaId || detail.temaOriginalId;
+                if (temaId === this.temaSeleccionado || detail.temaOriginalId === this.temaSeleccionado) {
+                    await this._verTemaDetalle(this.temaSeleccionado);
+                } else {
+                    await this._renderTemas();
+                }
+            }
+            
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(this._core);
+            }
+        });
+        
+        window.addEventListener('elipseNuevaOndaGenerada', async (e) => {
+            const temaId = e.detail?.temaId;
+            const historiaId = e.detail?.historiaId;
+            const titulo = e.detail?.titulo || 'Nueva Onda';
+            
+            if (!temaId) return;
+            
+            console.log(`🌌 Nueva onda generada/importada para tema ${temaId}: "${titulo}"`);
+            
+            try {
+                const tema = await db.obtenerTema(temaId);
+                if (!tema) {
+                    console.warn(`⚠️ Tema ${temaId} no encontrado`);
+                    return;
+                }
+                
+                if (tema.estado === 'completado' || tema._completado === true) {
+                    console.log(`🔄 Reabriendo tema "${tema.nombre}" por nueva onda generada`);
+                    
+                    tema.estado = 'en_curso';
+                    tema._completado = false;
+                    delete tema._fechaCompletado;
+                    await db.update('temas', tema);
+                    
+                    const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
+                    const temaOriginalId = tema._temaOriginalId || tema.id;
+                    
+                    const key = `${idioma}_${temaOriginalId}`;
+                    this._temaCompletadoCache[key] = false;
+                    if (this._temasCompletadosPorIdioma[idioma]) {
+                        this._temasCompletadosPorIdioma[idioma][temaOriginalId] = false;
+                    }
+                    
+                    window.dispatchEvent(new CustomEvent('temaCompletado', {
+                        detail: { 
+                            idioma: idioma,
+                            temaId: temaOriginalId,
+                            temaDbId: tema.id,
+                            completado: false,
+                            tema: tema,
+                            origen: 'elipse',
+                            reabiertoPorNuevaOnda: true,
+                            nuevaHistoriaId: historiaId,
+                            nuevaHistoriaTitulo: titulo
+                        }
+                    }));
+                    
+                    if (this._core) {
+                        this._core.mostrarToast(`🔄 Tema "${tema.nombre}" reabierto (nueva onda: "${titulo}")`, 'info');
+                    }
+                    if (window.UIDashboard) {
+                        window.UIDashboard._cargarDashboardInicial(this._core);
+                    }
+                    if (window.UIClipse) {
+                        setTimeout(() => {
+                            try {
+                                window.UIClipse.cargar(this._core);
+                            } catch (err) {}
+                        }, 500);
+                    }
+                    
+                    setTimeout(() => {
+                        if (this.modoVistaTemas === 'lista') {
+                            this._renderTemas();
+                        } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado === temaId) {
+                            this._verTemaDetalle(temaId);
+                        }
+                    }, 300);
+                } else {
+                    console.log(`ℹ️ Tema "${tema.nombre}" ya está en curso, solo actualizando vista`);
+                    setTimeout(() => {
+                        if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado === temaId) {
+                            this._verTemaDetalle(temaId);
+                        } else {
+                            this._renderTemas();
+                        }
+                    }, 300);
+                }
+            } catch (error) {
+                console.error('❌ Error procesando nueva onda:', error);
+            }
+        });
+        
+        console.log('🔗 Listener de sincronización de temas configurado');
+    }
+
+    // ============================================================
+    // 🔥 CONFIGURAR LISTENER PARA ESTADO DE HISTORIAS
+    // ============================================================
+
+    _configurarListenerEstadoHistorias() {
+        window.addEventListener('historiaEstadoCambiado', async (e) => {
+            console.log('🔄 UITemasCore: Estado de historia cambiado', e.detail);
+            
+            // 🔥 VERIFICAR SI EL TEMA ESTÁ COMPLETADO
+            if (e.detail?.tipo === 'historia' || e.detail?.tipo === 'onda_elipse' || e.detail?.tipo === 'onda_cruzada') {
+                const historiaId = e.detail.historiaId;
+                const historia = await db.get('historias', historiaId);
+                if (historia && historia.temaId) {
+                    await this._verificarYActualizarEstadoTema(historia.temaId);
+                }
+            }
+            
+            // Refrescar la vista actual
+            if (this.modoVistaTemas === 'lista') {
+                await this._renderTemas();
+            } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
+                await this._verTemaDetalle(this.temaSeleccionado);
+            }
+            
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(this._core);
+            }
+        });
+    }
+
+    // ============================================================
+    // 🔥 VERIFICAR Y ACTUALIZAR ESTADO DEL TEMA
+    // ============================================================
+
+    async _verificarYActualizarEstadoTema(temaId) {
+        try {
+            const tema = await db.obtenerTema(temaId);
+            if (!tema) return;
+            
+            const historias = await db.obtenerHistoriasPorTema(temaId);
+            if (historias.length === 0) return;
+            
+            let completadas = 0;
+            for (const h of historias) {
+                if (h.estado === 'completada' || h._completada === true) {
+                    completadas++;
+                }
+            }
+            
+            const total = historias.length;
+            const progreso = total > 0 ? Math.round((completadas / total) * 100) : 0;
+            
+            // 🔥 ACTUALIZAR PROGRESO EN EL TEMA
+            tema._progreso = progreso;
+            tema._historiasCompletadas = completadas;
+            tema._historiasTotales = total;
+            
+            const estadoAnterior = tema.estado === 'completado' || tema._completado === true;
+            const todasCompletadas = completadas === total && total > 0;
+            
+            if (todasCompletadas && !estadoAnterior) {
+                tema.estado = 'completado';
+                tema._completado = true;
+                tema._fechaCompletado = Date.now();
+                await db.update('temas', tema);
+                
+                console.log(`🎯 Tema "${tema.nombre}" marcado como completado (${completadas}/${total})`);
+                
+                const idioma = tema.idioma || 'es';
+                const temaOriginalId = tema._temaOriginalId || tema.id;
+                window.dispatchEvent(new CustomEvent('temaCompletado', {
+                    detail: {
+                        idioma: idioma,
+                        temaId: temaOriginalId,
+                        temaDbId: tema.id,
+                        completado: true,
+                        tema: tema,
+                        origen: 'checkbox_sync',
+                        progreso: progreso
+                    }
+                }));
+                
+                if (this._core) {
+                    this._core.mostrarToast(`🎉 Tema "${tema.nombre}" completado al 100%`, 'success');
+                }
+            } else if (!todasCompletadas && estadoAnterior) {
+                tema.estado = 'en_curso';
+                tema._completado = false;
+                delete tema._fechaCompletado;
+                await db.update('temas', tema);
+                
+                console.log(`🔄 Tema "${tema.nombre}" reabierto (${completadas}/${total})`);
+                
+                const idioma = tema.idioma || 'es';
+                const temaOriginalId = tema._temaOriginalId || tema.id;
+                window.dispatchEvent(new CustomEvent('temaCompletado', {
+                    detail: {
+                        idioma: idioma,
+                        temaId: temaOriginalId,
+                        temaDbId: tema.id,
+                        completado: false,
+                        tema: tema,
+                        origen: 'checkbox_sync',
+                        progreso: progreso
+                    }
+                }));
+            } else {
+                // 🔥 SI EL PROGRESO CAMBIÓ PERO EL ESTADO NO, ACTUALIZAR PROGRESO
+                await db.update('temas', tema);
+                console.log(`📊 Progreso del tema "${tema.nombre}" actualizado: ${progreso}% (${completadas}/${total})`);
+            }
+            
+            // 🔥 DISPARAR EVENTO PARA ACTUALIZAR UI
+            window.dispatchEvent(new CustomEvent('progresoTemaActualizado', {
+                detail: {
+                    temaId: tema.id,
+                    temaNombre: tema.nombre,
+                    progreso: progreso,
+                    completadas: completadas,
+                    total: total,
+                    completado: todasCompletadas
+                }
+            }));
+            
+            return { completadas, total, progreso, completado: todasCompletadas };
+        } catch (error) {
+            console.error('❌ Error verificando estado del tema:', error);
+            return null;
+        }
     }
 
     // ============================================================
@@ -194,10 +484,6 @@ class UITemasCore {
             setTimeout(() => {
                 this._renderTemas();
             }, 300);
-        });
-
-        window.addEventListener('temaCompletado', () => {
-            this._renderTemas();
         });
 
         window.addEventListener('nivelDesbloqueado', (e) => {
@@ -433,36 +719,72 @@ class UITemasCore {
     }
 
     // ============================================================
-    // MARCAR UN TEMA COMO COMPLETADO EN UN IDIOMA
+    // MARCAR UN TEMA COMO COMPLETADO
     // ============================================================
 
     async _marcarTemaCompletado(idioma, temaId, completado) {
         const key = `${idioma}_${temaId}`;
         
+        console.log(`📌 Marcando tema ${temaId} (${idioma}) como ${completado ? 'completado' : 'no completado'}`);
+        
         let temaEncontrado = null;
+        let temaIdReal = temaId;
+        let esTemaPredefinido = false;
+        
         try {
             const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
-            temaEncontrado = todosLosTemas.find(t => 
-                t._temaOriginalId === temaId && 
-                t._esPredefinido === true &&
-                t.idioma === idioma
-            );
+            
+            const idNum = parseInt(temaId);
+            if (!isNaN(idNum) && idNum > 0) {
+                temaEncontrado = todosLosTemas.find(t => t.id === idNum);
+                if (temaEncontrado) {
+                    temaIdReal = idNum;
+                    esTemaPredefinido = temaEncontrado._esPredefinido === true;
+                    console.log(`📂 Tema encontrado por ID: "${temaEncontrado.nombre}" (${esTemaPredefinido ? 'predefinido' : 'manual'})`);
+                }
+            }
+            
+            if (!temaEncontrado) {
+                temaEncontrado = todosLosTemas.find(t => t._temaOriginalId === temaId);
+                if (temaEncontrado) {
+                    esTemaPredefinido = true;
+                    console.log(`📂 Tema encontrado por _temaOriginalId: "${temaEncontrado.nombre}"`);
+                }
+            }
+            
+            if (!temaEncontrado) {
+                const esIdPredefinido = /^[a-c][1-2]_\d+$/.test(temaId) || /^[A-C][1-2]_\d+$/.test(temaId);
+                
+                if (esIdPredefinido) {
+                    console.log(`📄 Tema predefinido ${temaId} no encontrado en ${idioma}. Creando plantilla...`);
+                    const temaCreado = await this._guardarTemaPredefinidoComoPlantilla(temaId, idioma);
+                    if (temaCreado) {
+                        temaEncontrado = temaCreado;
+                        temaIdReal = temaCreado.id;
+                        esTemaPredefinido = true;
+                    } else {
+                        console.error(`❌ No se pudo crear el tema ${temaId} en ${idioma}.`);
+                        return;
+                    }
+                } else {
+                    console.warn(`⚠️ Tema con ID ${temaId} no encontrado en ${idioma}.`);
+                    return;
+                }
+            }
         } catch (e) {
             console.warn(`⚠️ Error buscando tema:`, e);
+            return;
         }
 
         if (!temaEncontrado) {
-            console.warn(`⚠️ No se encontró el tema ${temaId} en ${idioma}. Creando plantilla...`);
-            const temaCreado = await this._guardarTemaPredefinidoComoPlantilla(temaId, idioma);
-            if (temaCreado) {
-                temaEncontrado = temaCreado;
-            } else {
-                console.error(`❌ No se pudo crear el tema ${temaId} en ${idioma}.`);
-                return;
-            }
+            console.warn(`⚠️ Tema ${temaId} no encontrado en ${idioma}`);
+            return;
         }
 
         let temaNombre = temaEncontrado.nombre || 'Tema';
+        let temaDbId = temaEncontrado.id;
+        let temaOriginalId = temaEncontrado._temaOriginalId || temaId;
+        
         temaEncontrado.estado = completado ? 'completado' : 'en_curso';
         temaEncontrado._completado = completado;
         if (completado) {
@@ -485,19 +807,20 @@ class UITemasCore {
         }
         this._temasCompletadosPorIdioma[idioma][temaId] = completado;
 
+        await this._actualizarDesbloqueos(idioma);
+
         window.dispatchEvent(new CustomEvent('temaCompletado', {
-            detail: { idioma, temaId, completado, tema: temaEncontrado }
-        }));
-
-        await this._renderTemas();
-
-        if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
-            const temaIdActual = this.temaSeleccionado;
-            if (temaIdActual === temaId || temaIdActual === parseInt(temaId) || 
-                (temaEncontrado && temaIdActual === temaEncontrado.id)) {
-                await this._verTemaDetalle(temaIdActual);
+            detail: { 
+                idioma, 
+                temaId: temaOriginalId,
+                temaDbId: temaDbId,
+                completado, 
+                tema: temaEncontrado,
+                key: key,
+                esPredefinido: esTemaPredefinido,
+                origen: 'manual'
             }
-        }
+        }));
 
         if (this._core) {
             this._core.mostrarToast(
@@ -505,10 +828,21 @@ class UITemasCore {
                 completado ? 'success' : 'info'
             );
         }
+
+        if (this.modoVistaTemas === 'lista') {
+            await this._renderTemas();
+        } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
+            const temaIdActual = this.temaSeleccionado;
+            if (temaIdActual === temaDbId || temaIdActual === temaOriginalId) {
+                await this._verTemaDetalle(temaDbId);
+            } else {
+                await this._renderTemas();
+            }
+        }
     }
 
     // ============================================================
-    // 🔥 GUARDAR TEMA PREDEFINIDO COMO PLANTILLA (SIN GROQ)
+    // GUARDAR TEMA PREDEFINIDO COMO PLANTILLA
     // ============================================================
 
     async _guardarTemaPredefinidoComoPlantilla(temaId, idiomaForzado = null) {
@@ -550,7 +884,6 @@ class UITemasCore {
                 return null;
             }
 
-            // 🔥 CREAR SOLO LA ESTRUCTURA DEL TEMA, SIN CONTENIDO
             const nuevoTema = {
                 nombre: temaPredefinido.nombre,
                 descripcion: temaPredefinido.descripcion || '',
@@ -571,7 +904,9 @@ class UITemasCore {
                 _caracteresSincronizadosCount: 0,
                 _version_estandar: versionEstandar,
                 _nombre_version: this._obtenerNombreVersion(idioma, versionEstandar),
-                _tieneContenidoReal: false
+                _tieneContenidoReal: false,
+                _completado: false,
+                _esManual: false
             };
 
             const idGuardado = await db.guardarTema(nuevoTema);
@@ -594,7 +929,7 @@ class UITemasCore {
     }
 
     // ============================================================
-    // 🔥 GENERAR PLANTILLA JSON PARA TEMA PREDEFINIDO (SIN GROQ)
+    // GENERAR PLANTILLA JSON PARA TEMA PREDEFINIDO
     // ============================================================
 
     _generarPlantillaTemaPredefinido(temaId, temaNombre, nivel, idioma, nombreIdioma, idiomaNativo, nombreNativo, esJeroglifico, numHistorias, numFrases, versionEstandar, nombreVersion) {
@@ -694,12 +1029,12 @@ class UITemasCore {
                 "fecha_generacion": new Date().toISOString(),
                 "version": "22.0",
                 "_esPredefinido": true,
-                "_esImportado": true
+                "_esImportado": true,
+                "_completado": false
             },
             "historias": []
         };
 
-        // Crear historias con placeholders
         for (let i = 1; i <= numHistoriasFinal; i++) {
             const historia = { 
                 id: i, 
@@ -796,46 +1131,84 @@ class UITemasCore {
     }
 
     // ============================================================
-    // MÉTODOS DE NIVEL
+    // VERIFICAR SI UN NIVEL ESTÁ DESBLOQUEADO
     // ============================================================
 
     async _nivelEstaDesbloqueado(idioma, nivel) {
-        const idx = this.NIVELES.indexOf(nivel);
-        if (idx === 0) return true;
-
+        const usuario = await db.getUsuario();
+        const infoIdioma = usuario?.idiomasObjetivo?.find(i => i.idioma === idioma);
+        const nivelActual = infoIdioma?.nivel || 'A1';
+        
+        const idxNivel = this.NIVELES.indexOf(nivel);
+        const idxActual = this.NIVELES.indexOf(nivelActual);
+        
+        if (idxNivel <= idxActual) {
+            return true;
+        }
+        
         const key = `${idioma}_nivel_${nivel}`;
-        if (this._nivelDesbloqueadoCache[key] !== undefined) return this._nivelDesbloqueadoCache[key];
+        const desbloqueados = JSON.parse(localStorage.getItem('pipeline_niveles_desbloqueados') || '{}');
+        if (desbloqueados[key]) {
+            return true;
+        }
+        
+        return false;
+    }
 
-        try {
-            const desbloqueados = JSON.parse(localStorage.getItem('pipeline_niveles_desbloqueados') || '{}');
-            const result = desbloqueados[key] === true;
-            this._nivelDesbloqueadoCache[key] = result;
-            return result;
-        } catch (e) {
-            return false;
+    // ============================================================
+    // DESBLOQUEAR SIGUIENTE NIVEL
+    // ============================================================
+
+    async _desbloquearSiguienteNivel(idioma) {
+        const usuario = await db.getUsuario();
+        const infoIdioma = usuario?.idiomasObjetivo?.find(i => i.idioma === idioma);
+        const nivelActual = infoIdioma?.nivel || 'A1';
+        
+        const idxActual = this.NIVELES.indexOf(nivelActual);
+        if (idxActual >= this.NIVELES.length - 1) {
+            return;
+        }
+        
+        const siguienteNivel = this.NIVELES[idxActual + 1];
+        const key = `${idioma}_nivel_${siguienteNivel}`;
+        const desbloqueados = JSON.parse(localStorage.getItem('pipeline_niveles_desbloqueados') || '{}');
+        
+        if (!desbloqueados[key]) {
+            desbloqueados[key] = true;
+            localStorage.setItem('pipeline_niveles_desbloqueados', JSON.stringify(desbloqueados));
+            this._nivelDesbloqueadoCache[key] = true;
+            
+            window.dispatchEvent(new CustomEvent('nivelDesbloqueado', {
+                detail: { idioma, nivel: siguienteNivel }
+            }));
+            
+            if (this._core) {
+                this._core.mostrarToast(`🎉 ¡Nivel ${siguienteNivel} desbloqueado!`, 'success');
+            }
         }
     }
 
-    async _desbloquearNivel(idioma, nivel) {
-        const idx = this.NIVELES.indexOf(nivel);
-        if (idx < 0 || idx >= this.NIVELES.length - 1) return;
+    // ============================================================
+    // VERIFICAR SI UN NIVEL ESTÁ COMPLETADO
+    // ============================================================
 
-        const siguienteNivel = this.NIVELES[idx + 1];
-        const key = `${idioma}_nivel_${siguienteNivel}`;
+    async _nivelEstaCompletado(idioma, nivel) {
+        const progreso = await this._obtenerProgresoNivel(idioma, nivel);
+        return progreso.porcentaje >= 100 && progreso.total > 0;
+    }
 
-        const desbloqueados = JSON.parse(localStorage.getItem('pipeline_niveles_desbloqueados') || '{}');
-        if (desbloqueados[key]) return;
+    // ============================================================
+    // ACTUALIZAR DESBLOQUEOS DESPUÉS DE MARCAR UN TEMA COMO COMPLETADO
+    // ============================================================
 
-        desbloqueados[key] = true;
-        localStorage.setItem('pipeline_niveles_desbloqueados', JSON.stringify(desbloqueados));
-        this._nivelDesbloqueadoCache[key] = true;
-
-        window.dispatchEvent(new CustomEvent('nivelDesbloqueado', {
-            detail: { idioma, nivel: siguienteNivel }
-        }));
-
-        if (this._core) {
-            this._core.mostrarToast(`🎉 ¡Nivel ${siguienteNivel} desbloqueado!`, 'success');
+    async _actualizarDesbloqueos(idioma) {
+        for (let i = 0; i < this.NIVELES.length; i++) {
+            const nivel = this.NIVELES[i];
+            const estaCompletado = await this._nivelEstaCompletado(idioma, nivel);
+            
+            if (estaCompletado && i < this.NIVELES.length - 1) {
+                await this._desbloquearSiguienteNivel(idioma);
+            }
         }
     }
 
@@ -1023,7 +1396,11 @@ class UITemasCore {
 // ============================================================
 
 window.UITemas = new UITemasCore();
-console.log('✅ UITemas Core v4.1 - CORREGIDO Y FUNCIONAL');
-console.log('  🔥 TODAS las funciones existen y están implementadas');
-console.log('  🔥 NO se usa Groq para generar contenido de temas');
-console.log('  🔥 Solo plantillas JSON vacías');
+console.log('✅ UITemas Core v4.11 - CON LISTENER DE ESTADO DE HISTORIAS Y VERIFICACIÓN DE TEMA');
+console.log('  🔥 Escucha evento historiaEstadoCambiado y verifica estado del tema');
+console.log('  🔥 Marca tema como completado cuando todas las historias están completadas');
+console.log('  🔥 Reabre tema cuando alguna historia se desmarca');
+console.log('  🔥 Actualiza caché de temas completados');
+console.log('  🔥 Dispara evento temaCompletado con origen "checkbox_sync"');
+console.log('  🔥 Lógica de desbloqueo por nivel actual del usuario');
+console.log('  🔥 Niveles inferiores SIEMPRE desbloqueados');
