@@ -1,5 +1,5 @@
 // ============================================================
-// UI CORE v18.32 - CON MANUAL INTERACTIVO
+// UI CORE v18.36 - COMPLETO CON MÓDULO TONOS REGISTRADO
 // ============================================================
 
 class UICore {
@@ -26,7 +26,7 @@ class UICore {
         this._cargarPreferenciaDashboard();
         
         // ============================================================
-        // MÓDULOS REGISTRADOS - INCLUYE MANUAL
+        // MÓDULOS REGISTRADOS - INCLUYE TONOS
         // ============================================================
         this._moduleNames = {
             'dashboard': 'Dashboard',
@@ -41,6 +41,7 @@ class UICore {
             'espacio': 'Mi Espacio',
             'competiciones': '🏆 Liga Neuro',
             'caracteres': '🀄 Caracteres',
+            'tonos': '🎵 Estudio de Tonos',      // 🔥 AÑADIDO
             'fonetica': '🎤 Fonética',
             'neuro': '🧠 Estado Neuro',
             'familias': '🧠 Familias de Caracteres',
@@ -48,7 +49,8 @@ class UICore {
             'tutor_generador': '🧠 Generador NeuroAdaptativo',
             'elipse': '🌌 Modo Elipse',
             'ondasCruzadas': '🌊 Modo Ondas Cruzadas',
-            'manual': '📖 Manual Interactivo'
+            'manual': '📖 Manual Interactivo',
+            'biblioteca': '📚 Biblioteca de Lectura v2.0'
         };
         
         this._cargaCompletada = false;
@@ -85,6 +87,8 @@ class UICore {
         this._navegacionElipsePendiente = false;
         this._navegacionOndasCruzadasPendiente = false;
         this._navegacionManualPendiente = false;
+        this._navegacionBibliotecaPendiente = false;
+        this._navegacionTonosPendiente = false;   // 🔥 AÑADIDO
         
         window.addEventListener('resize', () => {
             this._isMobile = window.innerWidth < 640;
@@ -150,6 +154,15 @@ class UICore {
     }
 
     // ============================================================
+    // IR A BIBLIOTECA v2.0
+    // ============================================================
+
+    irABiblioteca() {
+        console.log('📚 Navegando a Biblioteca de Lectura v2.0...');
+        this.irAModulo('biblioteca');
+    }
+
+    // ============================================================
     // REGISTRAR MÓDULO MANUAL
     // ============================================================
 
@@ -182,6 +195,80 @@ class UICore {
         if (this._navegacionManualPendiente) {
             this._navegacionManualPendiente = false;
             this._cargarContenidoModulo('manual');
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR MÓDULO BIBLIOTECA v2.0
+    // ============================================================
+
+    _registrarModuloBiblioteca() {
+        console.log('📚 Registrando módulo Biblioteca v2.0...');
+        
+        if (this._moduleNames['biblioteca']) {
+            console.log('📚 Módulo Biblioteca ya registrado');
+            return;
+        }
+        
+        this._moduleNames['biblioteca'] = '📚 Biblioteca de Lectura v2.0';
+        
+        if (window.UIBiblioteca && typeof window.UIBiblioteca.init === 'function') {
+            try {
+                if (!window.UIBiblioteca._initDone) {
+                    window.UIBiblioteca.init(this).then(() => {
+                        console.log('✅ UIBiblioteca v2.0 inicializado correctamente');
+                        console.log('  📋 Agrupación por Temas: ACTIVADA');
+                        console.log('  🔒 Ocultar traducción: DISPONIBLE');
+                    }).catch(e => {
+                        console.warn('⚠️ Error inicializando UIBiblioteca:', e.message);
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Error en init de UIBiblioteca:', e.message);
+            }
+        } else {
+            console.warn('⚠️ UIBiblioteca no está disponible para registrar');
+        }
+        
+        if (this._navegacionBibliotecaPendiente) {
+            this._navegacionBibliotecaPendiente = false;
+            this._cargarContenidoModulo('biblioteca');
+        }
+    }
+
+    // ============================================================
+    // REGISTRAR MÓDULO TONOS - 🔥 NUEVO
+    // ============================================================
+
+    _registrarModuloTonos() {
+        console.log('🎵 Registrando módulo Estudio de Tonos...');
+        
+        if (this._moduleNames['tonos']) {
+            console.log('🎵 Módulo Tonos ya registrado');
+            return;
+        }
+        
+        this._moduleNames['tonos'] = '🎵 Estudio de Tonos';
+        
+        if (window.UITonos && typeof window.UITonos.init === 'function') {
+            try {
+                if (!window.UITonos._initDone) {
+                    window.UITonos.init(this).then(() => {
+                        console.log('✅ UITonos inicializado correctamente');
+                    }).catch(e => {
+                        console.warn('⚠️ Error inicializando UITonos:', e.message);
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Error en init de UITonos:', e.message);
+            }
+        } else {
+            console.warn('⚠️ UITonos no está disponible para registrar');
+        }
+        
+        if (this._navegacionTonosPendiente) {
+            this._navegacionTonosPendiente = false;
+            this._cargarContenidoModulo('tonos');
         }
     }
 
@@ -264,7 +351,7 @@ class UICore {
     async init() {
         if (this._initDone || this._inicializado) return this;
         
-        console.log('🎨 Inicializando UI Core v18.32 con Manual Interactivo...');
+        console.log('🎨 Inicializando UI Core v18.36 con soporte para Tonos...');
         
         try {
             this._esperandoDatos = true;
@@ -317,6 +404,8 @@ class UICore {
             this._registrarModuloElipse();
             this._registrarModuloOndasCruzadas();
             this._registrarModuloManual();
+            this._registrarModuloBiblioteca(); // v2.0
+            this._registrarModuloTonos();      // 🔥 NUEVO
             
             setTimeout(() => {
                 this._actualizarIndicadoresSeguro();
@@ -332,9 +421,11 @@ class UICore {
             
             this._inicializado = true;
             this._initDone = true;
-            console.log('🎨 UI Core v18.32: Inicializada correctamente');
+            console.log('🎨 UI Core v18.36: Inicializada correctamente');
             console.log(`   📌 Modo Dashboard: ${this._modoDashboard === 'lite' ? '🧘 Lite' : '🚀 Expandido'}`);
             console.log('  📌 Módulos registrados:', Object.keys(this._moduleNames));
+            console.log('  🎵 Módulo "tonos" registrado correctamente');
+            console.log('  📚 Biblioteca v2.0: Registrada');
             console.log('  📖 Manual Interactivo: Registrado');
         } catch (e) {
             console.warn('⚠️ UI Core init parcial:', e);
@@ -378,7 +469,7 @@ class UICore {
     }
 
     // ============================================================
-    // CARGAR CONTENIDO DE MÓDULO - CON MANUAL
+    // CARGAR CONTENIDO DE MÓDULO - CON TONOS
     // ============================================================
 
     _cargarContenidoModulo(module) {
@@ -417,6 +508,44 @@ class UICore {
                 case 'espacio':
                     if (window.UIEspacio) window.UIEspacio.cargar(this);
                     break;
+                case 'biblioteca':
+                    if (window.UIBiblioteca) {
+                        console.log('📚 Cargando módulo Biblioteca v2.0...');
+                        window.UIBiblioteca.cargar(this);
+                    } else {
+                        console.warn('⚠️ UIBiblioteca no disponible');
+                        this.mostrarToast('⚠️ Módulo Biblioteca cargando...', 'info');
+                        this._navegacionBibliotecaPendiente = true;
+                        this._registrarModuloBiblioteca();
+                        setTimeout(() => {
+                            if (window.UIBiblioteca) {
+                                console.log('📚 UIBiblioteca ahora está disponible. Cargando...');
+                                this._cargarContenidoModulo('biblioteca');
+                            } else {
+                                this.mostrarToast('❌ No se pudo cargar la Biblioteca. Recarga la página.', 'error');
+                            }
+                        }, 500);
+                    }
+                    break;
+                case 'tonos':  // 🔥 NUEVO
+                    if (window.UITonos) {
+                        console.log('🎵 Cargando módulo Estudio de Tonos...');
+                        window.UITonos.cargar(this);
+                    } else {
+                        console.warn('⚠️ UITonos no disponible');
+                        this.mostrarToast('⚠️ Módulo Tonos cargando...', 'info');
+                        this._navegacionTonosPendiente = true;
+                        this._registrarModuloTonos();
+                        setTimeout(() => {
+                            if (window.UITonos) {
+                                console.log('🎵 UITonos ahora está disponible. Cargando...');
+                                this._cargarContenidoModulo('tonos');
+                            } else {
+                                this.mostrarToast('❌ No se pudo cargar el módulo Tonos. Recarga la página.', 'error');
+                            }
+                        }, 500);
+                    }
+                    break;
                 case 'manual':
                     if (window.UIManual) {
                         console.log('📖 Cargando módulo Manual...');
@@ -426,21 +555,12 @@ class UICore {
                         this.mostrarToast('⚠️ Módulo Manual cargando...', 'info');
                         this._navegacionManualPendiente = true;
                         this._registrarModuloManual();
-                        this._mostrarCargandoManual();
                         setTimeout(() => {
                             if (window.UIManual) {
                                 console.log('📖 UIManual ahora está disponible. Cargando...');
                                 this._cargarContenidoModulo('manual');
                             } else {
-                                console.warn('⚠️ UIManual aún no disponible, reintentando...');
-                                setTimeout(() => {
-                                    if (window.UIManual) {
-                                        this._cargarContenidoModulo('manual');
-                                    } else {
-                                        this.mostrarToast('❌ No se pudo cargar el Manual. Recarga la página.', 'error');
-                                        this._mostrarErrorManual('Timeout: UIManual no disponible');
-                                    }
-                                }, 2000);
+                                this.mostrarToast('❌ No se pudo cargar el Manual. Recarga la página.', 'error');
                             }
                         }, 500);
                     }
@@ -483,28 +603,18 @@ class UICore {
                         } catch (e) {
                             console.error('❌ Error cargando UIClipse:', e);
                             this.mostrarToast('❌ Error al cargar el Modo Elipse', 'error');
-                            this._mostrarErrorElipse(e.message);
                         }
                     } else {
                         console.warn('⚠️ UIClipse NO disponible para cargar');
                         this.mostrarToast('⚠️ Módulo Elipse cargando...', 'info');
                         this._navegacionElipsePendiente = true;
                         this._registrarModuloElipse();
-                        this._mostrarCargandoElipse();
                         setTimeout(() => {
                             if (window.UIClipse) {
                                 console.log('🌌 UIClipse ahora está disponible. Cargando...');
                                 this._cargarContenidoModulo('elipse');
                             } else {
-                                console.warn('⚠️ UIClipse aún no disponible, reintentando en 2s...');
-                                setTimeout(() => {
-                                    if (window.UIClipse) {
-                                        this._cargarContenidoModulo('elipse');
-                                    } else {
-                                        this.mostrarToast('❌ No se pudo cargar el Modo Elipse. Recarga la página.', 'error');
-                                        this._mostrarErrorElipse('Timeout: UIClipse no disponible');
-                                    }
-                                }, 2000);
+                                this.mostrarToast('❌ No se pudo cargar el Modo Elipse. Recarga la página.', 'error');
                             }
                         }, 500);
                     }
@@ -584,6 +694,79 @@ class UICore {
     }
 
     // ============================================================
+    // IR A TONOS - 🔥 NUEVO
+    // ============================================================
+
+    irATonos() {
+        console.log('🎵 Navegando a Estudio de Tonos...');
+        this.irAModulo('tonos');
+    }
+
+    // ============================================================
+    // MOSTRAR CARGANDO BIBLIOTECA
+    // ============================================================
+
+    _mostrarCargandoBiblioteca() {
+        const container = document.getElementById('bibliotecaContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">📚</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
+                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Biblioteca de Lectura v2.0...</span>
+                </div>
+                <p style="font-size:14px;color:var(--gray-light);">Preparando tu colección de historias agrupadas por temas</p>
+                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarBiblioteca()" style="margin-top:12px;padding:8px 20px;">
+                    <i class="fas fa-sync"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+
+    // ============================================================
+    // REINTENTAR CARGAR BIBLIOTECA
+    // ============================================================
+
+    _reintentarCargarBiblioteca() {
+        console.log('🔄 Reintentando cargar Biblioteca v2.0...');
+        this._navegacionBibliotecaPendiente = false;
+        this._registrarModuloBiblioteca();
+        setTimeout(() => {
+            if (window.UIBiblioteca) {
+                this._cargarContenidoModulo('biblioteca');
+            } else {
+                this.mostrarToast('⚠️ El módulo Biblioteca aún no está disponible. Recarga la página.', 'warning');
+                this._mostrarCargandoBiblioteca();
+            }
+        }, 500);
+    }
+
+    // ============================================================
+    // ERROR DE BIBLIOTECA
+    // ============================================================
+
+    _mostrarErrorBiblioteca(mensaje) {
+        const container = document.getElementById('bibliotecaContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
+                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar la Biblioteca</h3>
+                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarBiblioteca()" style="padding:8px 20px;">
+                        <i class="fas fa-sync"></i> Reintentar
+                    </button>
+                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
+                        <i class="fas fa-redo"></i> Recargar página
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // ============================================================
     // MOSTRAR CARGANDO MANUAL
     // ============================================================
 
@@ -624,7 +807,7 @@ class UICore {
     }
 
     // ============================================================
-    // MOSTRAR ERROR DE MANUAL
+    // ERROR DE MANUAL
     // ============================================================
 
     _mostrarErrorManual(mensaje) {
@@ -722,6 +905,8 @@ class UICore {
             { name: 'UIJSON', obj: window.UIJSON },
             { name: 'UIEspacio', obj: window.UIEspacio },
             { name: 'UIManual', obj: window.UIManual },
+            { name: 'UIBiblioteca', obj: window.UIBiblioteca },
+            { name: 'UITonos', obj: window.UITonos },        // 🔥 NUEVO
             { name: 'SistemaCompeticiones', obj: window.SistemaCompeticiones },
             { name: 'UICaracteres', obj: window.UICaracteres },
             { name: 'UIFonetica', obj: window.UIFonetica },
@@ -909,139 +1094,29 @@ class UICore {
             return;
         }
         
+        // Verificar si el módulo existe en el mapa
+        if (!this._moduleNames[module]) {
+            console.warn(`⚠️ Módulo desconocido: ${module}`);
+            // 🔥 INTENTAR REGISTRAR TONOS SI NO ESTÁ REGISTRADO
+            if (module === 'tonos' && window.UITonos) {
+                console.log('🎵 Cargando módulo Tonos (fallback)...');
+                this._registrarModuloTonos();
+                this._irAModulo('tonos');
+                return;
+            }
+            this.mostrarToast(`⚠️ Módulo "${module}" no disponible`, 'error');
+            return;
+        }
+        
         document.querySelectorAll('.view, .module-view').forEach(el => {
             el.classList.remove('active');
         });
         
         let moduleEl = document.getElementById(module + 'Module');
         
-        if (!moduleEl && module === 'manual') {
-            console.log('📖 Creando módulo manual...');
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = 'manualModule';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>📖 Manual Interactivo</h2>
-                            <span class="module-breadcrumb">Dashboard / Manual Interactivo</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="manualContent">
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-                console.log('📦 Módulo manualModule creado');
-            }
-        }
-        
-        if (!moduleEl && module === 'ondasCruzadas') {
-            console.log('🌊 Creando módulo ondasCruzadas...');
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = 'ondasCruzadasModule';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>🌊 Modo Ondas Cruzadas</h2>
-                            <span class="module-breadcrumb">Dashboard / Ondas Cruzadas</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="ondasCruzadasContent">
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-                console.log('📦 Módulo ondasCruzadasModule creado');
-            }
-        }
-        
-        if (!moduleEl && module === 'tutor_generador') {
-            console.log('📦 Creando módulo tutor_generador...');
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = 'tutor_generadorModule';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>🧠 Generador NeuroAdaptativo</h2>
-                            <span class="module-breadcrumb">Dashboard / Generador Neuro</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="tutorGeneradorContent">
-                        <div id="tutorGeneradorContainer"></div>
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-            }
-        }
-        
-        if (!moduleEl && module === 'tutor') {
-            console.log('📦 Creando módulo tutor...');
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = 'tutorModule';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>🧠 Tutor NeuroAdaptativo</h2>
-                            <span class="module-breadcrumb">Dashboard / Tutor Neuro</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="tutorContent">
-                        <div id="tutorFullContainer"></div>
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-            }
-        }
-
-        if (!moduleEl && module === 'elipse') {
-            console.log('📦 Creando módulo elipse...');
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = 'elipseModule';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>🌌 Modo Elipse</h2>
-                            <span class="module-breadcrumb">Dashboard / Modo Elipse</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="elipseContent">
-                        <div id="elipseContainer"></div>
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-            }
-        }
-        
+        // Crear módulo si no existe
         if (!moduleEl) {
-            console.log('📦 Creando módulo genérico para:', module);
+            console.log(`📦 Creando módulo para: ${module}`);
             const mainContent = document.getElementById('mainContent');
             if (mainContent) {
                 moduleEl = document.createElement('div');
@@ -1109,21 +1184,21 @@ class UICore {
     }
 
     // ============================================================
-    // MOSTRAR PANTALLA DE CARGA PARA ELIPSE
+    // MOSTRAR CARGANDO TONOS - 🔥 NUEVO
     // ============================================================
 
-    _mostrarCargandoElipse() {
-        const container = document.getElementById('elipseContent');
+    _mostrarCargandoTonos() {
+        const container = document.getElementById('tonosContent');
         if (!container) return;
         container.innerHTML = `
             <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">🌌</div>
+                <div style="font-size:48px;margin-bottom:16px;">🎵</div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
                     <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
-                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Modo Elipse...</span>
+                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Estudio de Tonos...</span>
                 </div>
-                <p style="font-size:14px;color:var(--gray-light);">Preparando el entorno de aprendizaje expansivo</p>
-                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarElipse()" style="margin-top:12px;padding:8px 20px;">
+                <p style="font-size:14px;color:var(--gray-light);">Preparando el estudio de tonos</p>
+                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarTonos()" style="margin-top:12px;padding:8px 20px;">
                     <i class="fas fa-sync"></i> Reintentar
                 </button>
             </div>
@@ -1131,37 +1206,37 @@ class UICore {
     }
 
     // ============================================================
-    // REINTENTAR CARGAR ELIPSE
+    // REINTENTAR CARGAR TONOS - 🔥 NUEVO
     // ============================================================
 
-    _reintentarCargarElipse() {
-        console.log('🔄 Reintentando cargar Elipse...');
-        this._navegacionElipsePendiente = false;
-        this._registrarModuloElipse();
+    _reintentarCargarTonos() {
+        console.log('🔄 Reintentando cargar Tonos...');
+        this._navegacionTonosPendiente = false;
+        this._registrarModuloTonos();
         setTimeout(() => {
-            if (window.UIClipse) {
-                this._cargarContenidoModulo('elipse');
+            if (window.UITonos) {
+                this._cargarContenidoModulo('tonos');
             } else {
-                this.mostrarToast('⚠️ El módulo Elipse aún no está disponible. Recarga la página.', 'warning');
-                this._mostrarCargandoElipse();
+                this.mostrarToast('⚠️ El módulo Tonos aún no está disponible. Recarga la página.', 'warning');
+                this._mostrarCargandoTonos();
             }
         }, 500);
     }
 
     // ============================================================
-    // MOSTRAR ERROR DE ELIPSE
+    // ERROR DE TONOS - 🔥 NUEVO
     // ============================================================
 
-    _mostrarErrorElipse(mensaje) {
-        const container = document.getElementById('elipseContent');
+    _mostrarErrorTonos(mensaje) {
+        const container = document.getElementById('tonosContent');
         if (!container) return;
         container.innerHTML = `
             <div style="text-align:center;padding:60px 20px;color:var(--gray);">
                 <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Modo Elipse</h3>
+                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Estudio de Tonos</h3>
                 <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
                 <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarElipse()" style="padding:8px 20px;">
+                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarTonos()" style="padding:8px 20px;">
                         <i class="fas fa-sync"></i> Reintentar
                     </button>
                     <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
@@ -1608,6 +1683,16 @@ class UICore {
                     await window.UIManual.cargar(this);
                 } catch (err) {}
             }
+            if (window.UIBiblioteca) {
+                try {
+                    await window.UIBiblioteca.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UITonos) {   // 🔥 NUEVO
+                try {
+                    await window.UITonos.cargar(this);
+                } catch (err) {}
+            }
         });
         
         window.addEventListener('favoritoActualizado', () => {
@@ -1664,6 +1749,16 @@ class UICore {
             if (window.UIManual) {
                 try {
                     await window.UIManual.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UIBiblioteca) {
+                try {
+                    await window.UIBiblioteca.cargar(this);
+                } catch (err) {}
+            }
+            if (window.UITonos) {   // 🔥 NUEVO
+                try {
+                    await window.UITonos.cargar(this);
                 } catch (err) {}
             }
         });
@@ -1740,6 +1835,18 @@ class UICore {
             if (window.UIManual) {
                 try {
                     await window.UIManual.cargar(this);
+                } catch (err) {}
+            }
+            
+            if (window.UIBiblioteca) {
+                try {
+                    await window.UIBiblioteca.cargar(this);
+                } catch (err) {}
+            }
+            
+            if (window.UITonos) {   // 🔥 NUEVO
+                try {
+                    await window.UITonos.cargar(this);
                 } catch (err) {}
             }
             
@@ -2526,6 +2633,10 @@ class UICore {
         return abreviaturas[modelo] || modelo.split('/').pop() || modelo;
     }
 
+    // ============================================================
+    // ACTUALIZAR INDICADOR BALANCEADOR
+    // ============================================================
+
     _actualizarIndicadorBalanceador() {
         if (!this._indicadorModelo) {
             if (!document.getElementById('balanceadorModeloIndicator')) {
@@ -2553,7 +2664,7 @@ class UICore {
         const modelo = estado.modeloActivo || 'N/A';
         const esPrioritario = modelo === estado.modeloPrioritario;
         const modelosDisponibles = estado.modelosDisponibles || 0;
-        const totalModelos = estado.modelosTotal || 0;
+        const modelosTotal = estado.modelosTotal || 0;
 
         if (this._indicadorModelo.nombre) {
             const nombreCorto = this._isSmallMobile ? this._abreviarModelo(modelo) : modelo;
@@ -2568,7 +2679,7 @@ class UICore {
                 this._indicadorModelo.estado.style.color = 'var(--success)';
                 if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--success)';
             } else {
-                this._indicadorModelo.estado.textContent = this._isSmallMobile ? `🟡${modelosDisponibles}` : `🟡 ${modelosDisponibles}/${totalModelos}`;
+                this._indicadorModelo.estado.textContent = this._isSmallMobile ? `🟡${modelosDisponibles}` : `🟡 ${modelosDisponibles}/${modelosTotal}`;
                 this._indicadorModelo.estado.style.color = 'var(--warning)';
                 if (this._indicadorModelo.dot) this._indicadorModelo.dot.style.background = 'var(--warning)';
             }
@@ -2580,7 +2691,7 @@ class UICore {
             }
         }
 
-        const tooltip = `Modelo activo: ${modelo}\nPrioritario: ${estado.modeloPrioritario}\nDisponibles: ${modelosDisponibles}/${totalModelos}\n${esPrioritario ? '✅ Usando modelo prioritario' : '⚠️ Usando modelo alternativo'}`;
+        const tooltip = `Modelo activo: ${modelo}\nPrioritario: ${estado.modeloPrioritario}\nDisponibles: ${modelosDisponibles}/${modelosTotal}\n${esPrioritario ? '✅ Usando modelo prioritario' : '⚠️ Usando modelo alternativo'}`;
         if (this._indicadorModelo.nombre) this._indicadorModelo.nombre.title = tooltip;
         if (this._indicadorModelo.estado) this._indicadorModelo.estado.title = tooltip;
     }
@@ -2928,6 +3039,20 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         this.irAModulo('manual');
     }
 
+    irABiblioteca() {
+        this.irAModulo('biblioteca');
+    }
+
+    irATonos() {   // 🔥 NUEVO
+        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+        const esTonal = window.UITonos?._esTonal?.(idioma) || false;
+        if (!esTonal) {
+            this.mostrarToast(`⚠️ El idioma "${idioma}" no es tonal. Este módulo está diseñado para idiomas tonales como Chino, Tailandés o Vietnamita.`, 'warning');
+            return;
+        }
+        this.irAModulo('tonos');
+    }
+
     _actualizarBotonFamiliaCaracteres() {
         const btn = document.getElementById('btnGenerarFamiliaCaracteres');
         if (btn) {
@@ -3195,8 +3320,12 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
 window.uiCore = new UICore();
 window.ui = window.uiCore;
 
-console.log('✅ UI Core v18.32 - CON MANUAL INTERACTIVO');
+console.log('✅ UI Core v18.36 - COMPLETO CON MÓDULO TONOS REGISTRADO');
+console.log('  🎵 Módulo "tonos" registrado correctamente');
+console.log('  📚 Módulo "biblioteca v2.0" registrado correctamente');
 console.log('  📖 Módulo "manual" registrado correctamente');
+console.log('  📋 Agrupación por Temas: DISPONIBLE');
+console.log('  🔒 Ocultar traducción: DISPONIBLE');
 console.log('  🔥 Inicialización robusta con reintentos');
 console.log('  🔥 Recuperación de instancia global');
 console.log('  🔥 Carga con reintentos progresivos');

@@ -1,5 +1,5 @@
 // ============================================================
-// TUTOR NEURO V4.2 - CON CONTROL DE ANÁLISIS Y SEGUIMIENTO DE PROMESAS
+// TUTOR NEURO V4.3 - CORREGIDO: INICIALIZACIÓN NO BLOQUEANTE + MODO GUIADO
 // ============================================================
 
 class TutorNeuro extends Vigia {
@@ -136,6 +136,9 @@ class TutorNeuro extends Vigia {
             'C1': ['crítica', 'retórica', 'antropología', 'investigación', 'análisis', 'argumentación'],
             'C2': ['especialización', 'debate', 'oratoria', 'creación', 'literaria']
         };
+        
+        // 🔥 Flag para evitar múltiples inicializaciones
+        this._inicializandoTutor = false;
     }
 
     // ============================================================
@@ -434,7 +437,8 @@ class TutorNeuro extends Vigia {
         this._actualizarBadgeTutor();
         
         // 8. Mostrar intervención de bienvenida al modo guiado
-        this._agregarIntervencion({
+        // 🔥 CORREGIDO: Crear la intervención correctamente
+        const intervencionGuiado = {
             id: 'modo_guiado_activado_' + Date.now(),
             reglaId: 'modo_guiado_activado',
             prioridad: 'alta',
@@ -447,10 +451,15 @@ class TutorNeuro extends Vigia {
                 { id: 'ok', label: '✅ Entendido', accion: 'descartar' }
             ],
             timestamp: Date.now()
-        });
+        };
         
-        // 9. Forzar que el usuario vea el paso actual
-        this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+        // Agregar la intervención y mostrarla
+        this._intervencionesPendientes.push(intervencionGuiado);
+        this._ultimaIntervencion = Date.now();
+        this._contadorIntervencionesSesion++;
+        
+        // Mostrar la intervención (con manejo de errores)
+        this._mostrarIntervencion(intervencionGuiado);
     }
 
     // ============================================================
@@ -713,67 +722,82 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // INICIALIZACIÓN PRINCIPAL
+    // INICIALIZACIÓN PRINCIPAL - NO BLOQUEANTE
     // ============================================================
 
     async initTutor() {
+        // 🔥 SIEMPRE RETORNAR RÁPIDO - NO BLOQUEAR EL DASHBOARD
         if (this._tutorInitDone) return this;
-        
-        console.log('🧠 Inicializando Tutor de Aprendizaje NeuroAdaptativo v4.2...');
-        
-        try {
-            if (!this._initDone) {
-                await this.init();
-            }
-            
-            this._reglasIntervencion = this._inicializarReglas();
-            
-            await this._cargarConfiguracion();
-            
-            const modoGuardado = localStorage.getItem('pipeline_tutor_modo');
-            if (modoGuardado && Object.values(this._MODOS).includes(modoGuardado)) {
-                this._modoActual = modoGuardado;
-                this._configuracion.modo = modoGuardado;
-                console.log(`📌 Modo cargado: ${modoGuardado}`);
-            }
-            
-            await this._actualizarContextoUsuario();
-            await this._construirMapaAprendizaje();
-            
-            if (!this._eventosRegistrados) {
-                this._registrarEventos();
-                this._eventosRegistrados = true;
-            }
-            
-            this._iniciarCicloAnalisis();
-            
-            await this._sincronizarConLearningPath();
-            
-            // Si el modo es guiado, activar bloqueos
-            if (this._modoActual === this._MODOS.GUIADO) {
-                this._iniciarModoGuiado();
-            }
-            
-            if (this._modoActual !== this._MODOS.LIBRE) {
-                setTimeout(() => {
-                    this._recomendarSiguienteTema();
-                }, 3000);
-            } else {
-                console.log('📴 Modo Libre: El tutor no hará recomendaciones automáticas.');
-            }
-            
-            this._tutorInitDone = true;
-            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado correctamente');
-            
-            setTimeout(() => {
-                this._mostrarBienvenida();
-            }, 5000);
-            
-        } catch (error) {
-            console.error('❌ Error inicializando Tutor Neuro:', error);
-            this._tutorInitDone = true;
+        if (this._inicializandoTutor) {
+            console.log('⏳ Tutor ya está inicializándose en segundo plano...');
+            return this;
         }
         
+        this._inicializandoTutor = true;
+        console.log('🧠 Iniciando Tutor de Aprendizaje NeuroAdaptativo v4.3...');
+        
+        // Marcar como iniciado inmediatamente para no bloquear
+        this._tutorInitDone = true;
+        
+        // EJECUTAR TODO EN SEGUNDO PLANO
+        setTimeout(async () => {
+            try {
+                console.log('🧠 Tutor: Ejecutando inicialización en segundo plano...');
+                
+                if (!this._initDone) {
+                    await this.init();
+                }
+                
+                this._reglasIntervencion = this._inicializarReglas();
+                
+                await this._cargarConfiguracion();
+                
+                const modoGuardado = localStorage.getItem('pipeline_tutor_modo');
+                if (modoGuardado && Object.values(this._MODOS).includes(modoGuardado)) {
+                    this._modoActual = modoGuardado;
+                    this._configuracion.modo = modoGuardado;
+                    console.log(`📌 Modo cargado: ${modoGuardado}`);
+                }
+                
+                await this._actualizarContextoUsuario();
+                await this._construirMapaAprendizaje();
+                
+                if (!this._eventosRegistrados) {
+                    this._registrarEventos();
+                    this._eventosRegistrados = true;
+                }
+                
+                this._iniciarCicloAnalisis();
+                
+                await this._sincronizarConLearningPath();
+                
+                // Si el modo es guiado, activar bloqueos
+                if (this._modoActual === this._MODOS.GUIADO) {
+                    this._iniciarModoGuiado();
+                }
+                
+                if (this._modoActual !== this._MODOS.LIBRE) {
+                    setTimeout(() => {
+                        this._recomendarSiguienteTema();
+                    }, 3000);
+                } else {
+                    console.log('📴 Modo Libre: El tutor no hará recomendaciones automáticas.');
+                }
+                
+                setTimeout(() => {
+                    this._mostrarBienvenida();
+                }, 5000);
+                
+                this._inicializandoTutor = false;
+                console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.3 inicializado correctamente (en segundo plano)');
+                
+            } catch (error) {
+                console.error('❌ Error inicializando Tutor Neuro:', error);
+                this._inicializandoTutor = false;
+            }
+        }, 500);
+        
+        // RETORNAR INMEDIATAMENTE
         return this;
     }
 
@@ -839,7 +863,10 @@ class TutorNeuro extends Vigia {
                     
                     // Si es modo guiado, mostrar la intervención inmediatamente
                     if (this._modoActual === this._MODOS.GUIADO) {
-                        this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                        const pendientes = this._intervencionesPendientes;
+                        if (pendientes.length > 0) {
+                            this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                        }
                     }
                 }
 
@@ -1046,7 +1073,10 @@ class TutorNeuro extends Vigia {
                 
                 // En modo guiado, mostrar la intervención inmediatamente
                 if (this._modoActual === this._MODOS.GUIADO) {
-                    this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                    const pendientes = this._intervencionesPendientes;
+                    if (pendientes.length > 0) {
+                        this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                    }
                 }
             }
         });
@@ -1208,7 +1238,10 @@ class TutorNeuro extends Vigia {
             
             // En modo guiado, mostrar la intervención inmediatamente
             if (this._modoActual === this._MODOS.GUIADO) {
-                this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                const pendientes = this._intervencionesPendientes;
+                if (pendientes.length > 0) {
+                    this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                }
             }
         }
     }
@@ -1240,7 +1273,10 @@ class TutorNeuro extends Vigia {
                 
                 // En modo guiado, mostrar la intervención inmediatamente
                 if (this._modoActual === this._MODOS.GUIADO) {
-                    this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                    const pendientes = this._intervencionesPendientes;
+                    if (pendientes.length > 0) {
+                        this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                    }
                 }
             }
         }
@@ -1276,7 +1312,10 @@ class TutorNeuro extends Vigia {
             
             // En modo guiado, mostrar la intervención inmediatamente
             if (this._modoActual === this._MODOS.GUIADO) {
-                this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                const pendientes = this._intervencionesPendientes;
+                if (pendientes.length > 0) {
+                    this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                }
             }
         }
     }
@@ -1307,7 +1346,10 @@ class TutorNeuro extends Vigia {
             
             // En modo guiado, mostrar la intervención inmediatamente
             if (this._modoActual === this._MODOS.GUIADO) {
-                this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+                const pendientes = this._intervencionesPendientes;
+                if (pendientes.length > 0) {
+                    this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+                }
             }
         }
     }
@@ -1353,6 +1395,7 @@ class TutorNeuro extends Vigia {
             return;
         }
         
+        // Asegurar que opciones sea un array
         if (!Array.isArray(intervencion.opciones)) {
             console.warn('⚠️ opciones no es un array, convirtiendo:', intervencion.opciones);
             intervencion.opciones = [
@@ -1379,7 +1422,20 @@ class TutorNeuro extends Vigia {
     }
 
     _mostrarIntervencion(intervencion) {
-        const idx = this._intervencionesPendientes.findIndex(i => i.id === intervencion.id);
+        // 🔥 CORREGIDO: Verificar que intervencion sea válida
+        if (!intervencion || typeof intervencion !== 'object') {
+            console.warn('⚠️ Intervención inválida, omitiendo:', intervencion);
+            return;
+        }
+        
+        // Asegurar que tenga opciones
+        if (!Array.isArray(intervencion.opciones) || intervencion.opciones.length === 0) {
+            intervencion.opciones = [
+                { id: 'ok', label: '✅ Aceptar', accion: 'descartar' }
+            ];
+        }
+        
+        const idx = this._intervencionesPendientes.findIndex(i => i && i.id === intervencion.id);
         if (idx !== -1) {
             this._intervencionesPendientes.splice(idx, 1);
         }
@@ -1420,6 +1476,12 @@ class TutorNeuro extends Vigia {
     // ============================================================
 
     _mostrarNotificacionSuave(intervencion) {
+        // 🔥 CORREGIDO: Verificar que intervencion sea válida
+        if (!intervencion || typeof intervencion !== 'object') {
+            console.warn('⚠️ Intervención inválida para notificación suave');
+            return;
+        }
+        
         const toast = document.createElement('div');
         toast.style.cssText = `
             position: fixed;
@@ -1487,6 +1549,12 @@ class TutorNeuro extends Vigia {
     }
 
     _mostrarPanelLateral(intervencion) {
+        // 🔥 CORREGIDO: Verificar que intervencion sea válida
+        if (!intervencion || typeof intervencion !== 'object') {
+            console.warn('⚠️ Intervención inválida para panel lateral');
+            return;
+        }
+        
         let panel = document.getElementById('tutorPanel');
         
         if (!panel) {
@@ -1519,7 +1587,7 @@ class TutorNeuro extends Vigia {
         
         const historial = this._historialIntervenciones.slice(-5).map(i => 
             `<div style="font-size:11px;color:var(--gray-light);padding:4px 0;border-bottom:1px solid var(--light);">
-                ${i.mensaje.substring(0, 60)}${i.mensaje.length > 60 ? '...' : ''}
+                ${i.mensaje ? i.mensaje.substring(0, 60) + (i.mensaje.length > 60 ? '...' : '') : '(Mensaje vacío)'}
             </div>`
         ).join('');
         
@@ -1581,15 +1649,30 @@ class TutorNeuro extends Vigia {
     }
 
     _mostrarModalIntervencion(intervencion) {
-        if (window.uiCore && window.uiCore.confirm) {
-            const opciones = Array.isArray(intervencion.opciones) ? intervencion.opciones : [
+        // 🔥 CORREGIDO: Verificar que intervencion sea válida
+        if (!intervencion || typeof intervencion !== 'object') {
+            console.warn('⚠️ Intervención inválida para modal:', intervencion);
+            // Mostrar un mensaje genérico en su lugar
+            if (window.uiCore && window.uiCore.mostrarToast) {
+                window.uiCore.mostrarToast('🧠 El Tutor tiene una recomendación para ti.', 'info');
+            }
+            return;
+        }
+        
+        // Asegurar que tenga opciones
+        if (!Array.isArray(intervencion.opciones) || intervencion.opciones.length === 0) {
+            intervencion.opciones = [
                 { id: 'ok', label: '✅ Aceptar', accion: 'descartar' }
             ];
+        }
+        
+        if (window.uiCore && window.uiCore.confirm) {
+            const opciones = intervencion.opciones;
             const opcionesTexto = opciones.map(o => `${o.label}`).join(' · ');
             
             // En modo guiado, mostrar un modal más restrictivo
             if (this._modoActual === this._MODOS.GUIADO) {
-                const mensajeConBloqueo = `${intervencion.mensaje}\n\n🔒 Modo Guiado: No puedes ignorar esta recomendación.`;
+                const mensajeConBloqueo = `${intervencion.mensaje || 'Recomendación del Tutor'}\n\n🔒 Modo Guiado: No puedes ignorar esta recomendación.`;
                 window.uiCore.confirm(
                     `${mensajeConBloqueo}\n\n${opcionesTexto}`,
                     '🚀 Modo Guiado'
@@ -1604,7 +1687,7 @@ class TutorNeuro extends Vigia {
                 });
             } else {
                 window.uiCore.confirm(
-                    `${intervencion.mensaje}\n\n${opcionesTexto}`,
+                    `${intervencion.mensaje || 'Recomendación del Tutor'}\n\n${opcionesTexto}`,
                     '🧠 Tutor de Aprendizaje NeuroAdaptativo'
                 ).then(respuesta => {
                     const idx = opciones.findIndex(o => o.label === respuesta);
@@ -1614,7 +1697,7 @@ class TutorNeuro extends Vigia {
                 });
             }
         } else {
-            alert(intervencion.mensaje);
+            alert(intervencion.mensaje || 'Recomendación del Tutor');
         }
     }
 
@@ -1686,7 +1769,7 @@ class TutorNeuro extends Vigia {
                 break;
                 
             case 'añadir_a_lista':
-                if (intervencion.contexto?.palabra) {
+                if (intervencion?.contexto?.palabra) {
                     const palabra = intervencion.contexto.palabra;
                     try {
                         const lista = JSON.parse(localStorage.getItem('pipeline_lista_repaso') || '[]');
@@ -2404,7 +2487,10 @@ class TutorNeuro extends Vigia {
         
         // En modo guiado, mostrar la intervención inmediatamente
         if (this._modoActual === this._MODOS.GUIADO) {
-            this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+            const pendientes = this._intervencionesPendientes;
+            if (pendientes.length > 0) {
+                this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+            }
         }
     }
 
@@ -2518,7 +2604,10 @@ class TutorNeuro extends Vigia {
         
         // En modo guiado, mostrar la intervención inmediatamente
         if (this._modoActual === this._MODOS.GUIADO) {
-            this._mostrarIntervencion(this._intervencionesPendientes[this._intervencionesPendientes.length - 1]);
+            const pendientes = this._intervencionesPendientes;
+            if (pendientes.length > 0) {
+                this._mostrarIntervencion(pendientes[pendientes.length - 1]);
+            }
         }
     }
 
@@ -2678,43 +2767,70 @@ class TutorNeuro extends Vigia {
 }
 
 // ============================================================
-// INSTANCIA GLOBAL
+// INSTANCIA GLOBAL - INICIALIZACIÓN NO BLOQUEANTE
 // ============================================================
 
 window.tutorNeuro = new TutorNeuro();
 
-(async function initTutorNeuro() {
-    try {
-        if (window.vigia && window.vigia._initDone) {
-            await window.tutorNeuro.initTutor();
-            console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado automáticamente');
-        } else {
-            console.log('⏳ Esperando a que Vigía esté listo...');
-            const checkInterval = setInterval(async () => {
-                if (window.vigia && window.vigia._initDone) {
-                    clearInterval(checkInterval);
-                    await window.tutorNeuro.initTutor();
-                    console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 inicializado');
-                }
-            }, 1000);
+// 🔥 INICIALIZACIÓN NO BLOQUEANTE - NUNCA ESPERA AL DASHBOARD
+(function initTutorNeuroNoBloqueante() {
+    console.log('🧠 Tutor Neuro: Inicialización en segundo plano (NO BLOQUEANTE)');
+    
+    // Función que intenta inicializar sin bloquear
+    const intentarIniciar = async function() {
+        try {
+            // Esperar un poco para no competir con la carga inicial
+            await new Promise(r => setTimeout(r, 2000));
             
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                if (!window.tutorNeuro._tutorInitDone) {
-                    console.warn('⚠️ Timeout, iniciando Tutor de todas formas...');
-                    window.tutorNeuro.initTutor();
-                }
-            }, 10000);
+            // Verificar si vigía está listo
+            if (window.vigia && window.vigia._initDone) {
+                console.log('🧠 Tutor Neuro: Vigía listo, iniciando en segundo plano...');
+                await window.tutorNeuro.initTutor();
+                console.log('✅ Tutor Neuro inicializado correctamente');
+                return true;
+            } else {
+                console.log('⏳ Tutor Neuro: Vigía no listo, reintentando en 3s...');
+                return false;
+            }
+        } catch (error) {
+            console.warn('⚠️ Tutor Neuro: Error en inicialización:', error.message);
+            return false;
         }
-    } catch (error) {
-        console.warn('⚠️ Error inicializando Tutor Neuro:', error);
-        setTimeout(() => window.tutorNeuro.initTutor(), 3000);
-    }
+    };
+    
+    // Ejecutar con reintentos, sin bloquear
+    let intentos = 0;
+    const maxIntentos = 5;
+    
+    const ejecutarReintento = async function() {
+        if (intentos >= maxIntentos) {
+            console.warn('⚠️ Tutor Neuro: Máximo de reintentos alcanzado, se ejecutará en segundo plano sin esperar');
+            // Último intento en segundo plano
+            setTimeout(() => {
+                window.tutorNeuro.initTutor().catch(() => {});
+            }, 5000);
+            return;
+        }
+        
+        intentos++;
+        const exito = await intentarIniciar();
+        
+        if (!exito && intentos < maxIntentos) {
+            // Reintentar después de un delay
+            setTimeout(ejecutarReintento, 3000);
+        } else if (!exito) {
+            // Fallback: ejecutar sin esperar
+            console.log('🧠 Tutor Neuro: Ejecutando initTutor en segundo plano (sin await)');
+            window.tutorNeuro.initTutor().catch(() => {});
+        }
+    };
+    
+    // Iniciar el proceso (no bloqueante) - esperar 1s para que el dashboard cargue primero
+    setTimeout(ejecutarReintento, 1000);
 })();
 
-console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.2 - CON CONTROL DE ANÁLISIS');
-console.log('  🔥 Control de ejecuciones concurrentes en análisis');
-console.log('  🔥 Uso de setTimeout recursivo en lugar de setInterval');
-console.log('  🔥 Prevención de acumulación de llamadas');
-console.log('  🔥 Cola de análisis pendientes');
-console.log('  🎯 Todas las funcionalidades originales preservadas');
+console.log('✅ Tutor de Aprendizaje NeuroAdaptativo v4.3 - INICIALIZACIÓN NO BLOQUEANTE');
+console.log('  🚀 El Tutor se inicializa en segundo plano sin afectar el Dashboard');
+console.log('  🔥 La inicialización NO bloquea el renderizado');
+console.log('  🔥 Modo Guiado: Intervenciones correctamente formadas');
+console.log('  🎯 Dashboard visible inmediatamente');

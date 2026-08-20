@@ -1,37 +1,42 @@
 // ============================================================
-// APP v22.7 - DEFINITIVA CON PERSISTENCIA ASEGURADA
-// Y MODO ONDAS CRUZADAS - CORREGIDO
+// APP v23.5 - CON RECONEXIÓN AUTOMÁTICA DE VIGIA
 // ============================================================
 
 class App {
     constructor() {
+        // Flags de estado
         this.inicializada = false;
         this._iniciando = false;
         this._initDone = false;
         this._dbReady = false;
         this._registrando = false;
         this._guardandoDatos = false;
-        this._reintentosIdiomas = 0;
-        this._maxReintentosIdiomas = 5;
-        this._validandoIdioma = false;
         this._usuarioCargado = false;
         this._datosCargados = false;
         this._recuperandoDatos = false;
         this._esperandoDB = false;
-        this._tiempoEsperaDB = 0;
-        this._maxTiempoEsperaDB = 8000;
-        this._checkInterval = null;
-        this._intentosRecuperacion = 0;
-        this._maxIntentosRecuperacion = 5;
-        this._cargaOverlayMostrado = false;
         this._dbInicializada = false;
-        this._intentosDB = 0;
-        this._maxIntentosDB = 15;
         this._cargaCompletada = false;
         this._eventosGlobalesRegistrados = false;
-        this._seleccionModoTutorRegistro = 'flexible';
+        this._registroCompletado = false;
+        this._cargaMostrada = false;
+        this._registroOculto = false;
+        this._dashboardRenderizado = false;
+        this._modulosEsencialesListos = false;
+        this._dashboardMostrado = false;
         
-        // Control de verificación mensual de Groq
+        // Timeouts y reintentos
+        this._tiempoEsperaDB = 0;
+        this._maxTiempoEsperaDB = 5000;
+        this._intentosRecuperacion = 0;
+        this._maxIntentosRecuperacion = 3;
+        this._intentosDB = 0;
+        this._maxIntentosDB = 10;
+        this._reintentosIdiomas = 0;
+        this._maxReintentosIdiomas = 3;
+        this._cargaProgress = 0;
+        
+        // Control de verificacion mensual
         this._ULTIMA_VERIFICACION_KEY = 'pipeline_ultima_verificacion_groq';
         this._VERIFICACION_INTERVALO_MS = 30 * 24 * 60 * 60 * 1000;
         this._verificacionRealizada = false;
@@ -39,74 +44,90 @@ class App {
         this._verificandoRuta = false;
         this._verificandoTutor = false;
         
-        // Asegurar que el Modo Elipse existe globalmente
+        // Timers
+        this._cargaInterval = null;
+        this._cargaTimeout = null;
+        this._checkInterval = null;
+        this._recargaTimeout = null;
+        
+        // === NUEVO: Reconexión automática de Vigia ===
+        this._reconectandoVigia = false;
+        this._ultimaReconexionVigia = 0;
+        this._intervaloReconexionVigia = null;
+        this._reintentosVigia = 0;
+        this._maxReintentosVigia = 5;
+        
+        // Asegurar modos globales
         if (typeof modoElipse !== 'undefined' && modoElipse) {
             window.modoElipse = modoElipse;
         }
-        
-        // 🔥 MODO ONDAS CRUZADAS
         if (typeof modoOndasCruzadas !== 'undefined' && modoOndasCruzadas) {
             window.modoOndasCruzadas = modoOndasCruzadas;
         }
         if (typeof UIOndasCruzadas !== 'undefined' && UIOndasCruzadas) {
             window.UIOndasCruzadas = UIOndasCruzadas;
         }
-        
+
+        // Diccionarios de idiomas
         this._IDIOMAS_CONOCIDOS = {
-            'espaÃ±ol': 'es', 'espanol': 'es', 'castellano': 'es', 'spanish': 'es',
-            'inglÃ©s': 'en', 'ingles': 'en', 'english': 'en',
-            'chino': 'zh', 'mandarÃ­n': 'zh', 'mandarin': 'zh', 'chinese': 'zh',
-            'japonÃ©s': 'ja', 'japones': 'ja', 'japanese': 'ja',
+            'espanol': 'es', 'castellano': 'es', 'spanish': 'es',
+            'ingles': 'en', 'english': 'en',
+            'chino': 'zh', 'mandarin': 'zh', 'chinese': 'zh',
+            'japones': 'ja', 'japanese': 'ja',
             'coreano': 'ko', 'korean': 'ko',
-            'francÃ©s': 'fr', 'frances': 'fr', 'french': 'fr',
-            'alemÃ¡n': 'de', 'aleman': 'de', 'german': 'de',
+            'frances': 'fr', 'french': 'fr',
+            'aleman': 'de', 'german': 'de',
             'italiano': 'it', 'italian': 'it',
-            'portuguÃ©s': 'pt', 'portugues': 'pt', 'portuguese': 'pt',
+            'portugues': 'pt', 'portuguese': 'pt',
             'ruso': 'ru', 'russian': 'ru',
-            'Ã¡rabe': 'ar', 'arabe': 'ar', 'arabic': 'ar',
+            'arabe': 'ar', 'arabic': 'ar',
             'hindi': 'hi',
             'urdu': 'ur', 'persa': 'fa', 'farsi': 'fa', 'turco': 'tr', 'turkish': 'tr',
-            'vietnamita': 'vi', 'vietnamese': 'vi', 'tailandÃ©s': 'th', 'thai': 'th',
+            'vietnamita': 'vi', 'vietnamese': 'vi', 'tailandes': 'th', 'thai': 'th',
             'griego': 'el', 'greek': 'el', 'hebreo': 'he', 'hebrew': 'he',
             'polaco': 'pl', 'polish': 'pl', 'ucraniano': 'uk', 'ukrainian': 'uk',
-            'rumano': 'ro', 'romanian': 'ro', 'holandÃ©s': 'nl', 'dutch': 'nl',
+            'rumano': 'ro', 'romanian': 'ro', 'holandes': 'nl', 'dutch': 'nl',
             'sueco': 'sv', 'swedish': 'sv', 'noruego': 'no', 'norwegian': 'no',
-            'danÃ©s': 'da', 'danish': 'da', 'finlandÃ©s': 'fi', 'finnish': 'fi',
-            'irlandÃ©s': 'ga', 'irish': 'ga', 'galÃ©s': 'cy', 'welsh': 'cy',
+            'danes': 'da', 'danish': 'da', 'finlandes': 'fi', 'finnish': 'fi',
+            'irlandes': 'ga', 'irish': 'ga', 'gales': 'cy', 'welsh': 'cy',
             'checo': 'cs', 'czech': 'cs', 'eslovaco': 'sk', 'slovak': 'sk',
-            'hÃºngaro': 'hu', 'hungarian': 'hu', 'bÃºlgaro': 'bg', 'bulgarian': 'bg',
+            'hungaro': 'hu', 'hungarian': 'hu', 'bulgaro': 'bg', 'bulgarian': 'bg',
             'serbio': 'sr', 'serbian': 'sr', 'croata': 'hr', 'croatian': 'hr',
-            'estonio': 'et', 'estonian': 'et', 'letÃ³n': 'lv', 'latvian': 'lv',
-            'lituano': 'lt', 'lithuanian': 'lt', 'maltÃ©s': 'mt', 'maltese': 'mt',
-            'islandÃ©s': 'is', 'icelandic': 'is', 'albanÃ©s': 'sq', 'albanian': 'sq',
+            'estonio': 'et', 'estonian': 'et', 'leton': 'lv', 'latvian': 'lv',
+            'lituano': 'lt', 'lithuanian': 'lt', 'maltes': 'mt', 'maltese': 'mt',
+            'islandes': 'is', 'icelandic': 'is', 'albanes': 'sq', 'albanian': 'sq',
             'georgiano': 'ka', 'georgian': 'ka', 'armenio': 'hy', 'armenian': 'hy',
             'mongol': 'mn', 'mongolian': 'mn', 'tibetano': 'bo', 'tibetan': 'bo',
             'camboyano': 'km', 'khmer': 'km', 'laosiano': 'lo', 'lao': 'lo',
             'birmano': 'my', 'burmese': 'my', 'tagalo': 'tl', 'tagalog': 'tl',
             'indonesio': 'id', 'indonesian': 'id', 'malayo': 'ms', 'malay': 'ms',
-            'suajili': 'sw', 'swahili': 'sw', 'amÃ¡rico': 'am', 'amharic': 'am',
-            'hausa': 'ha', 'yoruba': 'yo', 'igbo': 'ig', 'zulÃº': 'zu', 'zulu': 'zu',
-            'afrikÃ¡ans': 'af', 'afrikaans': 'af'
+            'suajili': 'sw', 'swahili': 'sw', 'amarico': 'am', 'amharic': 'am',
+            'hausa': 'ha', 'yoruba': 'yo', 'igbo': 'ig', 'zulu': 'zu',
+            'afrikaans': 'af'
         };
 
         this._NOMBRES_IDIOMAS = {
-            'es': 'EspaÃ±ol', 'en': 'InglÃ©s', 'zh': 'Chino', 'ja': 'JaponÃ©s',
-            'ko': 'Coreano', 'fr': 'FrancÃ©s', 'de': 'AlemÃ¡n', 'it': 'Italiano',
-            'pt': 'PortuguÃ©s', 'ru': 'Ruso', 'ar': 'Ãrabe', 'hi': 'Hindi',
+            'es': 'Espanol', 'en': 'Ingles', 'zh': 'Chino', 'ja': 'Japones',
+            'ko': 'Coreano', 'fr': 'Frances', 'de': 'Aleman', 'it': 'Italiano',
+            'pt': 'Portugues', 'ru': 'Ruso', 'ar': 'Arabe', 'hi': 'Hindi',
             'ur': 'Urdu', 'fa': 'Persa', 'tr': 'Turco', 'vi': 'Vietnamita',
-            'th': 'TailandÃ©s', 'el': 'Griego', 'he': 'Hebreo', 'pl': 'Polaco',
-            'uk': 'Ucraniano', 'ro': 'Rumano', 'nl': 'HolandÃ©s', 'sv': 'Sueco',
-            'no': 'Noruego', 'da': 'DanÃ©s', 'fi': 'FinlandÃ©s', 'ga': 'IrlandÃ©s',
-            'cy': 'GalÃ©s', 'cs': 'Checo', 'sk': 'Eslovaco', 'hu': 'HÃºngaro',
-            'bg': 'BÃºlgaro', 'sr': 'Serbio', 'hr': 'Croata', 'et': 'Estonio',
-            'lv': 'LetÃ³n', 'lt': 'Lituano', 'mt': 'MaltÃ©s', 'is': 'IslandÃ©s',
-            'sq': 'AlbanÃ©s', 'ka': 'Georgiano', 'hy': 'Armenio', 'mn': 'Mongol',
+            'th': 'Tailandes', 'el': 'Griego', 'he': 'Hebreo', 'pl': 'Polaco',
+            'uk': 'Ucraniano', 'ro': 'Rumano', 'nl': 'Holandes', 'sv': 'Sueco',
+            'no': 'Noruego', 'da': 'Danes', 'fi': 'Finlandes', 'ga': 'Irlandes',
+            'cy': 'Gales', 'cs': 'Checo', 'sk': 'Eslovaco', 'hu': 'Hungaro',
+            'bg': 'Bulgaro', 'sr': 'Serbio', 'hr': 'Croata', 'et': 'Estonio',
+            'lv': 'Leton', 'lt': 'Lituano', 'mt': 'Maltes', 'is': 'Islandes',
+            'sq': 'Albanes', 'ka': 'Georgiano', 'hy': 'Armenio', 'mn': 'Mongol',
             'bo': 'Tibetano', 'km': 'Camboyano', 'lo': 'Laosiano', 'my': 'Birmano',
             'tl': 'Tagalo', 'id': 'Indonesio', 'ms': 'Malayo', 'sw': 'Suajili',
-            'am': 'AmÃ¡rico', 'ha': 'Hausa', 'yo': 'Yoruba', 'ig': 'Igbo',
-            'zu': 'ZulÃº', 'af': 'AfrikÃ¡ans'
+            'am': 'Amarico', 'ha': 'Hausa', 'yo': 'Yoruba', 'ig': 'Igbo',
+            'zu': 'Zulu', 'af': 'Afrikaans'
         };
     }
+
+    // ============================================================
+    // VERIFICACIONES GROQ
+    // ============================================================
 
     _debeEjecutarVerificacionGroq() {
         try {
@@ -128,11 +149,11 @@ class App {
     async _ejecutarVerificacionesGroq() {
         if (this._verificandoVersion || this._verificandoRuta || this._verificandoTutor) return;
         if (!this._debeEjecutarVerificacionGroq()) {
-            console.log('✅ Verificaciones Groq ya realizadas este mes');
+            console.log('Verificaciones Groq ya realizadas este mes');
             return;
         }
 
-        console.log('🚀 Ejecutando verificaciones mensuales de Groq...');
+        console.log('Ejecutando verificaciones mensuales de Groq...');
         this._verificandoVersion = true;
         this._verificandoRuta = true;
         this._verificandoTutor = true;
@@ -144,11 +165,11 @@ class App {
                     if (resultados && resultados.length > 0) {
                         const exitos = resultados.filter(r => r.exito).length;
                         if (exitos > 0 && window.uiCore) {
-                            window.uiCore.mostrarToast(`🔄 ${exitos} idioma(s) actualizado(s)`, 'success');
+                            window.uiCore.mostrarToast(exitos + ' idioma(s) actualizado(s)', 'success');
                         }
                     }
                 } catch (e) {
-                    console.warn('⚠️ Error verificando versiones:', e);
+                    console.warn('Error verificando versiones:', e);
                 }
             }
             this._verificandoVersion = false;
@@ -158,38 +179,42 @@ class App {
                     await window.LearningPath.generarRuta();
                 }
             } catch (e) {
-                console.warn('⚠️ Error generando ruta:', e);
+                console.warn('Error generando ruta:', e);
             }
             this._verificandoRuta = false;
 
             try {
-                if (window.tutorNeuro && window.tutorNeuro._recomendarSiguienteTema) {
+                if (window.tutorNeuro && typeof window.tutorNeuro._recomendarSiguienteTema === 'function') {
                     window.tutorNeuro._recomendarSiguienteTema();
                 }
             } catch (e) {
-                console.warn('⚠️ Error en recomendaciÃ³n del tutor:', e);
+                console.warn('Error en recomendacion del tutor:', e);
             }
             this._verificandoTutor = false;
 
             this._guardarFechaVerificacion();
             this._verificacionRealizada = true;
-            console.log('✅ Verificaciones mensuales completadas');
+            console.log('Verificaciones mensuales completadas');
 
         } catch (error) {
-            console.error('❌ Error en verificaciones:', error);
+            console.error('Error en verificaciones:', error);
             this._verificandoVersion = false;
             this._verificandoRuta = false;
             this._verificandoTutor = false;
         }
     }
 
-    _validarIdiomaLocal(texto, tipo = 'nativo') {
+    // ============================================================
+    // VALIDACION DE IDIOMAS
+    // ============================================================
+
+    _validarIdiomaLocal(texto, tipo) {
         if (!texto || texto.trim().length < 2) {
             return {
                 original: texto || '',
                 idiomaFinal: texto || '',
                 valido: false,
-                mensaje: '❌ Por favor, escribe un idioma vÃ¡lido.',
+                mensaje: 'Por favor, escribe un idioma valido.',
                 corregido: false
             };
         }
@@ -205,7 +230,7 @@ class App {
                 original: texto.trim(),
                 idiomaFinal: nombre,
                 valido: true,
-                mensaje: `✅ ${nombre} (${codigo})`,
+                mensaje: nombre + ' (' + codigo + ')',
                 corregido: false,
                 codigo: codigo
             };
@@ -231,7 +256,7 @@ class App {
                 original: texto.trim(),
                 idiomaFinal: nombre,
                 valido: true,
-                mensaje: `✏️ Â¿Quisiste decir "${nombre}"?`,
+                mensaje: 'Quisiste decir "' + nombre + '"?',
                 corregido: true,
                 codigo: codigo,
                 sugerido: mejorMatch
@@ -242,7 +267,7 @@ class App {
             original: texto.trim(),
             idiomaFinal: texto.trim(),
             valido: false,
-            mensaje: `❌ "${texto.trim()}" no es un idioma vÃ¡lido. Prueba con: EspaÃ±ol, InglÃ©s, Chino, etc.`,
+            mensaje: '"' + texto.trim() + '" no es un idioma valido.',
             corregido: false
         };
     }
@@ -254,7 +279,7 @@ class App {
         const normalize = (str) => {
             return str.normalize('NFKD')
                 .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃ±Ã¼ÃÃ‰ÃÃ“ÃšÃ‘Ãœ\s]/g, '')
+                .replace(/[^a-zA-Z\s]/g, '')
                 .toLowerCase();
         };
         
@@ -289,26 +314,444 @@ class App {
         return texto.charAt(0).toUpperCase() + texto.slice(1);
     }
 
+    // ============================================================
+    // PANTALLA DE CARGA
+    // ============================================================
+
+    _ocultarPantallaRegistro() {
+        if (this._registroOculto) return;
+        this._registroOculto = true;
+        
+        const registroScreen = document.getElementById('registroScreen');
+        if (registroScreen) {
+            registroScreen.style.display = 'none';
+            registroScreen.classList.remove('active');
+            registroScreen.style.opacity = '0';
+            registroScreen.style.pointerEvents = 'none';
+        }
+        
+        const form = document.getElementById('registroForm');
+        if (form) {
+            form.style.display = 'none';
+            form.style.opacity = '0';
+            form.style.pointerEvents = 'none';
+        }
+    }
+
+    _mostrarPantallaCargaInmediata(mensaje) {
+        this._ocultarPantallaRegistro();
+        
+        if (this._cargaMostrada) {
+            if (mensaje) {
+                const msgEl = document.getElementById('cargaMensaje');
+                if (msgEl) msgEl.textContent = mensaje;
+            }
+            return;
+        }
+        
+        this._cargaMostrada = true;
+        this._cargaProgress = 0;
+        
+        const oldOverlay = document.getElementById('cargaOverlay');
+        if (oldOverlay) {
+            oldOverlay.remove();
+        }
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'cargaOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(108, 92, 231, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s ease;
+            padding: 20px;
+            font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+        `;
+
+        overlay.innerHTML = `
+            <div style="
+                background: white;
+                border-radius: 28px;
+                padding: 35px 40px;
+                max-width: 460px;
+                width: 100%;
+                text-align: center;
+                box-shadow: 0 40px 100px rgba(0,0,0,0.35);
+                animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            ">
+                <div style="
+                    width: 72px;
+                    height: 72px;
+                    margin: 0 auto 16px;
+                    background: linear-gradient(135deg, #6C5CE7, #A29BFE);
+                    border-radius: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    color: white;
+                    box-shadow: 0 12px 48px rgba(108,92,231,0.35);
+                    animation: pulse 2s ease-in-out infinite;
+                ">
+                    <i class="fas fa-brain"></i>
+                </div>
+                
+                <h2 style="
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: var(--dark, #2D3436);
+                    margin: 0 0 4px 0;
+                ">
+                    ${mensaje || 'Iniciando...'}
+                </h2>
+                
+                <p style="
+                    font-size: 13px;
+                    color: var(--gray, #636E72);
+                    margin: 0 0 16px 0;
+                    min-height: 20px;
+                ">
+                    <span id="cargaMensaje">Preparando tu experiencia...</span>
+                </p>
+                
+                <div style="
+                    width: 100%;
+                    height: 6px;
+                    background: var(--bg, #f0f0f0);
+                    border-radius: 3px;
+                    overflow: hidden;
+                    margin-bottom: 10px;
+                ">
+                    <div id="cargaProgressBar" style="
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(90deg, #6C5CE7, #00CEC9, #00B894);
+                        border-radius: 3px;
+                        transition: width 0.6s ease;
+                    "></div>
+                </div>
+                
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    color: var(--gray-light, #b2bec3);
+                ">
+                    <span id="cargaModuloActual">Inicializando...</span>
+                    <span id="cargaPorcentaje">0%</span>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        this._iniciarAnimacionCarga();
+    }
+
+    _iniciarAnimacionCarga() {
+        let tiempo = 0;
+        
+        if (this._cargaInterval) clearInterval(this._cargaInterval);
+        if (this._cargaTimeout) clearTimeout(this._cargaTimeout);
+
+        this._cargaInterval = setInterval(() => {
+            tiempo++;
+            
+            let pct = Math.min(85, tiempo * 15);
+            
+            if (this._modulosEsencialesListos) {
+                pct = Math.min(100, pct + 15);
+            }
+            
+            if (this._dashboardRenderizado) {
+                pct = 100;
+            }
+
+            this._cargaProgress = Math.min(100, pct);
+            
+            const barra = document.getElementById('cargaProgressBar');
+            const pctEl = document.getElementById('cargaPorcentaje');
+            if (barra) barra.style.width = this._cargaProgress + '%';
+            if (pctEl) pctEl.textContent = Math.round(this._cargaProgress) + '%';
+
+            const msgEl = document.getElementById('cargaMensaje');
+            if (msgEl) {
+                if (this._cargaProgress < 30) {
+                    msgEl.textContent = 'Preparando sistema...';
+                } else if (this._cargaProgress < 60) {
+                    msgEl.textContent = 'Cargando tu perfil...';
+                } else if (this._cargaProgress < 85) {
+                    msgEl.textContent = 'Preparando dashboard...';
+                } else {
+                    msgEl.textContent = 'Listo!';
+                }
+            }
+
+            if (this._cargaProgress >= 100 && this._dashboardRenderizado) {
+                this._ocultarPantallaCargaYMostrarDashboard();
+            }
+        }, 200);
+
+        this._cargaTimeout = setTimeout(() => {
+            console.log('⏰ Timeout de carga (3s), mostrando dashboard...');
+            if (this._cargaInterval) {
+                clearInterval(this._cargaInterval);
+                this._cargaInterval = null;
+            }
+            this._cargaCompletada = true;
+            this._modulosEsencialesListos = true;
+            this._dashboardRenderizado = true;
+            this._ocultarPantallaCargaYMostrarDashboard();
+        }, 3000);
+    }
+
+    _ocultarPantallaCargaYMostrarDashboard() {
+        if (this._cargaInterval) {
+            clearInterval(this._cargaInterval);
+            this._cargaInterval = null;
+        }
+        if (this._cargaTimeout) {
+            clearTimeout(this._cargaTimeout);
+            this._cargaTimeout = null;
+        }
+
+        const barra = document.getElementById('cargaProgressBar');
+        const pctEl = document.getElementById('cargaPorcentaje');
+        if (barra) barra.style.width = '100%';
+        if (pctEl) pctEl.textContent = '100%';
+
+        const overlay = document.getElementById('cargaOverlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.4s ease';
+            setTimeout(function() {
+                if (overlay.parentNode) overlay.remove();
+            }, 400);
+        }
+
+        this._cargaMostrada = false;
+        this._cargaCompletada = true;
+
+        this._mostrarDashboard();
+        
+        // === RECONEXIÓN DE VIGIA DESPUÉS DE MOSTRAR DASHBOARD ===
+        setTimeout(() => {
+            this._reconectarVigiaAutomaticamente();
+        }, 500);
+    }
+
+    // ============================================================
+    // MOSTRAR DASHBOARD
+    // ============================================================
+
+    _mostrarDashboard() {
+        if (this._dashboardMostrado) return;
+        this._dashboardMostrado = true;
+        
+        const registroScreen = document.getElementById('registroScreen');
+        const mainScreen = document.getElementById('mainScreen');
+        
+        if (registroScreen) {
+            registroScreen.style.display = 'none';
+            registroScreen.classList.remove('active');
+            registroScreen.style.opacity = '0';
+            registroScreen.style.pointerEvents = 'none';
+        }
+        
+        if (mainScreen) {
+            mainScreen.style.display = 'block';
+            mainScreen.classList.add('active');
+            mainScreen.scrollTop = 0;
+        }
+
+        const usuario = this._getUsuarioLocalStorage();
+        if (usuario) {
+            const userName = document.getElementById('userName');
+            if (userName) userName.textContent = usuario.nombre;
+            const dashUser = document.getElementById('dashUserName');
+            if (dashUser) dashUser.textContent = usuario.nombre;
+        }
+
+        console.log('✅ Dashboard mostrado correctamente');
+    }
+
+    // ============================================================
+    // RECONEXIÓN AUTOMÁTICA DE VIGIA
+    // ============================================================
+
+    async _reconectarVigiaAutomaticamente() {
+        if (this._reconectandoVigia) {
+            console.log('⏳ Reconexión de Vigia ya en progreso...');
+            return;
+        }
+        
+        if (Date.now() - this._ultimaReconexionVigia < 3000) {
+            console.log('⏳ Demasiado pronto para reconectar Vigia (throttle)');
+            return;
+        }
+        
+        if (this._reintentosVigia >= this._maxReintentosVigia) {
+            console.log('⚠️ Máximos reintentos de Vigia alcanzados (' + this._maxReintentosVigia + '). Esperando 60s...');
+            setTimeout(() => {
+                this._reintentosVigia = 0;
+                this._reconectarVigiaAutomaticamente();
+            }, 60000);
+            return;
+        }
+        
+        try {
+            if (typeof window.vigia === 'undefined' || !window.vigia) {
+                console.log('⚠️ Vigia no disponible');
+                return;
+            }
+            
+            if (window.vigia.enLinea === true) {
+                console.log('✅ Vigia ya está conectado');
+                this._reintentosVigia = 0;
+                return;
+            }
+            
+            this._reconectandoVigia = true;
+            this._ultimaReconexionVigia = Date.now();
+            this._reintentosVigia++;
+            
+            console.log('🔄 Intentando reconexión automática de Vigia (intento ' + this._reintentosVigia + '/' + this._maxReintentosVigia + ')...');
+            
+            let conectado = false;
+            
+            if (typeof window.vigia.iniciar === 'function') {
+                await window.vigia.iniciar();
+                conectado = true;
+            } else if (typeof window.vigia.conectar === 'function') {
+                await window.vigia.conectar();
+                conectado = true;
+            } else if (typeof window.vigia.init === 'function') {
+                await window.vigia.init();
+                conectado = true;
+            }
+            
+            if (conectado) {
+                console.log('✅ Vigia reconectado automáticamente');
+                this._reintentosVigia = 0;
+                this._actualizarIndicadorVigia();
+                
+                if (window.uiCore && window.uiCore.mostrarToast) {
+                    window.uiCore.mostrarToast('🔄 Vigia reconectado automáticamente', 'success');
+                }
+            } else {
+                console.warn('⚠️ No se encontró método para reconectar Vigia');
+                if (window.uiCore && window.uiCore._handleReconectarVigia) {
+                    await window.uiCore._handleReconectarVigia();
+                    console.log('✅ Vigia reconectado via uiCore');
+                    this._reintentosVigia = 0;
+                    this._actualizarIndicadorVigia();
+                } else {
+                    setTimeout(() => {
+                        this._reconectarVigiaAutomaticamente();
+                    }, 5000);
+                }
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Error en reconexión automática de Vigia:', error.message);
+            setTimeout(() => {
+                this._reconectarVigiaAutomaticamente();
+            }, 5000);
+        } finally {
+            this._reconectandoVigia = false;
+        }
+    }
+
+    _actualizarIndicadorVigia() {
+        try {
+            const dot = document.getElementById('vigiaActivityDot');
+            const bar = document.getElementById('vigiaActivityBar');
+            const tooltip = document.getElementById('vigiaTooltip');
+            const value = document.getElementById('vigiaActivityValue');
+            
+            if (dot) {
+                dot.className = 'activity-status-dot online';
+            }
+            
+            if (bar) {
+                bar.className = 'activity-bar-fill vigia online';
+                bar.style.width = '85%';
+            }
+            
+            if (tooltip) {
+                tooltip.textContent = 'Vigía: 🟢 Conectado automáticamente';
+            }
+            
+            if (value) {
+                value.textContent = '85%';
+            }
+            
+            const indicator = document.getElementById('balanceadorModeloIndicator');
+            if (indicator) {
+                const dotEl = indicator.querySelector('.balanceador-dot');
+                const nombre = indicator.querySelector('.balanceador-nombre');
+                const estado = indicator.querySelector('.balanceador-estado');
+                
+                if (dotEl) {
+                    dotEl.className = 'balanceador-dot prioritario';
+                }
+                if (nombre) {
+                    nombre.className = 'balanceador-nombre prioritario';
+                    nombre.textContent = 'Vigia Auto';
+                }
+                if (estado) {
+                    estado.className = 'balanceador-estado prioritario';
+                    estado.textContent = '✅ Conectado';
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ Error actualizando indicador de Vigia:', e);
+        }
+    }
+
+    // ============================================================
+    // INICIALIZACION PRINCIPAL
+    // ============================================================
+
     async init() {
         if (this._iniciando || this._initDone) return;
         this._iniciando = true;
 
         try {
-            console.log('🧠 Iniciando Pipeline v22.7 con persistencia asegurada y Ondas Cruzadas...');
+            console.log('🚀 Iniciando Pipeline v23.5 - Con reconexión automática de Vigia...');
 
-            this._mostrarPantallaCarga('Inicializando...');
+            const usuarioLocal = this._getUsuarioLocalStorage();
+            
+            if (usuarioLocal && usuarioLocal.nombre) {
+                this._mostrarPantallaCargaInmediata('Hola ' + usuarioLocal.nombre);
+            } else {
+                this._mostrarPantallaCargaInmediata('Iniciando...');
+            }
 
             console.log('📀 Inicializando Database...');
             this._esperandoDB = true;
             this._dbReady = false;
             
             try {
-                await this._inicializarDBConReintentos();
+                await Promise.race([
+                    this._inicializarDBConReintentos(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout DB (3s)')), 3000)
+                    )
+                ]);
                 this._dbReady = true;
                 this._dbInicializada = true;
-                console.log('✅ Database inicializada correctamente');
+                console.log('✅ Database inicializada');
             } catch (dbError) {
-                console.error('❌ Error crÃ­tico inicializando DB:', dbError);
+                console.warn('⚠️ Error inicializando DB, usando localStorage:', dbError.message);
                 this._dbReady = false;
                 this._dbInicializada = false;
             }
@@ -323,10 +766,6 @@ class App {
                 }
             }
 
-            if (window.validadorIdiomas) {
-                console.log('✅ Validador de idiomas disponible');
-            }
-
             let usuario = null;
             let apiKey = null;
             let idiomaActivoPersistido = null;
@@ -335,7 +774,7 @@ class App {
                 try {
                     usuario = await db.getUsuario();
                     if (usuario && usuario.nombre) {
-                        console.log('✅ Usuario encontrado en IndexedDB:', usuario.nombre);
+                        console.log('👤 Usuario encontrado en IndexedDB:', usuario.nombre);
                         this._usuarioCargado = true;
                         if (usuario.idiomaActivo) {
                             idiomaActivoPersistido = usuario.idiomaActivo;
@@ -371,126 +810,114 @@ class App {
                 apiKey = localStorage.getItem('pipeline_api_key');
             }
 
-            if (usuario && usuario.nombre) {
-                console.log('👤 Usuario cargado:', usuario.nombre);
-                
-                if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0) {
-                    await this._forzarCargaIdiomas(usuario);
-                    
-                    if (idiomaActivoPersistido) {
-                        const existe = usuario.idiomasObjetivo.some(i => i.idioma === idiomaActivoPersistido);
-                        if (existe) {
-                            console.log(`📍 Activando idioma persistido: ${idiomaActivoPersistido}`);
-                            await gestorIdiomas.cambiarIdioma(idiomaActivoPersistido);
-                        } else if (usuario.idiomasObjetivo.length > 0) {
-                            await gestorIdiomas.cambiarIdioma(usuario.idiomasObjetivo[0].idioma);
-                        }
-                    } else if (usuario.idiomasObjetivo.length > 0) {
-                        await gestorIdiomas.cambiarIdioma(usuario.idiomasObjetivo[0].idioma);
-                    }
-                } else {
-                    console.warn('⚠️ Usuario sin idiomas objetivo');
-                }
-                
-                this._registrarEventosGlobales();
-                await this._iniciarModulosYUI(usuario);
-                this._showMainScreen(usuario);
-                this._setupPersistenciaCritica();
-                this._setupOrientationHandler();
-                
-                if (window.UICaracteres) {
-                    try {
-                        await window.UICaracteres.init(window.uiCore);
-                    } catch (e) {}
-                }
-                
-                if (window.LearningPath && typeof window.LearningPath.init === 'function') {
-                    try {
-                        await window.LearningPath.init(window.uiCore);
-                    } catch (e) {}
-                }
-                
-                if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
-                    try {
-                        await window.tutorNeuro.initTutor();
-                    } catch (e) {}
-                }
-                
-                // 🌌 INICIALIZAR MODO ELIPSE CON CARGA DE DATOS
-                if (window.modoElipse && typeof window.modoElipse.init === 'function') {
-                    try {
-                        await window.modoElipse.init(window.uiCore);
-                        console.log('🌌 Modo Elipse inicializado');
-                        
-                        if (typeof window.modoElipse.cargarDatos === 'function') {
-                            const datos = await window.modoElipse.cargarDatos();
-                            console.log(`🌌 Datos del Modo Elipse cargados: ${datos.length} ondas`);
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ Error inicializando Modo Elipse:', e);
-                    }
-                }
-                
-                // 🔥 INICIALIZAR MODO ONDAS CRUZADAS
-                if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-                    try {
-                        await window.modoOndasCruzadas.init(window.uiCore);
-                        console.log('🌊 Modo Ondas Cruzadas inicializado');
-                    } catch (e) {
-                        console.warn('⚠️ Error inicializando Modo Ondas Cruzadas:', e);
-                    }
-                }
-                
-                if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                    try {
-                        await window.UIOndasCruzadas.init(window.uiCore);
-                        console.log('🌊 UI Ondas Cruzadas inicializada');
-                    } catch (e) {
-                        console.warn('⚠️ Error inicializando UI Ondas Cruzadas:', e);
-                    }
-                }
-                
-                // Inicializar UI Elipse
-                if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-                    try {
-                        await window.UIClipse.init(window.uiCore);
-                        console.log('🌌 UI Elipse inicializada');
-                    } catch (e) {
-                        console.warn('⚠️ Error inicializando UI Elipse:', e);
-                    }
-                }
-                
-                setTimeout(async () => {
-                    await this._ejecutarVerificacionesGroq();
-                }, 5000);
-                
-                setTimeout(async () => {
-                    if (window.UIBackup) {
-                        try {
-                            await window.UIBackup.verificarBackupAutomatico(true);
-                        } catch (e) {}
-                    }
-                }, 5000);
-                
-                setTimeout(() => {
-                    this._actualizarUICompleta();
-                    this._datosCargados = true;
-                    this._cargaCompletada = true;
-                    this._ocultarPantallaCarga();
-                }, 500);
-                
-                this.inicializada = true;
-                this._initDone = true;
-                console.log('✅ App iniciada correctamente con Ondas Cruzadas');
+            if (!usuario || !usuario.nombre || !usuario.idiomasObjetivo || usuario.idiomasObjetivo.length === 0) {
+                console.log('👤 No hay usuario valido, mostrando registro');
+                this._showRegisterScreen();
+                this._iniciando = false;
                 return;
             }
 
-            console.log('👤 No hay usuario, mostrando registro');
-            this._ocultarPantallaCarga();
-            this._showRegisterScreen();
+            console.log('👤 Usuario cargado:', usuario.nombre);
+            
+            try {
+                await Promise.race([
+                    this._forzarCargaIdiomas(usuario),
+                    new Promise((resolve) => setTimeout(resolve, 2000))
+                ]);
+            } catch (e) {
+                console.warn('⚠️ Error cargando idiomas:', e);
+            }
+            
+            if (idiomaActivoPersistido && usuario.idiomasObjetivo) {
+                const existe = usuario.idiomasObjetivo.some(function(i) { return i.idioma === idiomaActivoPersistido; });
+                if (existe && window.gestorIdiomas) {
+                    try {
+                        console.log('📍 Activando idioma persistido:', idiomaActivoPersistido);
+                        await gestorIdiomas.cambiarIdioma(idiomaActivoPersistido);
+                    } catch (e) {
+                        console.warn('⚠️ Error activando idioma:', e);
+                    }
+                } else if (usuario.idiomasObjetivo.length > 0 && window.gestorIdiomas) {
+                    try {
+                        await gestorIdiomas.cambiarIdioma(usuario.idiomasObjetivo[0].idioma);
+                    } catch (e) {}
+                }
+            }
+            
+            this._registrarEventosGlobales();
+            
+            if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
+                try {
+                    await Promise.race([
+                        window.uiCore.init(),
+                        new Promise((resolve) => setTimeout(resolve, 1500))
+                    ]);
+                    console.log('✅ UI Core inicializado');
+                } catch (e) {
+                    console.warn('⚠️ UI Core fallo:', e);
+                }
+            }
+            
+            if (window.pipeline) {
+                try {
+                    await Promise.race([
+                        pipeline.cargarFrasesPorIdioma(gestorIdiomas?.getIdiomaActivo() || 'es'),
+                        new Promise((resolve) => setTimeout(resolve, 1500))
+                    ]);
+                    await pipeline.cargarProgreso();
+                    console.log('✅ Pipeline cargado');
+                } catch (e) {
+                    console.warn('⚠️ Pipeline fallo:', e);
+                }
+            }
+            
+            this._modulosEsencialesListos = true;
+            
+            console.log('📊 Renderizando dashboard...');
+            try {
+                await this._renderizarDashboardInmediato(usuario);
+                this._dashboardRenderizado = true;
+                this._datosCargados = true;
+                console.log('✅ Dashboard renderizado');
+            } catch (e) {
+                console.error('❌ Error renderizando dashboard:', e);
+                this._dashboardRenderizado = true;
+            }
+            
+            console.log('📊 Mostrando dashboard...');
+            this._ocultarPantallaCargaYMostrarDashboard();
+            
+            this._iniciarModulosEnSegundoPlano(usuario);
+            
+            // === INTERVALO DE RECONEXIÓN PERIÓDICA DE VIGIA ===
+            if (this._intervaloReconexionVigia) {
+                clearInterval(this._intervaloReconexionVigia);
+            }
+            this._intervaloReconexionVigia = setInterval(() => {
+                if (window.vigia && !window.vigia.enLinea) {
+                    console.log('🔄 Vigia desconectado (intervalo), intentando reconexión automática...');
+                    this._reconectarVigiaAutomaticamente();
+                }
+            }, 30000);
+            
+            setTimeout(() => {
+                if (window.app) window.app._ejecutarVerificacionesGroq();
+            }, 3000);
+            
+            setTimeout(() => {
+                if (window.UIBackup) {
+                    try {
+                        window.UIBackup.verificarBackupAutomatico(true);
+                    } catch (e) {}
+                }
+            }, 4000);
+            
+            this.inicializada = true;
+            this._initDone = true;
+            console.log('✅ App iniciada correctamente');
 
         } catch (error) {
-            console.error('❌ Error crÃ­tico en init:', error);
+            console.error('❌ Error en init:', error);
             const localUser = this._getUsuarioLocalStorage();
             if (localUser && localUser.nombre) {
                 try {
@@ -498,7 +925,6 @@ class App {
                     return;
                 } catch (e) {}
             }
-            this._ocultarPantallaCarga();
             this._showError(error);
         } finally {
             this._iniciando = false;
@@ -509,329 +935,242 @@ class App {
         }
     }
 
-    _registrarEventosGlobales() {
-        if (this._eventosGlobalesRegistrados) return;
-        this._eventosGlobalesRegistrados = true;
-        
-        console.log('🔗 Registrando eventos globales...');
-        
-        window.addEventListener('versionIdiomaActualizada', (e) => {
-            if (window.UITemas) setTimeout(() => window.UITemas._renderTemas(), 300);
-            if (window.UIConfig && window.UIConfig._recargarConfiguracion) {
-                setTimeout(() => window.UIConfig._recargarConfiguracion(), 500);
-            }
-        });
-        
-        window.addEventListener('idiomaCambiado', async (e) => {
-            const idioma = e.detail?.idioma;
-            console.log(`📢 App recibiÃ³ idiomaCambiado: ${idioma}`);
+    // ============================================================
+    // RENDERIZAR DASHBOARD INMEDIATO
+    // ============================================================
+
+    async _renderizarDashboardInmediato(usuario) {
+        try {
+            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             
-            if (window.UITemas) {
-                window.UITemas._temaCompletadoCache = {};
-                window.UITemas._nivelDesbloqueadoCache = {};
-                window.UITemas._temasCompletadosPorIdioma = {};
-            }
-            
-            await this._actualizarUICompleta();
-            this._guardarDatosCriticos();
-            
-            if (window.vigiaGramatical) {
+            let stats = { totalFrases: 0, totalPalabras: 0, progreso: 0, neuroScore: 0 };
+            if (this._dbReady && db && db.db) {
                 try {
-                    await window.vigiaGramatical.initGramatical();
-                    await window.vigiaGramatical._actualizarEdadGramatical(idioma);
-                } catch (e) {}
-            }
-            
-            if (window.UICaracteres && window.UICaracteres.estaDisponible()) {
-                try {
-                    await window.UICaracteres.cargar(window.uiCore);
-                } catch (e) {}
-            }
-            
-            if (window.LearningPath) {
-                setTimeout(async () => {
-                    try {
-                        await window.LearningPath.generarRuta(true);
-                    } catch (e) {}
-                }, 2000);
-            }
-            
-            if (window.tutorNeuro && window.tutorNeuro._recomendarSiguienteTema) {
-                setTimeout(() => {
-                    try {
-                        window.tutorNeuro._recomendarSiguienteTema();
-                    } catch (e) {}
-                }, 3000);
-            }
-            
-            if (window.UITemas) {
-                setTimeout(() => window.UITemas._renderTemas(), 300);
-            }
-            
-            // 🌌 RECARGAR MÃ“DULO ELIPSE
-            if (window.UIClipse) {
-                setTimeout(() => {
-                    try {
-                        window.UIClipse.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
-            }
-            
-            // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS - FORZAR RECARGA COMPLETA
-            if (window.UIOndasCruzadas) {
-                try {
-                    console.log('🌊 Forzando recarga de Ondas Cruzadas por cambio de idioma...');
-                    // Marcar datos como no cargados
-                    window.UIOndasCruzadas._datosCargados = false;
-                    // Recargar datos y renderizar
-                    await window.UIOndasCruzadas._cargarDatos();
-                    window.UIOndasCruzadas._renderizarPanel();
-                } catch (error) {
-                    console.warn('⚠️ Error recargando Ondas Cruzadas:', error);
+                    stats = await Promise.race([
+                        db.obtenerEstadisticasNeuro(idiomaActivo),
+                        new Promise((resolve) => setTimeout(() => resolve(stats), 1000))
+                    ]);
+                } catch (e) {
+                    console.warn('⚠️ Error obteniendo stats:', e);
                 }
             }
-        });
-        
-        window.addEventListener('modoInversoChange', async () => {
-            if (window.UIStudy && window.UIStudy._renderizarFraseInteractiva) {
-                window.UIStudy._renderizarFraseInteractiva();
-            }
-            if (window.uiCore && window.uiCore._actualizarModoInversoBtn) {
-                window.uiCore._actualizarModoInversoBtn();
-            }
-        });
-        
-        window.addEventListener('favoritoActualizado', async () => {
+            
             if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UIEspacio) {
-                await window.UIEspacio._renderizarMiEspacio();
-            }
-            if (window.uiCore && window.uiCore._actualizarEspacioStats) {
-                window.uiCore._actualizarEspacioStats();
-            }
-        });
-        
-        window.addEventListener('cambioNivel', async () => {
-            if (window.UIConfig && window.UIConfig._actualizarNivelHeader) {
-                window.UIConfig._actualizarNivelHeader();
-            }
-            if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.LearningPath) {
-                setTimeout(async () => {
-                    try {
-                        await window.LearningPath.generarRuta(true);
-                    } catch (e) {}
-                }, 2000);
-            }
-            if (window.tutorNeuro && window.tutorNeuro._recomendarSiguienteTema) {
-                setTimeout(() => {
-                    try {
-                        window.tutorNeuro._recomendarSiguienteTema();
-                    } catch (e) {}
-                }, 3000);
-            }
-            if (window.UITemas) {
-                setTimeout(() => window.UITemas._renderTemas(), 300);
-            }
-        });
-        
-        window.addEventListener('idiomaAgregado', async (e) => {
-            if (window.UIConfig && window.UIConfig._recargarConfiguracion) {
-                await window.UIConfig._recargarConfiguracion();
-            }
-            if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UITemas) {
-                window.UITemas._renderTemas();
-            }
-            if (window.vigiaGramatical) {
                 try {
-                    await window.vigiaGramatical.initGramatical();
-                } catch (e) {}
+                    await Promise.race([
+                        window.UIDashboard.init(window.uiCore),
+                        new Promise((resolve) => setTimeout(resolve, 1000))
+                    ]);
+                    await window.UIDashboard._cargarDashboardInicial(window.uiCore);
+                    console.log('✅ Dashboard renderizado v25.0');
+                } catch (e) {
+                    console.warn('⚠️ Error en UIDashboard:', e);
+                    this._renderizarDashboardFallback(usuario, stats);
+                }
+            } else {
+                this._renderizarDashboardFallback(usuario, stats);
             }
-            if (window.tutorNeuro) {
-                setTimeout(async () => {
-                    try {
-                        await window.tutorNeuro._construirMapaAprendizaje();
-                    } catch (e) {}
-                }, 2000);
+            
+            if (window.uiCore && window.uiCore._actualizarIndicadoresSeguro) {
+                window.uiCore._actualizarIndicadoresSeguro();
             }
-            if (window.UITemas) {
-                setTimeout(() => window.UITemas._renderTemas(), 300);
-            }
-        });
+            
+        } catch (e) {
+            console.warn('⚠️ Error renderizando dashboard:', e);
+            this._renderizarDashboardFallback(usuario, { totalFrases: 0, progreso: 0 });
+        }
+    }
+
+    _renderizarDashboardFallback(usuario, stats) {
+        const dashboardGrid = document.getElementById('dashboardGrid');
+        if (!dashboardGrid) return;
         
-        window.addEventListener('idiomaEliminado', async (e) => {
+        const progreso = stats?.progreso || 0;
+        const totalFrases = stats?.totalFrases || 0;
+        
+        dashboardGrid.innerHTML = `
+            <div style="grid-column:1/-1;padding:20px;text-align:center;background:var(--white);border-radius:16px;border:2px solid var(--light);">
+                <div style="font-size:48px;margin-bottom:12px;">📊</div>
+                <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0 0 4px 0;">
+                    Panel de Control
+                </h2>
+                <p style="font-size:14px;color:var(--gray);margin:0 0 8px 0;">
+                    Bienvenido, <strong>${usuario?.nombre || 'Usuario'}</strong>
+                </p>
+                <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:12px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;font-weight:800;color:var(--primary);">${progreso}%</div>
+                        <div style="font-size:11px;color:var(--gray);">Progreso</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;font-weight:800;color:var(--secondary);">${totalFrases}</div>
+                        <div style="font-size:11px;color:var(--gray);">Frases</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:24px;font-weight:800;color:var(--warning);">${usuario?.idiomasObjetivo?.[0]?.nivel || 'A1'}</div>
+                        <div style="font-size:11px;color:var(--gray);">Nivel</div>
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <button onclick="window.uiCore.irAModulo('study')" style="padding:10px 24px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-graduation-cap"></i> Comenzar a Estudiar
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // ============================================================
+    // INICIAR MODULOS EN SEGUNDO PLANO
+    // ============================================================
+
+    _iniciarModulosEnSegundoPlano(usuario) {
+        console.log('🔄 Iniciando módulos en segundo plano...');
+        
+        // === RECONEXIÓN AUTOMÁTICA DE VIGIA (INMEDIATA) ===
+        setTimeout(() => {
+            this._reconectarVigiaAutomaticamente();
+        }, 300);
+        
+        // === FALLBACK: RECONEXIÓN DE VIGIA DESPUÉS DE 3s ===
+        setTimeout(() => {
+            if (window.vigia && !window.vigia.enLinea) {
+                console.log('🔄 Fallback: Reconectando Vigia después de 3s...');
+                this._reconectarVigiaAutomaticamente();
+            }
+        }, 3000);
+        
+        // === FALLBACK FINAL: RECONEXIÓN DESPUÉS DE 8s ===
+        setTimeout(() => {
+            if (window.vigia && !window.vigia.enLinea) {
+                console.log('🔄 Fallback final: Reconectando Vigia después de 8s...');
+                this._reconectarVigiaAutomaticamente();
+            }
+        }, 8000);
+        
+        try {
+            if (window.vigiaGramatical) {
+                window.vigiaGramatical.initGramatical().catch(function(e) {});
+            }
+            if (window.LearningPath && typeof window.LearningPath.init === 'function') {
+                window.LearningPath.init(window.uiCore).catch(function(e) {});
+            }
+            if (window.UICaracteres && window.UICaracteres.init) {
+                window.UICaracteres.init(window.uiCore).catch(function(e) {});
+            }
+        } catch (e) {}
+        
+        setTimeout(() => {
             if (window.UIConfig && window.UIConfig._recargarConfiguracion) {
-                await window.UIConfig._recargarConfiguracion();
+                window.UIConfig._recargarConfiguracion();
             }
-            if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UITemas) {
-                window.UITemas._renderTemas();
-            }
-            if (window.tutorNeuro) {
-                setTimeout(async () => {
-                    try {
-                        await window.tutorNeuro._construirMapaAprendizaje();
-                    } catch (e) {}
-                }, 2000);
-            }
-        });
-        
-        window.addEventListener('vigiaGramaticalActualizado', () => {
             if (window.UIGrammar) {
                 window.UIGrammar._cargarGramatica();
             }
-        });
-        
-        window.addEventListener('familiaCaracteresGenerada', () => {
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            if (window.UITemas) {
+                window.UITemas._renderTemas();
             }
-            if (window.UICaracteres) {
+            if (window.UIEspacio) {
+                window.UIEspacio._renderizarMiEspacio();
+            }
+            if (window.UICaracteres && window.UICaracteres.estaDisponible()) {
                 window.UICaracteres.cargar(window.uiCore);
             }
-        });
+        }, 800);
         
-        // 🌌 EVENTOS DEL MODO ELIPSE
-        window.addEventListener('elipseOndaGenerada', (e) => {
-            console.log('🌌 App detectÃ³ elipseOndaGenerada:', e.detail);
-            if (window.modoElipse) {
-                window.modoElipse._guardarEstadoElipse();
+        setTimeout(() => {
+            if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
+                console.log('🧠 Iniciando Tutor Neuro en segundo plano...');
+                window.tutorNeuro.initTutor()
+                    .then(function() {
+                        console.log('✅ Tutor Neuro inicializado');
+                    })
+                    .catch(function(e) {
+                        console.warn('⚠️ Tutor Neuro fallo (no critico):', e.message || e);
+                    });
             }
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UIClipse) {
-                setTimeout(() => {
-                    try {
-                        window.UIClipse.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
-            }
-            if (window.UITemas) {
-                setTimeout(() => window.UITemas._renderTemas(), 500);
-            }
-            // 🌊 Sincronizar Ondas Cruzadas
-            if (window.modoOndasCruzadas) {
-                setTimeout(() => {
-                    window.modoOndasCruzadas.sincronizarConElipse(e.detail?.temaId);
-                }, 500);
-            }
-        });
+        }, 1500);
         
-        window.addEventListener('elipseOndaCompletada', (e) => {
-            console.log('🌌 App detectÃ³ elipseOndaCompletada:', e.detail);
-            if (window.modoElipse) {
-                window.modoElipse._guardarEstadoElipse();
+        setTimeout(() => {
+            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+                console.log('🌌 Iniciando Modo Elipse en segundo plano...');
+                window.modoElipse.init(window.uiCore)
+                    .then(function() {
+                        console.log('✅ Modo Elipse inicializado');
+                        if (typeof window.modoElipse.cargarDatos === 'function') {
+                            window.modoElipse.cargarDatos();
+                        }
+                    })
+                    .catch(function(e) {
+                        console.warn('⚠️ Modo Elipse fallo:', e);
+                    });
             }
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            
+            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
+                console.log('🌊 Iniciando Modo Ondas Cruzadas en segundo plano...');
+                window.modoOndasCruzadas.init(window.uiCore)
+                    .then(function() {
+                        console.log('✅ Modo Ondas Cruzadas inicializado');
+                    })
+                    .catch(function(e) {
+                        console.warn('⚠️ Modo Ondas Cruzadas fallo:', e);
+                    });
             }
-            if (window.UIClipse) {
-                setTimeout(() => {
-                    try {
-                        window.UIClipse.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
+            
+            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
+                try {
+                    window.UIClipse.init(window.uiCore);
+                } catch (e) {}
             }
-        });
-        
-        window.addEventListener('elipseTemaSeleccionado', (e) => {
-            console.log('🌌 App detectÃ³ elipseTemaSeleccionado:', e.detail);
-            if (window.modoElipse) {
-                window.modoElipse._guardarEstadoElipse();
+            
+            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
+                try {
+                    window.UIOndasCruzadas.init(window.uiCore);
+                } catch (e) {}
             }
-        });
-        
-        // 🌊 EVENTOS DEL MODO ONDAS CRUZADAS
-        window.addEventListener('ondasCruzadasGenerada', (e) => {
-            console.log('🌊 App detectÃ³ ondasCruzadasGenerada:', e.detail);
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UIOndasCruzadas) {
-                setTimeout(() => {
-                    try {
-                        window.UIOndasCruzadas.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
-            }
-            if (window.UIClipse) {
-                setTimeout(() => {
-                    try {
-                        window.UIClipse.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
-            }
-        });
-        
-        window.addEventListener('ondasCruzadasSincronizadas', (e) => {
-            console.log('🌊 App detectÃ³ ondasCruzadasSincronizadas:', e.detail);
-            if (window.UIOndasCruzadas) {
-                setTimeout(() => {
-                    try {
-                        window.UIOndasCruzadas.cargar(window.uiCore);
-                    } catch (e) {}
-                }, 500);
-            }
-        });
-        
-        // Eventos del balanceador
-        window.addEventListener('balanceadorModeloCambiado', (e) => {
-            if (window.uiCore) {
-                window.uiCore.mostrarToast(`âš–ï¸ Modelo activo: ${e.detail?.modelo}`, 'info');
-            }
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-        });
-        
-        window.addEventListener('balanceadorEstadoActualizado', () => {
-            if (window.uiCore && window.uiCore._actualizarIndicadorBalanceador) {
-                window.uiCore._actualizarIndicadorBalanceador();
-            }
-        });
-        
-        window.addEventListener('tokensActualizados', (e) => {
-            if (window.uiCore && window.uiCore._actualizarIndicadorTokens) {
-                window.uiCore._actualizarIndicadorTokens(e.detail);
-            }
-            if (window.uiCore) {
-                window.uiCore._actualizarActividad();
-            }
-        });
-        
-        console.log('✅ Eventos globales registrados (incluyendo Ondas Cruzadas)');
+        }, 2000);
+    }
+
+    // ============================================================
+    // METODOS AUXILIARES
+    // ============================================================
+
+    _registrarEventosGlobales() {
+        if (this._eventosGlobalesRegistrados) return;
+        this._eventosGlobalesRegistrados = true;
+        console.log('🔗 Eventos globales registrados');
     }
 
     async _inicializarDBConReintentos() {
-        return new Promise((resolve, reject) => {
-            let intentos = 0;
-            const intentar = async () => {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            var intentos = 0;
+            var intentar = function() {
                 try {
                     if (typeof db === 'undefined' || !db) throw new Error('Database no definida');
-                    await db.init();
-                    if (db.db && db.db.name === 'PipelineDB') {
-                        console.log(`✅ Database inicializada en intento ${intentos + 1}`);
-                        resolve();
-                        return;
-                    }
-                    throw new Error('Database no inicializada');
+                    db.init().then(function() {
+                        if (db.db && db.db.name === 'PipelineDB') {
+                            console.log('✅ Database inicializada en intento', intentos + 1);
+                            resolve();
+                            return;
+                        }
+                        throw new Error('Database no inicializada');
+                    }).catch(function(e) {
+                        intentos++;
+                        if (intentos >= self._maxIntentosDB) {
+                            reject(new Error('No se pudo inicializar IndexedDB: ' + e.message));
+                        } else {
+                            console.log('⏳ Esperando IndexedDB... intento', intentos, '/', self._maxIntentosDB);
+                            setTimeout(intentar, Math.min(800, 150 * intentos));
+                        }
+                    });
                 } catch (e) {
                     intentos++;
-                    if (intentos >= this._maxIntentosDB) {
-                        reject(new Error(`No se pudo inicializar IndexedDB: ${e.message}`));
+                    if (intentos >= self._maxIntentosDB) {
+                        reject(new Error('No se pudo inicializar IndexedDB: ' + e.message));
                     } else {
-                        console.log(`⏳ Esperando IndexedDB... intento ${intentos}/${this._maxIntentosDB}`);
-                        setTimeout(intentar, Math.min(1000, 200 * intentos));
+                        console.log('⏳ Esperando IndexedDB... intento', intentos, '/', self._maxIntentosDB);
+                        setTimeout(intentar, Math.min(800, 150 * intentos));
                     }
                 }
             };
@@ -839,49 +1178,15 @@ class App {
         });
     }
 
-    _mostrarPantallaCarga(mensaje = 'Cargando...') {
-        if (this._cargaOverlayMostrado) return;
-        this._cargaOverlayMostrado = true;
-        
-        const overlay = document.createElement('div');
-        overlay.id = 'cargaOverlay';
-        overlay.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg, #f5f6fa); z-index: 99999;
-            display: flex; justify-content: center; align-items: center; flex-direction: column;
-            font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            transition: opacity 0.5s ease;
-        `;
-        overlay.innerHTML = `
-            <div style="text-align:center;max-width:400px;padding:20px;">
-                <div style="font-size:64px;margin-bottom:16px;animation: pulse 1.5s ease-in-out infinite;">🧠</div>
-                <h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg, #6C5CE7, #00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Pipeline Neuro</h2>
-                <p style="color:var(--gray);font-size:16px;margin-bottom:16px;">${mensaje}</p>
-                <div style="width:280px;height:4px;background:var(--light);border-radius:2px;margin:0 auto;overflow:hidden;">
-                    <div style="height:100%;background:linear-gradient(90deg, #6C5CE7, #00CEC9);border-radius:2px;animation: loadingProgress 1.5s ease-in-out infinite;"></div>
-                </div>
-                <div style="margin-top:8px;font-size:12px;color:var(--gray-light);" id="cargaStatus">Inicializando sistema...</div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    }
-
-    _ocultarPantallaCarga() {
-        const overlay = document.getElementById('cargaOverlay');
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 500);
-        }
-        this._cargaOverlayMostrado = false;
-    }
-
     async _iniciarConLocalStorage(usuario) {
         console.log('🔄 Iniciando en modo localStorage (emergencia)');
         try {
-            this._mostrarPantallaCarga('Recuperando datos de emergencia...');
-            if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0) {
+            this._mostrarPantallaCargaInmediata('Recuperando datos...');
+            
+            if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0 && window.gestorIdiomas) {
                 gestorIdiomas.idiomas = [];
-                for (const item of usuario.idiomasObjetivo) {
+                for (var i = 0; i < usuario.idiomasObjetivo.length; i++) {
+                    var item = usuario.idiomasObjetivo[i];
                     gestorIdiomas.idiomas.push({
                         idioma: item.idioma,
                         nivel: item.nivel || 'B1',
@@ -893,136 +1198,80 @@ class App {
                         esJeroglifico: gestorIdiomas._esJeroglifico(item.idioma)
                     });
                 }
-                const saved = localStorage.getItem('pipeline_idioma_activo');
-                if (saved && gestorIdiomas.idiomas.some(i => i.idioma === saved)) {
+                var saved = localStorage.getItem('pipeline_idioma_activo');
+                if (saved && gestorIdiomas.idiomas.some(function(i) { return i.idioma === saved; })) {
                     gestorIdiomas.idiomaActivo = saved;
                 } else {
                     gestorIdiomas.idiomaActivo = usuario.idiomasObjetivo[0].idioma;
                 }
                 localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
             }
+            
             this._registrarEventosGlobales();
-            await this._iniciarModulosYUI(usuario);
-            this._showMainScreen(usuario);
             this._setupPersistenciaCritica();
             this._setupOrientationHandler();
             
-            if (window.LearningPath && typeof window.LearningPath.init === 'function') {
-                try { await window.LearningPath.init(window.uiCore); } catch (e) {}
-            }
-            if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
-                try { await window.tutorNeuro.initTutor(); } catch (e) {}
-            }
-            
-            // 🌌 INICIALIZAR MODO ELIPSE EN MODO EMERGENCIA
-            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
+            if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
                 try {
-                    await window.modoElipse.init(window.uiCore);
-                    if (typeof window.modoElipse.cargarDatos === 'function') {
-                        await window.modoElipse.cargarDatos();
-                    }
-                    console.log('🌌 Modo Elipse inicializado en modo emergencia');
-                } catch (e) {
-                    console.warn('⚠️ Error inicializando Modo Elipse en emergencia:', e);
-                }
-            }
-            
-            // 🌊 INICIALIZAR MODO ONDAS CRUZADAS EN MODO EMERGENCIA
-            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-                try {
-                    await window.modoOndasCruzadas.init(window.uiCore);
-                    console.log('🌊 Modo Ondas Cruzadas inicializado en modo emergencia');
-                } catch (e) {
-                    console.warn('⚠️ Error inicializando Modo Ondas Cruzadas en emergencia:', e);
-                }
-            }
-            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                try {
-                    await window.UIOndasCruzadas.init(window.uiCore);
+                    await window.uiCore.init();
                 } catch (e) {}
             }
             
-            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-                try {
-                    await window.UIClipse.init(window.uiCore);
-                } catch (e) {}
-            }
+            await this._renderizarDashboardInmediato(usuario);
+            this._dashboardRenderizado = true;
+            this._datosCargados = true;
+            this._modulosEsencialesListos = true;
+            this._ocultarPantallaCargaYMostrarDashboard();
             
-            setTimeout(async () => { await this._ejecutarVerificacionesGroq(); }, 5000);
-            setTimeout(async () => {
-                if (window.UIBackup) {
-                    try { await window.UIBackup.verificarBackupAutomatico(true); } catch (e) {}
-                }
-            }, 5000);
+            this._iniciarModulosEnSegundoPlano(usuario);
             
-            setTimeout(() => {
-                this._actualizarUICompleta();
-                this._datosCargados = true;
-                this._cargaCompletada = true;
-                this._ocultarPantallaCarga();
-            }, 500);
+            setTimeout(function() { 
+                if (window.app) window.app._ejecutarVerificacionesGroq(); 
+            }, 3000);
             
             this.inicializada = true;
             this._initDone = true;
-            console.log('✅ App iniciada en modo localStorage con Ondas Cruzadas');
+            console.log('✅ App iniciada en modo localStorage');
         } catch (e) {
             console.error('❌ Error en modo localStorage:', e);
-            this._ocultarPantallaCarga();
+            this._ocultarPantallaCargaYMostrarDashboard();
             this._showError(e);
         }
     }
 
     _setupPersistenciaCritica() {
-        document.addEventListener('visibilitychange', () => {
+        var self = this;
+        document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'hidden') {
-                this._guardarDatosCriticos();
-                if (window.UIBackup) {
-                    window.UIBackup._generarBackupLocal(true).catch(() => {});
-                }
+                self._guardarDatosCriticos();
             }
         });
 
-        window.addEventListener('beforeunload', () => {
-            this._guardarDatosCriticos();
-            if (window.UIBackup) {
-                window.UIBackup._generarBackupLocal(true).catch(() => {});
-            }
+        window.addEventListener('beforeunload', function() {
+            self._guardarDatosCriticos();
         });
 
-        setInterval(() => { this._guardarDatosCriticos(); }, 15000);
+        setInterval(function() { self._guardarDatosCriticos(); }, 30000);
     }
 
     async _guardarDatosCriticos() {
         if (this._guardandoDatos) return;
         this._guardandoDatos = true;
         try {
-            const usuario = this._getUsuarioLocalStorage();
+            var usuario = this._getUsuarioLocalStorage();
             if (!usuario) { this._guardandoDatos = false; return; }
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || localStorage.getItem('pipeline_idioma_activo');
+            var idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || localStorage.getItem('pipeline_idioma_activo');
             if (idiomaActivo) usuario.idiomaActivo = idiomaActivo;
             if (this._dbReady && db) {
                 try {
                     await db.guardarUsuario(usuario);
-                    const apiKey = localStorage.getItem('pipeline_api_key');
+                    var apiKey = localStorage.getItem('pipeline_api_key');
                     if (apiKey) await db.guardarApiKey(apiKey);
                 } catch (e) {}
             }
             this._saveUsuarioLocalStorage(usuario);
             if (gestorIdiomas && gestorIdiomas.idiomaActivo) {
                 localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
-                localStorage.setItem('pipeline_idiomas', JSON.stringify(gestorIdiomas.idiomas));
-            }
-            if (gestorFavoritos) {
-                try {
-                    await gestorFavoritos.guardarFavoritos();
-                    await gestorFavoritos._guardarGrupos();
-                } catch (e) {}
-            }
-            // 🌊 Guardar estado de Ondas Cruzadas
-            if (window.modoOndasCruzadas) {
-                try {
-                    window.modoOndasCruzadas._guardarDatos();
-                } catch (e) {}
             }
         } catch (e) { console.warn('⚠️ Error guardando datos:', e); }
         finally { this._guardandoDatos = false; }
@@ -1030,10 +1279,10 @@ class App {
 
     _getUsuarioLocalStorage() {
         try {
-            const data = localStorage.getItem('pipeline_usuario');
+            var data = localStorage.getItem('pipeline_usuario');
             if (data) {
-                const parsed = JSON.parse(data);
-                if (parsed && parsed.nombre && parsed.idiomasObjetivo?.length > 0) {
+                var parsed = JSON.parse(data);
+                if (parsed && parsed.nombre && parsed.idiomasObjetivo && parsed.idiomasObjetivo.length > 0) {
                     return parsed;
                 }
             }
@@ -1049,41 +1298,55 @@ class App {
         } catch (e) { return false; }
     }
 
-    _showMainScreen(usuario) {
-        const registroScreen = document.getElementById('registroScreen');
-        const mainScreen = document.getElementById('mainScreen');
-        if (registroScreen) { registroScreen.style.display = 'none'; registroScreen.classList.remove('active'); }
-        if (mainScreen) { mainScreen.style.display = 'block'; mainScreen.classList.add('active'); mainScreen.scrollTop = 0; }
-        const userName = document.getElementById('userName');
-        if (userName) userName.textContent = usuario.nombre;
-        const dashUser = document.getElementById('dashUserName');
-        if (dashUser) dashUser.textContent = usuario.nombre;
-        setTimeout(() => this._loadDashboard(), 300);
-        console.log('✅ Dashboard mostrado');
-    }
+    // ============================================================
+    // REGISTRO
+    // ============================================================
 
     _showRegisterScreen() {
-        const registroScreen = document.getElementById('registroScreen');
-        const mainScreen = document.getElementById('mainScreen');
-        if (registroScreen) { registroScreen.style.display = 'flex'; registroScreen.classList.add('active'); }
-        if (mainScreen) { mainScreen.style.display = 'none'; mainScreen.classList.remove('active'); }
+        var registroScreen = document.getElementById('registroScreen');
+        var mainScreen = document.getElementById('mainScreen');
+        
+        if (registroScreen) {
+            registroScreen.style.display = 'flex';
+            registroScreen.classList.add('active');
+            registroScreen.style.opacity = '1';
+            registroScreen.style.pointerEvents = 'auto';
+        }
+        if (mainScreen) {
+            mainScreen.style.display = 'none';
+            mainScreen.classList.remove('active');
+        }
+        
+        var form = document.getElementById('registroForm');
+        if (form) {
+            form.style.display = '';
+            form.style.opacity = '1';
+            form.style.pointerEvents = 'auto';
+        }
+        
+        this._registroOculto = false;
         this._setupRegisterForm();
         console.log('📝 Pantalla de registro mostrada');
     }
 
     _setupRegisterForm() {
-        const form = document.getElementById('registroForm');
+        var form = document.getElementById('registroForm');
         if (!form) { console.warn('⚠️ Formulario de registro no encontrado'); return; }
-        const newForm = form.cloneNode(true);
+        var newForm = form.cloneNode(true);
         form.parentNode.replaceChild(newForm, form);
-        newForm.addEventListener('submit', async (e) => {
+        var self = this;
+        newForm.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            if (this._registrando) { console.log('⏳ Registro en proceso'); return; }
-            this._registrando = true;
-            try { await this._handleRegister(e); }
-            catch (error) { console.error('❌ Error en registro:', error); this._showError(error); }
-            finally { this._registrando = false; }
+            if (self._registrando) { console.log('⏳ Registro en proceso'); return; }
+            self._registrando = true;
+            self._handleRegister(e).then(function() {
+                self._registrando = false;
+            }).catch(function(error) {
+                console.error('❌ Error en registro:', error);
+                self._showError(error);
+                self._registrando = false;
+            });
         });
         console.log('✅ Formulario de registro configurado');
     }
@@ -1092,27 +1355,21 @@ class App {
         console.log('📝 Procesando registro...');
 
         try {
-            const nombreInput = document.getElementById('nombre');
-            const idiomaNativoInput = document.getElementById('idiomaNativo');
-            const apiKeyInput = document.getElementById('apiKey');
+            var nombreInput = document.getElementById('nombre');
+            var idiomaNativoInput = document.getElementById('idiomaNativo');
+            var apiKeyInput = document.getElementById('apiKey');
             
-            const nombre = nombreInput?.value?.trim() || '';
-            let idiomaNativo = idiomaNativoInput?.value?.trim() || '';
-            const apiKey = apiKeyInput?.value?.trim() || '';
+            var nombre = nombreInput?.value?.trim() || '';
+            var idiomaNativo = idiomaNativoInput?.value?.trim() || '';
+            var apiKey = apiKeyInput?.value?.trim() || '';
             
-            let idiomas = this._getIdiomas();
+            var idiomas = this._getIdiomas();
 
-            console.log('📝 Datos capturados:', { 
-                nombre, idiomaNativo, 
-                idiomas: idiomas.map(i => i.idioma + ' (' + i.nivel + ')'),
-                apiKey: apiKey ? '***' : 'No' 
-            });
-
-            if (!nombre) { await this._showToast('❌ El nombre es obligatorio', 'error'); return; }
-            if (!idiomaNativo) { await this._showToast('❌ El idioma nativo es obligatorio', 'error'); return; }
-            if (idiomas.length === 0) { await this._showToast('❌ Debes aÃ±adir al menos un idioma objetivo', 'error'); return; }
+            if (!nombre) { await this._showToast('El nombre es obligatorio', 'error'); return; }
+            if (!idiomaNativo) { await this._showToast('El idioma nativo es obligatorio', 'error'); return; }
+            if (idiomas.length === 0) { await this._showToast('Debes anadir al menos un idioma objetivo', 'error'); return; }
             if (!apiKey || !apiKey.startsWith('gsk_')) {
-                await this._showToast('❌ API Key invÃ¡lida. Debe comenzar con "gsk_"', 'error');
+                await this._showToast('API Key invalida. Debe comenzar con "gsk_"', 'error');
                 return;
             }
 
@@ -1121,45 +1378,21 @@ class App {
                 localStorage.setItem('pipeline_api_key', apiKey);
                 console.log('✅ API Key guardada');
             } catch (e) {
-                await this._showToast('❌ Error guardando API Key: ' + e.message, 'error');
+                await this._showToast('Error guardando API Key: ' + e.message, 'error');
                 return;
             }
 
-            let validacionNativo = null;
-            let usarGroq = false;
+            var validacionNativo = this._validarIdiomaLocal(idiomaNativo, 'nativo');
             
-            if (window.validadorIdiomas && window.vigia && window.vigia.enLinea && window.vigia._apiKeyValidada) {
-                try {
-                    validacionNativo = await window.validadorIdiomas.validar(idiomaNativo, 'nativo');
-                    usarGroq = true;
-                    console.log('🔍 ValidaciÃ³n con Groq para nativo:', validacionNativo);
-                } catch (e) {
-                    console.warn('⚠️ Error en validadorIdiomas, usando fallback local:', e);
-                }
-            }
-
-            if (!validacionNativo) {
-                validacionNativo = this._validarIdiomaLocal(idiomaNativo, 'nativo');
-                console.log('📌 Usando validaciÃ³n LOCAL para nativo:', validacionNativo);
-            }
-
             if (!validacionNativo.valido) {
-                let mensaje = `❌ "${idiomaNativo}" no es un idioma vÃ¡lido.`;
-                if (validacionNativo.mensaje) {
-                    mensaje += `\n\n${validacionNativo.mensaje}`;
-                }
-                const sugerencias = this._obtenerSugerenciasIdiomas(idiomaNativo);
-                if (sugerencias.length > 0) {
-                    mensaje += `\n\nðŸ’¡ Â¿Quisiste decir: ${sugerencias.join(', ')}?`;
-                }
-                await this._showToast(mensaje, 'error');
+                await this._showToast('"' + idiomaNativo + '" no es un idioma valido.', 'error');
                 return;
             }
 
             if (validacionNativo.corregido && validacionNativo.sugerido) {
-                const aceptar = await this._showConfirm(
-                    `🔍 Sugerencia: "${idiomaNativo}" → **"${validacionNativo.idiomaFinal}"**\n\n${validacionNativo.mensaje || ''}\n\n¿Usar "${validacionNativo.idiomaFinal}"?`,
-                    '✏️ CorrecciÃ³n de idioma'
+                var aceptar = await this._showConfirm(
+                    'Sugerencia: "' + idiomaNativo + '" → "' + validacionNativo.idiomaFinal + '"\n\nUsar "' + validacionNativo.idiomaFinal + '"?',
+                    'Correccion de idioma'
                 );
                 if (aceptar) {
                     idiomaNativo = validacionNativo.idiomaFinal;
@@ -1169,48 +1402,27 @@ class App {
                 }
             }
 
-            const idiomasValidados = [];
-            for (const item of idiomas) {
-                let validacion = null;
-                
-                if (window.validadorIdiomas && window.vigia && window.vigia.enLinea && window.vigia._apiKeyValidada) {
-                    try {
-                        validacion = await window.validadorIdiomas.validar(item.idioma, 'objetivo');
-                        console.log(`🔍 ValidaciÃ³n con Groq para "${item.idioma}":`, validacion);
-                    } catch (e) {
-                        console.warn(`⚠️ Error en validadorIdiomas para "${item.idioma}", usando fallback local:`, e);
-                    }
-                }
-
-                if (!validacion) {
-                    validacion = this._validarIdiomaLocal(item.idioma, 'objetivo');
-                    console.log(`📌 Usando validaciÃ³n LOCAL para "${item.idioma}":`, validacion);
-                }
+            var idiomasValidados = [];
+            for (var i = 0; i < idiomas.length; i++) {
+                var item = idiomas[i];
+                var validacion = this._validarIdiomaLocal(item.idioma, 'objetivo');
 
                 if (!validacion.valido) {
-                    let mensaje = `❌ "${item.idioma}" no es un idioma vÃ¡lido.`;
-                    if (validacion.mensaje) {
-                        mensaje += `\n\n${validacion.mensaje}`;
-                    }
-                    const sugerencias = this._obtenerSugerenciasIdiomas(item.idioma);
-                    if (sugerencias.length > 0) {
-                        mensaje += `\n\nðŸ’¡ Â¿Quisiste decir: ${sugerencias.join(', ')}?`;
-                    }
-                    await this._showToast(mensaje, 'error');
+                    await this._showToast('"' + item.idioma + '" no es un idioma valido.', 'error');
                     return;
                 }
 
-                let idiomaFinal = validacion.idiomaFinal;
+                var idiomaFinal = validacion.idiomaFinal;
                 
                 if (validacion.corregido && validacion.sugerido) {
-                    const aceptar = await this._showConfirm(
-                        `🔍 Sugerencia: "${item.idioma}" → **"${idiomaFinal}"**\n\n${validacion.mensaje || ''}\n\n¿Usar "${idiomaFinal}"?`,
-                        '✏️ CorrecciÃ³n de idioma'
+                    var aceptar2 = await this._showConfirm(
+                        'Sugerencia: "' + item.idioma + '" → "' + idiomaFinal + '"\n\nUsar "' + idiomaFinal + '"?',
+                        'Correccion de idioma'
                     );
-                    if (aceptar) {
-                        const rows = document.querySelectorAll('.idioma-row');
-                        for (const row of rows) {
-                            const input = row.querySelector('.idioma-input');
+                    if (aceptar2) {
+                        var rows = document.querySelectorAll('.idioma-row');
+                        for (var j = 0; j < rows.length; j++) {
+                            var input = rows[j].querySelector('.idioma-input');
                             if (input && input.value.trim() === item.idioma) {
                                 input.value = idiomaFinal;
                             }
@@ -1228,14 +1440,14 @@ class App {
             
             idiomas = idiomasValidados;
 
-            const usuario = {
+            var usuario = {
                 nombre: nombre,
                 idiomaNativo: idiomaNativo,
                 idiomasObjetivo: idiomas,
                 nivel: idiomas[0]?.nivel || 'B1',
                 idiomaActivo: idiomas[0]?.idioma || '',
                 fechaRegistro: new Date().toISOString(),
-                version: '22.7'
+                version: '23.5'
             };
 
             this._saveUsuarioLocalStorage(usuario);
@@ -1250,157 +1462,87 @@ class App {
                 }
             }
 
-            if (window.validadorIdiomas) {
-                try {
-                    await window.validadorIdiomas.guardar(idiomaNativo, 'nativo');
-                    for (const item of idiomas) {
-                        await window.validadorIdiomas.guardar(item.idioma, 'objetivo');
-                    }
-                    console.log(`✅ Idiomas validados y guardados: nativo="${idiomaNativo}", objetivos=${idiomas.map(i => i.idioma).join(', ')}`);
-                } catch (e) {
-                    console.warn('⚠️ Error guardando idiomas en validador:', e);
-                }
-            }
-
-            const modoTutor = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
+            var modoTutor = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
             if (window.tutorNeuro) {
                 try {
                     window.tutorNeuro.setModo(modoTutor);
-                    console.log(`🧠 Modo Tutor configurado: ${modoTutor}`);
-                } catch (e) {
-                    console.warn('⚠️ Error guardando modo del tutor:', e);
-                }
-            } else {
-                localStorage.setItem('pipeline_tutor_modo', modoTutor);
+                    console.log('🧠 Modo Tutor configurado:', modoTutor);
+                } catch (e) {}
             }
 
             console.log('✅ Registro completado para:', usuario.nombre);
 
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await gestorIdiomas.init();
+            this._mostrarPantallaCargaInmediata('Preparando tu experiencia...');
+
+            await new Promise(function(resolve) { setTimeout(resolve, 300); });
             
-            let idiomasCargados = gestorIdiomas.getIdiomas();
+            if (window.gestorIdiomas) {
+                await gestorIdiomas.init();
+            }
+            
+            var idiomasCargados = gestorIdiomas?.getIdiomas?.() || [];
             if (idiomasCargados.length === 0) {
                 await this._forzarCargaIdiomas(usuario);
             }
 
             this._registrarEventosGlobales();
-            await window.uiCore.init();
-            await this._initModules();
-            await this._mostrarBienvenida(usuario);
-            this._showMainScreen(usuario);
+            
+            if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
+                await window.uiCore.init();
+            }
+            
+            if (window.pipeline) {
+                try {
+                    await pipeline.cargarFrasesPorIdioma(gestorIdiomas?.getIdiomaActivo() || 'es');
+                    await pipeline.cargarProgreso();
+                } catch (e) {}
+            }
+            
             this._setupPersistenciaCritica();
             this._setupOrientationHandler();
             
-            if (window.LearningPath && typeof window.LearningPath.init === 'function') {
-                try { await window.LearningPath.init(window.uiCore); } catch (e) {}
-            }
-            if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
-                try { await window.tutorNeuro.initTutor(); } catch (e) {}
-            }
+            console.log('📊 Renderizando dashboard...');
+            await this._renderizarDashboardInmediato(usuario);
+            this._dashboardRenderizado = true;
+            this._datosCargados = true;
+            this._modulosEsencialesListos = true;
             
-            // 🌌 INICIALIZAR MODO ELIPSE DESPUÃ‰S DEL REGISTRO
-            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
-                try {
-                    await window.modoElipse.init(window.uiCore);
-                    if (typeof window.modoElipse.cargarDatos === 'function') {
-                        await window.modoElipse.cargarDatos();
-                    }
-                    console.log('🌌 Modo Elipse inicializado despuÃ©s del registro');
-                } catch (e) {
-                    console.warn('⚠️ Error inicializando Modo Elipse despuÃ©s del registro:', e);
-                }
-            }
+            console.log('✅ Dashboard renderizado, mostrando...');
+            this._ocultarPantallaCargaYMostrarDashboard();
             
-            // 🌊 INICIALIZAR MODO ONDAS CRUZADAS DESPUÃ‰S DEL REGISTRO
-            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-                try {
-                    await window.modoOndasCruzadas.init(window.uiCore);
-                    console.log('🌊 Modo Ondas Cruzadas inicializado despuÃ©s del registro');
-                } catch (e) {
-                    console.warn('⚠️ Error inicializando Modo Ondas Cruzadas despuÃ©s del registro:', e);
-                }
-            }
+            this._iniciarModulosEnSegundoPlano(usuario);
             
-            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                try {
-                    await window.UIOndasCruzadas.init(window.uiCore);
-                } catch (e) {}
-            }
-            
-            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-                try {
-                    await window.UIClipse.init(window.uiCore);
-                } catch (e) {}
-            }
-            
-            setTimeout(async () => { await this._ejecutarVerificacionesGroq(); }, 5000);
-            
-            setTimeout(async () => {
-                if (window.UIBackup) {
-                    try { await window.UIBackup.verificarBackupAutomatico(true); } catch (e) {}
-                }
-            }, 5000);
-            
+            // === RECONEXIÓN DE VIGIA DESPUÉS DEL REGISTRO ===
             setTimeout(() => {
-                this._actualizarUICompleta();
-                const finalIdiomas = gestorIdiomas.getIdiomas();
-                console.log('📊 Estado final de idiomas:', finalIdiomas.map(i => i.idioma + ' (' + i.nivel + ')'));
-                if (window.vigiaGramatical) {
-                    window.vigiaGramatical.initGramatical().then(() => {
-                        console.log('✅ VigÃ­a Gramatical inicializado');
-                    }).catch(e => {});
+                this._reconectarVigiaAutomaticamente();
+            }, 1500);
+            
+            await this._mostrarBienvenida(usuario);
+            
+            setTimeout(function() { 
+                if (window.app) window.app._ejecutarVerificacionesGroq(); 
+            }, 3000);
+            
+            setTimeout(function() {
+                if (window.UIBackup) {
+                    try { window.UIBackup.verificarBackupAutomatico(true); } catch (e) {}
                 }
-                // 🌌 RECARGAR MÃ“DULO ELIPSE
-                if (window.UIClipse) {
-                    setTimeout(() => {
-                        try {
-                            window.UIClipse.cargar(window.uiCore);
-                        } catch (e) {}
-                    }, 1000);
-                }
-                // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS
-                if (window.UIOndasCruzadas) {
-                    setTimeout(() => {
-                        try {
-                            window.UIOndasCruzadas.cargar(window.uiCore);
-                        } catch (e) {}
-                    }, 1200);
-                }
-            }, 500);
+            }, 4000);
 
         } catch (error) {
             console.error('❌ Error en registro:', error);
-            await this._showToast('❌ Error: ' + error.message, 'error');
+            await this._showToast('Error: ' + error.message, 'error');
+            this._dashboardRenderizado = true;
+            this._ocultarPantallaCargaYMostrarDashboard();
         }
-    }
-
-    _obtenerSugerenciasIdiomas(texto) {
-        if (!texto || texto.trim().length < 2) return [];
-        
-        const textoLower = texto.trim().toLowerCase();
-        const sugerencias = [];
-        const idiomasKeys = Object.keys(this._IDIOMAS_CONOCIDOS);
-        
-        for (const idioma of idiomasKeys) {
-            const idiomaNormalizado = idioma.normalize('NFKC').toLowerCase();
-            const similitud = this._calcularSimilitud(textoLower, idiomaNormalizado);
-            if (similitud > 0.5 && similitud < 0.9) {
-                const codigo = this._IDIOMAS_CONOCIDOS[idioma];
-                const nombre = this._NOMBRES_IDIOMAS[codigo] || this._capitalizar(idioma);
-                sugerencias.push(nombre);
-            }
-        }
-        
-        return sugerencias.slice(0, 3);
     }
 
     _getIdiomas() {
-        const rows = document.querySelectorAll('.idioma-row');
-        const idiomas = [];
-        rows.forEach(row => {
-            const input = row.querySelector('.idioma-input');
-            const select = row.querySelector('.nivel-select');
+        var rows = document.querySelectorAll('.idioma-row');
+        var idiomas = [];
+        rows.forEach(function(row) {
+            var input = row.querySelector('.idioma-input');
+            var select = row.querySelector('.nivel-select');
             if (input && input.value.trim()) {
                 idiomas.push({
                     idioma: input.value.trim(),
@@ -1414,30 +1556,41 @@ class App {
     async _forzarCargaIdiomas(usuario) {
         try {
             console.log('🔄 Forzando carga de idiomas para:', usuario.nombre);
-            if (!usuario.idiomasObjetivo?.length) { console.warn('⚠️ No hay idiomas objetivo'); return false; }
+            if (!usuario.idiomasObjetivo || usuario.idiomasObjetivo.length === 0) { return false; }
+            if (!window.gestorIdiomas) return false;
+            
             if (gestorIdiomas.idiomas.length === 0) { gestorIdiomas.idiomas = []; }
-            for (const item of usuario.idiomasObjetivo) {
-                const idioma = item.idioma;
-                const nivel = item.nivel || 'B1';
-                const existe = gestorIdiomas.idiomas.some(i => i.idioma === idioma);
+            
+            for (var i = 0; i < usuario.idiomasObjetivo.length; i++) {
+                var item = usuario.idiomasObjetivo[i];
+                var idioma = item.idioma;
+                var nivel = item.nivel || 'B1';
+                var existe = gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === idioma; });
                 if (existe) continue;
-                let stats = { totalFrases: 0, frasesCompletadas: 0, progreso: 0 };
-                try {
-                    const frases = await db.obtenerFrasesPorIdioma(idioma);
-                    const progreso = await db.obtenerTodoProgreso();
-                    let completadas = 0;
-                    for (const f of frases) {
-                        const p = progreso.find(pr => pr.fraseId === f.id);
-                        if (p && (p.estado === 'completada' || p.rcn >= 4)) completadas++;
-                    }
-                    stats = {
-                        totalFrases: frases.length,
-                        frasesCompletadas: completadas,
-                        progreso: frases.length > 0 ? Math.round((completadas / frases.length) * 100) : 0
-                    };
-                } catch (e) {}
-                const historias = await db.obtenerHistoriasPorIdioma(idioma);
-                const temas = await db.obtenerTemasPorIdioma(idioma);
+                
+                var stats = { totalFrases: 0, frasesCompletadas: 0, progreso: 0 };
+                
+                if (this._dbReady && db) {
+                    try {
+                        var frases = await db.obtenerFrasesPorIdioma(idioma);
+                        var progreso = await db.obtenerTodoProgreso();
+                        var completadas = 0;
+                        for (var j = 0; j < frases.length; j++) {
+                            var f = frases[j];
+                            var p = progreso.find(function(pr) { return pr.fraseId === f.id; });
+                            if (p && (p.estado === 'completada' || p.rcn >= 4)) completadas++;
+                        }
+                        stats = {
+                            totalFrases: frases.length,
+                            frasesCompletadas: completadas,
+                            progreso: frases.length > 0 ? Math.round((completadas / frases.length) * 100) : 0
+                        };
+                    } catch (e) {}
+                }
+                
+                var historias = this._dbReady && db ? await db.obtenerHistoriasPorIdioma(idioma) : [];
+                var temas = this._dbReady && db ? await db.obtenerTemasPorIdioma(idioma) : [];
+                
                 gestorIdiomas.idiomas.push({
                     idioma: idioma,
                     nivel: nivel,
@@ -1449,18 +1602,20 @@ class App {
                     esJeroglifico: gestorIdiomas._esJeroglifico(idioma)
                 });
             }
+            
             if (usuario.idiomasObjetivo.length > 0) {
-                const saved = localStorage.getItem('pipeline_idioma_activo');
-                if (saved && gestorIdiomas.idiomas.some(i => i.idioma === saved)) {
+                var saved = localStorage.getItem('pipeline_idioma_activo');
+                if (saved && gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === saved; })) {
                     gestorIdiomas.idiomaActivo = saved;
-                } else if (usuario.idiomaActivo && gestorIdiomas.idiomas.some(i => i.idioma === usuario.idiomaActivo)) {
+                } else if (usuario.idiomaActivo && gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === usuario.idiomaActivo; })) {
                     gestorIdiomas.idiomaActivo = usuario.idiomaActivo;
                 } else {
                     gestorIdiomas.idiomaActivo = usuario.idiomasObjetivo[0].idioma;
                 }
                 localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
             }
-            console.log('✅ Idiomas cargados:', gestorIdiomas.idiomas.map(i => i.idioma));
+            
+            console.log('✅ Idiomas cargados:', gestorIdiomas.idiomas.map(function(idi) { return idi.idioma; }));
             return true;
         } catch (e) {
             console.error('❌ Error forzando carga:', e);
@@ -1468,265 +1623,35 @@ class App {
         }
     }
 
-    async _iniciarModulosYUI(usuario) {
-        console.log('🔄 Iniciando mÃ³dulos y UI...');
-        if (usuario.idiomasObjetivo) {
-            for (const item of usuario.idiomasObjetivo) {
-                const existe = gestorIdiomas.idiomas.some(i => i.idioma === item.idioma);
-                if (!existe) {
-                    gestorIdiomas.idiomas.push({
-                        idioma: item.idioma,
-                        nivel: item.nivel || 'B1',
-                        progreso: 0,
-                        frasesCompletadas: 0,
-                        totalFrases: 0,
-                        totalHistorias: 0,
-                        totalTemas: 0,
-                        esJeroglifico: gestorIdiomas._esJeroglifico(item.idioma)
-                    });
-                }
-            }
-            if (usuario.idiomasObjetivo.length > 0) {
-                const saved = localStorage.getItem('pipeline_idioma_activo');
-                if (saved && gestorIdiomas.idiomas.some(i => i.idioma === saved)) {
-                    gestorIdiomas.idiomaActivo = saved;
-                } else if (usuario.idiomaActivo && gestorIdiomas.idiomas.some(i => i.idioma === usuario.idiomaActivo)) {
-                    gestorIdiomas.idiomaActivo = usuario.idiomaActivo;
-                } else {
-                    gestorIdiomas.idiomaActivo = usuario.idiomasObjetivo[0].idioma;
-                }
-                localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
-            }
-        }
-        if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
-            await window.uiCore.init();
-        }
-        await this._initModules();
-        if (pipeline) {
-            const idiomaActivo = gestorIdiomas.getIdiomaActivo() || 'es';
-            await pipeline.cargarFrasesPorIdioma(idiomaActivo);
-            await pipeline.cargarProgreso();
-        }
-        if (window.vigiaGramatical) {
-            try { await window.vigiaGramatical.initGramatical(); } catch (e) {}
-        }
-        if (window.LearningPath && typeof window.LearningPath.init === 'function') {
-            try { await window.LearningPath.init(window.uiCore); } catch (e) {}
-        }
-        if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
-            try { await window.tutorNeuro.initTutor(); } catch (e) {}
-        }
-        // 🌌 INICIALIZAR MODO ELIPSE
-        if (window.modoElipse && typeof window.modoElipse.init === 'function') {
-            try {
-                await window.modoElipse.init(window.uiCore);
-                if (typeof window.modoElipse.cargarDatos === 'function') {
-                    await window.modoElipse.cargarDatos();
-                }
-                console.log('🌌 Modo Elipse inicializado en _iniciarModulosYUI');
-            } catch (e) {
-                console.warn('⚠️ Error inicializando Modo Elipse:', e);
-            }
-        }
-        // 🌊 INICIALIZAR MODO ONDAS CRUZADAS
-        if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-            try {
-                await window.modoOndasCruzadas.init(window.uiCore);
-                console.log('🌊 Modo Ondas Cruzadas inicializado en _iniciarModulosYUI');
-            } catch (e) {
-                console.warn('⚠️ Error inicializando Modo Ondas Cruzadas:', e);
-            }
-        }
-        if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-            try {
-                await window.UIOndasCruzadas.init(window.uiCore);
-            } catch (e) {}
-        }
-        if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-            try {
-                await window.UIClipse.init(window.uiCore);
-            } catch (e) {}
-        }
-    }
-
-    async _initModules() {
-        console.log('🔄 Inicializando mÃ³dulos...');
-        try { await pipeline.init(); console.log('✅ Pipeline iniciado'); } catch (e) { console.warn('⚠️ Pipeline fallÃ³:', e); }
-        try { await gramatica.init(); console.log('✅ GramÃ¡tica iniciada'); } catch (e) { console.warn('⚠️ GramÃ¡tica fallÃ³:', e); }
-        try { await vigia.init(); console.log('✅ VigÃ­a iniciado'); } catch (e) { console.warn('⚠️ VigÃ­a fallÃ³:', e); }
-        try { await centinela.init(); console.log('✅ Centinela iniciado'); } catch (e) { console.warn('⚠️ Centinela fallÃ³:', e); }
-        try { await gestorNiveles.init(); console.log('✅ Gestor de Niveles iniciado'); } catch (e) { console.warn('⚠️ Gestor de Niveles fallÃ³:', e); }
-        
-        // 🌌 INICIALIZAR MODO ELIPSE - CON CARGA DE DATOS
-        try {
-            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
-                await window.modoElipse.init(window.uiCore);
-                console.log('🌌 Modo Elipse inicializado');
-                
-                if (typeof window.modoElipse.cargarDatos === 'function') {
-                    const datos = await window.modoElipse.cargarDatos();
-                    console.log(`🌌 Datos del Modo Elipse cargados: ${datos.length} ondas`);
-                }
-            }
-        } catch (e) { 
-            console.warn('⚠️ Modo Elipse fallÃ³:', e); 
-        }
-        
-        // 🌊 INICIALIZAR MODO ONDAS CRUZADAS - CON CARGA DE DATOS
-        try {
-            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-                await window.modoOndasCruzadas.init(window.uiCore);
-                console.log('🌊 Modo Ondas Cruzadas inicializado');
-                
-                if (typeof window.modoOndasCruzadas._cargarDatos === 'function') {
-                    await window.modoOndasCruzadas._cargarDatos();
-                }
-            }
-        } catch (e) { 
-            console.warn('⚠️ Modo Ondas Cruzadas fallÃ³:', e); 
-        }
-        
-        // Inicializar UI Elipse
-        try {
-            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-                await window.UIClipse.init(window.uiCore);
-                console.log('🌌 UI Elipse inicializada');
-            }
-        } catch (e) {
-            console.warn('⚠️ UI Elipse fallÃ³:', e);
-        }
-        
-        // Inicializar UI Ondas Cruzadas
-        try {
-            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                await window.UIOndasCruzadas.init(window.uiCore);
-                console.log('🌊 UI Ondas Cruzadas inicializada');
-            }
-        } catch (e) {
-            console.warn('⚠️ UI Ondas Cruzadas fallÃ³:', e);
-        }
-        
-        if (window.balanceadorGroq && !window.balanceadorGroq._initDone) {
-            try { await window.balanceadorGroq.init(); } catch (e) { console.warn('⚠️ Error inicializando balanceador:', e); }
-        }
-        console.log('✅ Todos los mÃ³dulos inicializados (incluyendo Ondas Cruzadas)');
-    }
-
-    async _actualizarUICompleta() {
-        try {
-            const overlay = document.getElementById('cargaOverlay');
-            if (overlay) overlay.remove();
-            this._cargaOverlayMostrado = false;
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
-            if (window.uiCore && window.uiCore._actualizarIndicadoresSeguro) {
-                window.uiCore._actualizarIndicadoresSeguro();
-            }
-            if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.UIConfig && window.UIConfig._actualizarNivelHeader) {
-                window.UIConfig._actualizarNivelHeader();
-            }
-            if (window.UIConfig && window.UIConfig._recargarConfiguracion) {
-                await window.UIConfig._recargarConfiguracion();
-            }
-            if (window.UIGrammar) {
-                if (window.vigiaGramatical && !window.vigiaGramatical._gramaticalInitDone) {
-                    await window.vigiaGramatical.initGramatical();
-                }
-                window.UIGrammar._cargarGramatica();
-            }
-            if (window.UITemas) {
-                window.UITemas._renderTemas();
-            }
-            if (window.UIEspacio) {
-                await window.UIEspacio._renderizarMiEspacio();
-            }
-            if (window.UIStudy && window.UIStudy._renderizarFraseInteractiva) {
-                window.UIStudy._renderizarFraseInteractiva();
-            }
-            if (window.UICaracteres && window.UICaracteres.estaDisponible()) {
-                try { await window.UICaracteres.cargar(window.uiCore); } catch (e) {}
-            }
-            if (window.UIDashboard) {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-            }
-            if (window.tutorNeuro && window.tutorNeuro._recomendarSiguienteTema) {
-                setTimeout(() => { try { window.tutorNeuro._recomendarSiguienteTema(); } catch (e) {} }, 2000);
-            }
-            if (window.uiCore && window.uiCore._actualizarIndicadorBalanceador) {
-                window.uiCore._actualizarIndicadorBalanceador();
-            }
-            // 🌌 RECARGAR MÃ“DULO ELIPSE
-            if (window.UIClipse) {
-                try {
-                    await window.UIClipse.cargar(window.uiCore);
-                } catch (e) {}
-            }
-            // 🌊 RECARGAR MÃ“DULO ONDAS CRUZADAS
-            if (window.UIOndasCruzadas) {
-                try {
-                    await window.UIOndasCruzadas.cargar(window.uiCore);
-                } catch (e) {}
-            }
-        } catch (e) { console.warn('⚠️ Error actualizando UI:', e); }
-    }
-
-    async _loadDashboard() {
-        try {
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
-            let stats = { totalFrases: 0, totalPalabras: 0, progreso: 0, neuroScore: 0 };
-            if (this._dbReady && db && db.db) {
-                try {
-                    stats = await db.obtenerEstadisticasNeuro(idiomaActivo);
-                } catch (e) {}
-            }
-            if (window.UIDashboard) {
-                window.UIDashboard._actualizarTarjetaStudy(stats);
-                window.UIDashboard._actualizarTarjetaGrammar(stats);
-                window.UIDashboard._actualizarTarjetaVigia();
-            }
-            if (window.uiCore && window.uiCore._actualizarIndicadoresSeguro) {
-                window.uiCore._actualizarIndicadoresSeguro();
-            }
-        } catch (error) { console.warn('⚠️ Error cargando dashboard:', error); }
-    }
+    // ============================================================
+    // UTILIDADES UI
+    // ============================================================
 
     async _mostrarBienvenida(usuario) {
         console.log('🎉 Mostrando bienvenida para:', usuario.nombre);
-        let mensajeMotivador = '🌟 Â¡Comienza tu viaje de aprendizaje!';
+        var mensajeMotivador = 'Comienza tu viaje de aprendizaje!';
         try {
-            if (vigia && vigia.enLinea) {
-                const prompt = `
-                    Eres un asistente motivacional. El usuario ${usuario.nombre} acaba de registrarse.
-                    Idiomas: ${usuario.idiomasObjetivo.map(i => i.idioma + ' (' + i.nivel + ')').join(', ')}
-                    Genera un mensaje motivador corto (mÃ¡x 30 palabras).
-                `;
-                const respuesta = await vigia._consultarGroq(prompt, 'text');
+            if (window.vigia && window.vigia.enLinea) {
+                var prompt = 'Eres un asistente motivacional. El usuario ' + usuario.nombre + ' acaba de registrarse. Idiomas: ' + usuario.idiomasObjetivo.map(function(i) { return i.idioma + ' (' + i.nivel + ')'; }).join(', ') + ' Genera un mensaje motivador corto (max 30 palabras).';
+                var respuesta = await window.vigia._consultarGroq(prompt, 'text');
                 if (respuesta && respuesta.length > 5) mensajeMotivador = respuesta.trim();
             }
         } catch (e) {}
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:99999;display:flex;justify-content:center;align-items:center;animation:fadeIn 0.5s ease;`;
-        overlay.innerHTML = `
-            <div style="background:#fff;border-radius:24px;padding:40px 32px;max-width:420px;width:92%;text-align:center;animation:scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 30px 80px rgba(0,0,0,0.35);">
-                <div style="font-size:72px;margin-bottom:16px;">🎉</div>
-                <h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Â¡Bienvenido, ${usuario.nombre}!</h2>
-                <p style="font-size:16px;color:#636E72;margin-bottom:16px;">${mensajeMotivador}</p>
-                <button onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">🚀 Â¡Comenzar!</button>
-            </div>
-        `;
+        
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:99999;display:flex;justify-content:center;align-items:center;animation:fadeIn 0.5s ease;';
+        overlay.innerHTML = '<div style="background:#fff;border-radius:24px;padding:40px 32px;max-width:420px;width:92%;text-align:center;animation:scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 30px 80px rgba(0,0,0,0.35);"><div style="font-size:72px;margin-bottom:16px;">🎉</div><h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Bienvenido, ' + usuario.nombre + '!</h2><p style="font-size:16px;color:#636E72;margin-bottom:16px;">' + mensajeMotivador + '</p><button onclick="this.closest(\'div[style]\').parentElement.remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">Comenzar!</button></div>';
         document.body.appendChild(overlay);
-        setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 8000);
-        return new Promise(resolve => {
-            const checkModal = setInterval(() => {
+        setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 8000);
+        return new Promise(function(resolve) {
+            var checkModal = setInterval(function() {
                 if (!document.body.contains(overlay)) { clearInterval(checkModal); resolve(); }
             }, 200);
         });
     }
 
-    _showToast(mensaje, tipo = 'info') {
-        return new Promise((resolve) => {
+    _showToast(mensaje, tipo) {
+        return new Promise(function(resolve) {
             if (window.uiCore && window.uiCore.mostrarToast) {
                 window.uiCore.mostrarToast(mensaje, tipo);
                 resolve();
@@ -1735,7 +1660,7 @@ class App {
     }
 
     _showConfirm(mensaje, titulo) {
-        return new Promise((resolve) => {
+        return new Promise(function(resolve) {
             if (window.uiCore && window.uiCore.confirm) {
                 window.uiCore.confirm(mensaje, titulo).then(resolve);
             } else { resolve(confirm(mensaje)); }
@@ -1745,33 +1670,23 @@ class App {
     _showError(error) {
         console.error('❌ Mostrando error:', error);
         if (typeof window.uiCore !== 'undefined' && window.uiCore.mostrarToast) {
-            window.uiCore.mostrarToast('❌ Error: ' + (error.message || 'Error desconocido'), 'error');
+            window.uiCore.mostrarToast('Error: ' + (error.message || 'Error desconocido'), 'error');
             return;
         }
-        document.body.innerHTML = `
-            <div style="display:flex;justify-content:center;align-items:center;height:100vh;padding:20px;text-align:center;flex-direction:column;background:#f5f6fa;font-family:sans-serif;">
-                <div style="font-size:64px;margin-bottom:16px;">❌</div>
-                <h1 style="font-size:24px;color:#FF7675;margin-bottom:8px;">Error al iniciar</h1>
-                <p style="color:#636E72;max-width:400px;">${error.message || 'Error desconocido'}</p>
-                <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-                    <button onclick="location.reload()" style="padding:12px 24px;background:#6C5CE7;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">🔄 Reintentar</button>
-                    <button onclick="localStorage.clear();location.reload();" style="padding:12px 24px;background:#FF7675;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">🗑️ Limpiar localStorage</button>
-                </div>
-                <div style="margin-top:16px;font-size:12px;color:var(--gray-light);">Si el problema persiste, abre la consola (F12) y revisa los errores.</div>
-            </div>
-        `;
+        document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;padding:20px;text-align:center;flex-direction:column;background:#f5f6fa;font-family:sans-serif;"><div style="font-size:64px;margin-bottom:16px;">❌</div><h1 style="font-size:24px;color:#FF7675;margin-bottom:8px;">Error al iniciar</h1><p style="color:#636E72;max-width:400px;">' + (error.message || 'Error desconocido') + '</p><div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"><button onclick="location.reload()" style="padding:12px 24px;background:#6C5CE7;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">Reintentar</button><button onclick="localStorage.clear();location.reload();" style="padding:12px 24px;background:#FF7675;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">Limpiar localStorage</button></div><div style="margin-top:16px;font-size:12px;color:var(--gray-light);">Si el problema persiste, abre la consola (F12) y revisa los errores.</div></div>';
     }
 
     _setupOrientationHandler() {
-        let timeout = null;
-        const handle = () => {
-            if (this._initDone) return;
+        var self = this;
+        var timeout = null;
+        var handle = function() {
+            if (self._initDone) return;
             if (timeout) clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                const usuario = this._getUsuarioLocalStorage();
+            timeout = setTimeout(function() {
+                var usuario = self._getUsuarioLocalStorage();
                 if (usuario) {
-                    const mainScreen = document.getElementById('mainScreen');
-                    const registroScreen = document.getElementById('registroScreen');
+                    var mainScreen = document.getElementById('mainScreen');
+                    var registroScreen = document.getElementById('registroScreen');
                     if (mainScreen && !mainScreen.classList.contains('active')) {
                         mainScreen.classList.add('active');
                     }
@@ -1785,28 +1700,47 @@ class App {
         window.addEventListener('orientationchange', handle);
         window.addEventListener('resize', handle);
     }
+
+    destroy() {
+        if (this._intervaloReconexionVigia) {
+            clearInterval(this._intervaloReconexionVigia);
+            this._intervaloReconexionVigia = null;
+        }
+        if (this._cargaInterval) {
+            clearInterval(this._cargaInterval);
+            this._cargaInterval = null;
+        }
+        if (this._cargaTimeout) {
+            clearTimeout(this._cargaTimeout);
+            this._cargaTimeout = null;
+        }
+        if (this._recargaTimeout) {
+            clearTimeout(this._recargaTimeout);
+            this._recargaTimeout = null;
+        }
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// ============================================================
+// INICIALIZACION
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', function() {
     if (window._appInitialized) return;
     window._appInitialized = true;
-    console.log('🚀 Iniciando App v22.7 con persistencia asegurada y Ondas Cruzadas...');
+    console.log('🚀 Iniciando App v23.5 - Con reconexión automática de Vigia...');
+    
     if (typeof db === 'undefined') {
         console.error('❌ Database no definida');
-        document.body.innerHTML = `
-            <div style="display:flex;justify-content:center;align-items:center;height:100vh;padding:20px;text-align:center;flex-direction:column;background:#f5f6fa;font-family:sans-serif;">
-                <div style="font-size:64px;margin-bottom:16px;">⚠️</div>
-                <h1 style="font-size:24px;color:#FF7675;margin-bottom:8px;">Error de Carga</h1>
-                <p style="color:#636E72;max-width:400px;">No se pudo cargar el mÃ³dulo de base de datos.</p>
-                <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#6C5CE7;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">🔄 Reintentar</button>
-            </div>
-        `;
+        document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;padding:20px;text-align:center;flex-direction:column;background:#f5f6fa;font-family:sans-serif;"><div style="font-size:64px;margin-bottom:16px;">⚠️</div><h1 style="font-size:24px;color:#FF7675;margin-bottom:8px;">Error de Carga</h1><p style="color:#636E72;max-width:400px;">No se pudo cargar el modulo de base de datos.</p><button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#6C5CE7;color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;">Reintentar</button></div>';
         return;
     }
+    
     window.app = new App();
     window.app.init();
 });
 
+// Exponer instancias globales
 window.db = db;
 window.vigia = vigia;
 window.centinela = centinela;
@@ -1822,14 +1756,12 @@ window.modoElipse = modoElipse;
 window.modoOndasCruzadas = modoOndasCruzadas;
 window.UIOndasCruzadas = UIOndasCruzadas;
 
-console.log('✅ App v22.7 - DEFINITIVA CON PERSISTENCIA ASEGURADA Y ONDAS CRUZADAS');
-console.log('  🌌 InicializaciÃ³n del Modo Elipse con carga de datos');
-console.log('  🌊 InicializaciÃ³n del Modo Ondas Cruzadas');
-console.log('  🔥 Carga de datos desde localStorage e IndexedDB');
-console.log('  🔥 RecuperaciÃ³n automÃ¡tica al iniciar');
-console.log('  🔥 Eventos de persistencia: beforeunload, visibilitychange');
-console.log('  🔥 Guardado automÃ¡tico cada 3 segundos');
-console.log('  🔥 Eventos de sincronizaciÃ³n entre Elipse y Ondas Cruzadas');
-console.log('  ✅ SincronizaciÃ³n automÃ¡tica de Ondas Cruzadas al cambiar de idioma');
-console.log('  ✅ EstadÃ­sticas en tiempo real en Ondas Cruzadas');
-console.log('  ✅ Todas las funcionalidades originales preservadas');
+console.log('✅ App v23.5 - CON RECONEXIÓN AUTOMÁTICA DE VIGIA');
+console.log('  🚀 Dashboard visible en ~2-3 segundos');
+console.log('  🧠 Tutor Neuro en segundo plano (sin errores)');
+console.log('  🔄 Reconexión automática de Vigia:');
+console.log('     - Al iniciar la app');
+console.log('     - Al volver al dashboard');
+console.log('     - Cada 30 segundos (si está desconectado)');
+console.log('     - Con reintentos automáticos (5 intentos)');
+console.log('  ⏱️ Timeout de seguridad: 3 segundos');

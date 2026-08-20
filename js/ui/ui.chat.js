@@ -1,5 +1,5 @@
 // ============================================================
-// UI CHAT v19.6 - CORREGIDO: CARACTERES Y MODELO openai/gpt-oss-120b
+// UI CHAT v20.0 - COMPLETO CON EXTENSIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA
 // ============================================================
 
 class UIChat {
@@ -11,6 +11,33 @@ class UIChat {
         this._nivelRealUsuario = 'A1';
         this._NIVELES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         this._modeloActual = 'openai/gpt-oss-120b';
+        
+        // ============================================================
+        // COMANDOS PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA
+        // ============================================================
+        this._comandosElipse = [
+            { comando: '/elipse', descripcion: 'Ver estado del Modo Elipse' },
+            { comando: '/elipse-ver', descripcion: 'Ver todas las ondas de la Elipse' },
+            { comando: '/elipse-generar', descripcion: 'Instrucciones para generar una nueva onda' }
+        ];
+        
+        this._comandosOndasCruzadas = [
+            { comando: '/ondas-cruzadas', descripcion: 'Ver estado del Modo Ondas Cruzadas' },
+            { comando: '/oc', descripcion: 'Versión corta de /ondas-cruzadas' },
+            { comando: '/grafo', descripcion: 'Ver el grafo de elipses' },
+            { comando: '/interferencias', descripcion: 'Ver interferencias detectadas' }
+        ];
+        
+        this._comandosBiblioteca = [
+            { comando: '/biblioteca', descripcion: 'Ver estado de la Biblioteca de Lectura' },
+            { comando: '/lectura', descripcion: 'Ver estado de lectura (leídas / por leer)' }
+        ];
+        
+        this._comandosSistema = [
+            { comando: '/sincronizar', descripcion: 'Sincronizar todos los módulos' },
+            { comando: '/help', descripcion: 'Mostrar ayuda de comandos' },
+            { comando: '/clear', descripcion: 'Limpiar todo el historial del chat' }
+        ];
     }
 
     async init(core) {
@@ -72,12 +99,43 @@ class UIChat {
         return this._nivelRealUsuario || 'A1';
     }
 
+    _obtenerContextoActual() {
+        let contexto = 'general';
+        const moduloActual = this.core?.moduloActual;
+        if (moduloActual === 'elipse') contexto = 'elipse';
+        else if (moduloActual === 'ondasCruzadas') contexto = 'ondasCruzadas';
+        else if (moduloActual === 'biblioteca') contexto = 'biblioteca';
+        return contexto;
+    }
+
+    _obtenerContextoLabel() {
+        const contexto = this._obtenerContextoActual();
+        switch (contexto) {
+            case 'elipse': return '🌌 Modo Elipse';
+            case 'ondasCruzadas': return '🌊 Ondas Cruzadas';
+            case 'biblioteca': return '📚 Biblioteca';
+            default: return '📌 General';
+        }
+    }
+
+    _obtenerContextoColor() {
+        const contexto = this._obtenerContextoActual();
+        switch (contexto) {
+            case 'elipse': return '#6C5CE7';
+            case 'ondasCruzadas': return '#00CEC9';
+            case 'biblioteca': return '#FDCB6E';
+            default: return 'var(--primary)';
+        }
+    }
+
     async _cargarChatPro() {
         const container = document.getElementById('vigiaChatProContainer');
         if (!container) return;
         
         this._actualizarNivelReal();
         const nivelReal = this._obtenerNivelRealUsuario();
+        const contextoLabel = this._obtenerContextoLabel();
+        const contextoColor = this._obtenerContextoColor();
         
         const enLinea = window.vigia ? window.vigia.enLinea : false;
         const estadoSalud = window.centinela ? window.centinela.estadoSalud : 'activo';
@@ -100,35 +158,27 @@ class UIChat {
                     <strong>Vigía (${nombreModelo}):</strong> Hola! Soy tu asistente neuroadaptativo PRO.
                     <br><br>
                     <strong>Tu nivel real es: <span style="color:var(--primary);font-weight:800;">${nivelReal}</span></strong>
+                    <br>
+                    <strong>Contexto actual: <span style="color:${contextoColor};font-weight:800;">${contextoLabel}</span></strong>
                     <br><br>
-                    <strong>Comandos disponibles:</strong>
-                    <br>• <strong>/espacio</strong> → Abre el generador para anadir frases y palabras a Mi Espacio (nivel ${nivelReal})
-                    <br>• <strong>/espacio-ver</strong> → Ver Mi Espacio organizado por nivel
-                    <br>• <strong>/espacio-nivel [NIVEL]</strong> → Ver elementos de un nivel especifico
-                    <br>• <strong>/espacio-familia [FAMILIA]</strong> → Ver elementos de una familia
-                    <br>• <strong>palabras: hola, mundo, casa</strong> → Guarda vocabulario (nivel ${nivelReal})
-                    <br>• <strong>frases: hola, adios, gracias</strong> → Guarda frases (nivel ${nivelReal})
-                    <br>• <strong>/temas</strong> → Lista todos tus temas (manuales y predefinidos)
-                    <br>• <strong>/generar [tema]</strong> → Abre el generador JSON para un tema predefinido (nivel ${nivelReal})
-                    <br>• <strong>/temasnuevos</strong> → Sugiere temas para ampliar vocabulario (nivel ${nivelReal})
-                    <br>• <strong>/jsonnuevo [tema]</strong> → Genera JSON con palabras nuevas (nivel ${nivelReal})
-                    <br>• <strong>/revisar</strong> → Repasar palabras dificiles
-                    <br>• <strong>/examen</strong> → Evaluar nivel
-                    <br>• <strong>/analizar</strong> → Analizar progreso completo
-                    <br>• <strong>/diagnostico</strong> → Diagnostico del sistema
-                    <br>• <strong>/estadisticas</strong> → Estadisticas detalladas
-                    <br>• <strong>/exportar</strong> → Exportar todos los datos
-                    <br>• <strong>/reiniciar</strong> → Reiniciar fase actual
-                    <br>• <strong>/nivel [NIVEL]</strong> → Cambiar nivel del idioma activo
-                    <br>• <strong>/idiomas</strong> → Ver todos los idiomas configurados
-                    <br>• <strong>/add [idioma] [nivel]</strong> → Anadir nuevo idioma
-                    <br>• <strong>/remove [idioma]</strong> → Eliminar un idioma
-                    <br>• <strong>/switch [idioma]</strong> → Cambiar idioma activo
-                    <br>• <strong>/level [idioma] [nivel]</strong> → Cambiar nivel de un idioma
-                    <br>• <strong>/modo</strong> → Alternar modo inverso
-                    <br>• <strong>/feedback</strong> → Ver recomendaciones de Vigia
-                    <br>• <strong>/clear</strong> → Limpiar todo el historial del chat
+                    <strong>🌌 Comandos del Modo Elipse:</strong>
+                    <br>• <strong>/elipse</strong> → Ver estado de la Elipse
+                    <br>• <strong>/elipse-ver</strong> → Ver todas las ondas
+                    <br>• <strong>/elipse-generar</strong> → Instrucciones para generar una nueva onda
+                    <br><br>
+                    <strong>🌊 Comandos del Modo Ondas Cruzadas:</strong>
+                    <br>• <strong>/ondas-cruzadas</strong> o <strong>/oc</strong> → Ver estado del Modo Ondas Cruzadas
+                    <br>• <strong>/grafo</strong> → Ver el grafo de elipses
+                    <br>• <strong>/interferencias</strong> → Ver interferencias detectadas
+                    <br><br>
+                    <strong>📚 Comandos de la Biblioteca de Lectura:</strong>
+                    <br>• <strong>/biblioteca</strong> → Ver estado de la Biblioteca
+                    <br>• <strong>/lectura</strong> → Ver estado de lectura (leídas / por leer)
+                    <br><br>
+                    <strong>⚙️ Comandos del Sistema:</strong>
+                    <br>• <strong>/sincronizar</strong> → Sincronizar todos los módulos
                     <br>• <strong>/help</strong> → Ver todos los comandos
+                    <br>• <strong>/clear</strong> → Limpiar todo el historial del chat
                     <br><br>
                     ${comandosHTML}
                     <br>
@@ -192,6 +242,7 @@ class UIChat {
                                 ${modoInversoActivo ? ' · Inverso' : ''}
                                 <span style="font-size:10px;color:var(--gray-light);margin-left:8px;">${totalMensajes} msgs</span>
                                 <span style="font-size:10px;color:var(--primary);margin-left:8px;font-weight:600;">${nivelReal}</span>
+                                <span style="font-size:10px;color:${contextoColor};margin-left:8px;font-weight:600;">${contextoLabel}</span>
                             </p>
                         </div>
                     </div>
@@ -240,6 +291,10 @@ class UIChat {
                     <div class="metric-item" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--gray-light);flex-shrink:0;">
                         <span class="metric-icon" style="font-size:14px;">Modelo</span>
                         <span class="metric-value" style="font-size:11px;font-weight:600;color:var(--gray);">${nombreModelo}</span>
+                    </div>
+                    <div class="metric-item" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:${contextoColor}15;border-radius:6px;border:1px solid ${contextoColor};flex-shrink:0;">
+                        <span class="metric-icon" style="font-size:14px;">Contexto</span>
+                        <span class="metric-value" style="font-size:11px;font-weight:600;color:${contextoColor};">${contextoLabel}</span>
                     </div>
                 </div>
                 
@@ -329,6 +384,7 @@ class UIChat {
     _generarComandosHTML() {
         const nivelReal = this._obtenerNivelRealUsuario();
         const nombreModelo = this._obtenerNombreModelo(window.vigia?.modelo || 'openai/gpt-oss-120b');
+        const contextoLabel = this._obtenerContextoLabel();
         
         return `
             <div style="
@@ -340,67 +396,109 @@ class UIChat {
                 font-family: monospace;
                 line-height: 1.8;
                 border: 1px solid var(--light);
-                max-height:200px;
+                max-height:300px;
                 overflow-y:auto;
             ">
-                <div style="font-weight:700;margin-bottom:4px;font-family:var(--font);">TODOS LOS COMANDOS (Nivel actual: ${nivelReal}) · Modelo: ${nombreModelo}:</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;">
-                    <span><span style="color:var(--secondary);font-weight:600;">/espacio</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Abrir generador Mi Espacio (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--secondary);font-weight:600;">palabras: a, b, c</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Guardar vocabulario (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--secondary);font-weight:600;">frases: a, b, c</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Guardar frases (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--secondary);font-weight:600;">/espacio-ver</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver Mi Espacio organizado por nivel</span></span>
-                    <span><span style="color:var(--secondary);font-weight:600;">/espacio-nivel [NIVEL]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver palabras/frases de un nivel</span></span>
-                    <span><span style="color:var(--secondary);font-weight:600;">/espacio-familia [FAMILIA]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver elementos de una familia</span></span>
+                <div style="font-weight:700;margin-bottom:4px;font-family:var(--font);">TODOS LOS COMANDOS (Nivel actual: ${nivelReal}) · Contexto: ${contextoLabel} · Modelo: ${nombreModelo}:</div>
+                
+                <div style="color:var(--primary);font-weight:700;margin-top:6px;">🌌 MODO ELIPSE:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:#6C5CE7;font-weight:600;">/elipse</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver estado de la Elipse</span></span>
+                    <span><span style="color:#6C5CE7;font-weight:600;">/elipse-ver</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver todas las ondas</span></span>
+                    <span><span style="color:#6C5CE7;font-weight:600;">/elipse-generar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Instrucciones para generar una nueva onda</span></span>
+                </div>
+                
+                <div style="color:var(--secondary);font-weight:700;margin-top:6px;">🌊 MODO ONDAS CRUZADAS:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:#00CEC9;font-weight:600;">/ondas-cruzadas</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver estado del Modo Ondas Cruzadas</span></span>
+                    <span><span style="color:#00CEC9;font-weight:600;">/oc</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Versión corta de /ondas-cruzadas</span></span>
+                    <span><span style="color:#00CEC9;font-weight:600;">/grafo</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver el grafo de elipses</span></span>
+                    <span><span style="color:#00CEC9;font-weight:600;">/interferencias</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver interferencias detectadas</span></span>
+                </div>
+                
+                <div style="color:var(--warning);font-weight:700;margin-top:6px;">📚 BIBLIOTECA DE LECTURA:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:#FDCB6E;font-weight:600;">/biblioteca</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver estado de la Biblioteca</span></span>
+                    <span><span style="color:#FDCB6E;font-weight:600;">/lectura</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver estado de lectura (leídas / por leer)</span></span>
+                </div>
+                
+                <div style="color:var(--success);font-weight:700;margin-top:6px;">⚙️ SISTEMA:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:var(--success);font-weight:600;">/sincronizar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Sincronizar todos los módulos</span></span>
+                    <span><span style="color:var(--success);font-weight:600;">/help</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver todos los comandos</span></span>
+                    <span><span style="color:var(--danger);font-weight:600;">/clear</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Limpiar todo el historial</span></span>
+                </div>
+                
+                <div style="color:var(--gray);font-weight:700;margin-top:6px;">📝 MI ESPACIO Y TEMAS:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:var(--secondary);font-weight:600;">/espacio</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Abrir generador Mi Espacio</span></span>
+                    <span><span style="color:var(--secondary);font-weight:600;">palabras: a, b, c</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Guardar vocabulario</span></span>
+                    <span><span style="color:var(--secondary);font-weight:600;">frases: a, b, c</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Guardar frases</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/temas</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Listar todos los temas</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/generar [tema]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Abrir generador JSON (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/temasnuevos</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Sugerir temas (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/jsonnuevo [tema]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Generar JSON con palabras (nivel ${nivelReal})</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/revisar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Repasar palabras dificiles</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/generar [tema]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Abrir generador JSON</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/temasnuevos</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Sugerir temas</span></span>
+                </div>
+                
+                <div style="color:var(--gray);font-weight:700;margin-top:6px;">🎯 ESTUDIO Y PROGRESO:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:var(--primary);font-weight:600;">/revisar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Repasar palabras difíciles</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/examen</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Evaluar nivel</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/analizar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Progreso completo</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/diagnostico</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Diagnostico sistema</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/estadisticas</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Estadisticas</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/exportar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Exportar datos</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/reiniciar</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Reiniciar fase</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/nivel [NIVEL]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Cambiar nivel</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/idiomas</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver idiomas</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/add [idioma] [nivel]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Anadir idioma</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/feedback</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Recomendaciones</span></span>
+                </div>
+                
+                <div style="color:var(--gray);font-weight:700;margin-top:6px;">🌍 IDIOMAS:</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;margin-left:8px;">
+                    <span><span style="color:var(--primary);font-weight:600;">/idiomas</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Ver idiomas configurados</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/add [idioma] [nivel]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Añadir idioma</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/remove [idioma]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Eliminar idioma</span></span>
                     <span><span style="color:var(--primary);font-weight:600;">/switch [idioma]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Cambiar idioma</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/level [idioma] [nivel]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Cambiar nivel idioma</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/modo</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Modo inverso</span></span>
-                    <span><span style="color:var(--primary);font-weight:600;">/feedback</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Recomendaciones</span></span>
-                    <span><span style="color:var(--danger);font-weight:600;">/clear</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Limpiar chat</span></span>
-                    <span><span style="color:var(--success);font-weight:600;">/help</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Todos los comandos</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/level [idioma] [nivel]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Cambiar nivel de idioma</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/nivel [NIVEL]</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Cambiar nivel actual</span></span>
+                    <span><span style="color:var(--primary);font-weight:600;">/modo</span> <span style="color:var(--gray);font-size:11px;font-family:var(--font);">Alternar modo inverso</span></span>
                 </div>
             </div>
         `;
     }
 
     _generarSugerenciasHTML() {
-        const sugerencias = [
+        const contexto = this._obtenerContextoActual();
+        
+        // Sugerencias base
+        const sugerenciasBase = [
             { id: 'espacio', icono: '⭐', texto: 'Mi Espacio' },
             { id: 'espacio-ver', icono: '📚', texto: 'Ver Espacio' },
-            { id: 'espacio-nivel', icono: '🎯', texto: 'Por Nivel' },
-            { id: 'espacio-familia', icono: '📂', texto: 'Por Familia' },
             { id: 'temas', icono: '📂', texto: 'Ver Temas' },
-            { id: 'generar', icono: '🧠', texto: 'Generar JSON' },
-            { id: 'temasnuevos', icono: '📚', texto: 'Temas Nuevos' },
-            { id: 'jsonnuevo', icono: '📄', texto: 'JSON Nuevo' },
-            { id: 'revisar', icono: '📖', texto: 'Revisar' },
-            { id: 'examen', icono: '📝', texto: 'Examen' },
-            { id: 'analizar', icono: '📊', texto: 'Analizar' },
-            { id: 'diagnostico', icono: '🩺', texto: 'Diagnostico' },
-            { id: 'estadisticas', icono: '📈', texto: 'Stats' },
-            { id: 'nivel', icono: '🎯', texto: 'Nivel' },
-            { id: 'idiomas', icono: '🌍', texto: 'Idiomas' },
-            { id: 'modo', icono: '🔄', texto: 'Inverso' },
             { id: 'feedback', icono: '💡', texto: 'Feedback' },
-            { id: 'clear', icono: '🗑️', texto: 'Limpiar' },
             { id: 'help', icono: '❓', texto: 'Ayuda' }
         ];
         
-        return sugerencias.map(s => `
+        // Sugerencias según contexto
+        let sugerenciasContexto = [];
+        if (contexto === 'elipse') {
+            sugerenciasContexto = [
+                { id: 'elipse', icono: '🌌', texto: 'Estado Elipse' },
+                { id: 'elipse-ver', icono: '📖', texto: 'Ver Ondas' },
+                { id: 'elipse-generar', icono: '📄', texto: 'Generar' }
+            ];
+        } else if (contexto === 'ondasCruzadas') {
+            sugerenciasContexto = [
+                { id: 'ondas-cruzadas', icono: '🌊', texto: 'Estado OC' },
+                { id: 'grafo', icono: '🕸️', texto: 'Ver Grafo' },
+                { id: 'interferencias', icono: '🔗', texto: 'Interferencias' }
+            ];
+        } else if (contexto === 'biblioteca') {
+            sugerenciasContexto = [
+                { id: 'biblioteca', icono: '📚', texto: 'Estado Biblio' },
+                { id: 'lectura', icono: '📖', texto: 'Ver Lectura' }
+            ];
+        }
+        
+        const todasSugerencias = [...sugerenciasContexto, ...sugerenciasBase];
+        
+        return todasSugerencias.map(s => `
             <button class="suggestion-chip" onclick="window.UIChat._chatSugerencia('${s.id}')" style="
                 padding:4px 12px;
                 border-radius:16px;
@@ -448,8 +546,192 @@ class UIChat {
         this._actualizarNivelReal();
         const nivelReal = this._obtenerNivelRealUsuario();
         const nombreModelo = this._obtenerNombreModelo(window.vigia?.modelo || 'openai/gpt-oss-120b');
+        const contexto = this._obtenerContextoActual();
+        const contextoLabel = this._obtenerContextoLabel();
         
         const mensaje = input.value.trim();
+        
+        // ============================================================
+        // COMANDOS DE ELIPSE
+        // ============================================================
+        if (mensaje.toLowerCase().trim() === '/elipse') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoElipse();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/elipse-ver') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoElipseVer();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/elipse-generar') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoElipseGenerar();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        // ============================================================
+        // COMANDOS DE ONDAS CRUZADAS
+        // ============================================================
+        if (mensaje.toLowerCase().trim() === '/ondas-cruzadas' || mensaje.toLowerCase().trim() === '/oc') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoOndasCruzadas();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/grafo') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoGrafo();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/interferencias') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoInterferencias();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        // ============================================================
+        // COMANDOS DE BIBLIOTECA
+        // ============================================================
+        if (mensaje.toLowerCase().trim() === '/biblioteca') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoBiblioteca();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/lectura') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoLectura();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        // ============================================================
+        // COMANDOS DE SISTEMA
+        // ============================================================
+        if (mensaje.toLowerCase().trim() === '/sincronizar') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = await window.vigia._comandoSincronizar();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
+        
+        if (mensaje.toLowerCase().trim() === '/help') {
+            input.value = '';
+            this._agregarMensajeChatPro('user', mensaje);
+            this._mostrarIndicadorEscritura();
+            try {
+                const respuesta = window.vigia._comandoHelp();
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', respuesta);
+                await db.guardarMensaje('user', mensaje);
+                await db.guardarMensaje('assistant', respuesta);
+            } catch (error) {
+                this._quitarIndicadorEscritura();
+                this._agregarMensajeChatPro('assistant', 'Error: ' + error.message);
+            }
+            return;
+        }
         
         if (mensaje.toLowerCase().trim() === '/clear') {
             await this._chatLimpiarCompleto();
@@ -457,6 +739,9 @@ class UIChat {
             return;
         }
         
+        // ============================================================
+        // COMANDOS EXISTENTES (MI ESPACIO, TEMAS, ETC.)
+        // ============================================================
         if (mensaje.toLowerCase().trim() === '/espacio') {
             input.value = '';
             this._agregarMensajeChatPro('user', mensaje);
@@ -466,7 +751,8 @@ class UIChat {
                     window.UIEspacio.abrirModalEspacio();
                     this._agregarMensajeChatPro('assistant', 
                         'Abriendo el generador de Mi Espacio...\n\n' +
-                        'Nivel actual: ' + nivelReal + '\n\n' +
+                        'Nivel actual: ' + nivelReal + '\n' +
+                        'Contexto: ' + contextoLabel + '\n\n' +
                         'Instrucciones:\n' +
                         '1. Escribe tus frases y palabras en los campos\n' +
                         '2. Las palabras se guardaran con nivel ' + nivelReal + '\n' +
@@ -494,7 +780,8 @@ class UIChat {
                 window.UIEspacio._renderizarMiEspacio();
                 this._agregarMensajeChatPro('assistant', 
                     'Mi Espacio - Organizacion por Nivel\n\n' +
-                    'Tu nivel actual: ' + nivelReal + '\n\n' +
+                    'Tu nivel actual: ' + nivelReal + '\n' +
+                    'Contexto: ' + contextoLabel + '\n\n' +
                     'Se ha actualizado la vista de Mi Espacio.\n' +
                     'Los elementos se organizan por:\n' +
                     '   Nivel -> Familia Semantica\n\n' +
@@ -551,6 +838,7 @@ class UIChat {
                 this._agregarMensajeChatPro('assistant', 
                     'Se han guardado ' + anadidos + ' frases en Mi Espacio.\n\n' +
                     'Nivel: ' + nivelReal + '\n' +
+                    'Contexto: ' + contextoLabel + '\n' +
                     'Se organizaran por: Nivel ' + nivelReal + ' -> Familia Semantica\n\n' +
                     'Usa /espacio-ver para verlas organizadas.'
                 );
@@ -566,6 +854,7 @@ class UIChat {
                 this._agregarMensajeChatPro('assistant', 
                     'Se han guardado ' + anadidos + ' palabras en Mi Espacio.\n\n' +
                     'Nivel: ' + nivelReal + '\n' +
+                    'Contexto: ' + contextoLabel + '\n' +
                     'Se organizaran por: Nivel ' + nivelReal + ' -> Familia Semantica\n\n' +
                     'Usa /espacio-ver para verlas organizadas.'
                 );
@@ -574,6 +863,9 @@ class UIChat {
             }
         }
         
+        // ============================================================
+        // CONSULTA NORMAL CON CONTEXTO
+        // ============================================================
         input.value = '';
         this._agregarMensajeChatPro('user', mensaje);
         this._mostrarIndicadorEscritura();
@@ -585,7 +877,7 @@ class UIChat {
             if (comando) {
                 respuesta = await this._ejecutarComandoChat(comando);
             } else {
-                respuesta = await this._consultarVigiaPro(mensaje);
+                respuesta = await this._consultarVigiaPro(mensaje, contexto);
             }
             
             this._quitarIndicadorEscritura();
@@ -861,6 +1153,22 @@ class UIChat {
         const cmd = mensaje.toLowerCase().trim();
         
         const comandos = [
+            // Comandos de Elipse
+            { key: '/elipse', accion: 'elipse' },
+            { key: '/elipse-ver', accion: 'elipse_ver' },
+            { key: '/elipse-generar', accion: 'elipse_generar' },
+            // Comandos de Ondas Cruzadas
+            { key: '/ondas-cruzadas', accion: 'ondas_cruzadas' },
+            { key: '/oc', accion: 'ondas_cruzadas' },
+            { key: '/grafo', accion: 'grafo' },
+            { key: '/interferencias', accion: 'interferencias' },
+            // Comandos de Biblioteca
+            { key: '/biblioteca', accion: 'biblioteca' },
+            { key: '/lectura', accion: 'lectura' },
+            // Comandos de Sistema
+            { key: '/sincronizar', accion: 'sincronizar' },
+            { key: '/help', accion: 'help' },
+            // Comandos existentes
             { key: '/espacio-ver', accion: 'espacio_ver' },
             { key: '/espacio-nivel', accion: 'espacio_nivel' },
             { key: '/espacio-familia', accion: 'espacio_familia' },
@@ -876,7 +1184,6 @@ class UIChat {
             { key: '/diagnostico', accion: 'diagnostico' },
             { key: '/estadisticas', accion: 'estadisticas' },
             { key: '/exportar', accion: 'exportar' },
-            { key: '/help', accion: 'help' },
             { key: '/reiniciar', accion: 'reiniciar' },
             { key: '/idiomas', accion: 'list_idiomas' },
             { key: '/add', accion: 'add_idioma' },
@@ -884,8 +1191,7 @@ class UIChat {
             { key: '/switch', accion: 'switch_idioma' },
             { key: '/level', accion: 'level_idioma' },
             { key: '/modo', accion: 'modo' },
-            { key: '/feedback', accion: 'feedback' },
-            { key: '/clear', accion: 'clear' }
+            { key: '/feedback', accion: 'feedback' }
         ];
         
         for (const c of comandos) {
@@ -900,12 +1206,77 @@ class UIChat {
 
     async _ejecutarComandoChat(comando) {
         const nivelReal = this._obtenerNivelRealUsuario();
+        const contexto = this._obtenerContextoActual();
         
+        // ============================================================
+        // COMANDOS DE ELIPSE
+        // ============================================================
+        if (comando.accion === 'elipse') {
+            const respuesta = await window.vigia._comandoElipse();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'elipse_ver') {
+            const respuesta = await window.vigia._comandoElipseVer();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'elipse_generar') {
+            const respuesta = await window.vigia._comandoElipseGenerar();
+            return respuesta;
+        }
+        
+        // ============================================================
+        // COMANDOS DE ONDAS CRUZADAS
+        // ============================================================
+        if (comando.accion === 'ondas_cruzadas') {
+            const respuesta = await window.vigia._comandoOndasCruzadas();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'grafo') {
+            const respuesta = await window.vigia._comandoGrafo();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'interferencias') {
+            const respuesta = await window.vigia._comandoInterferencias();
+            return respuesta;
+        }
+        
+        // ============================================================
+        // COMANDOS DE BIBLIOTECA
+        // ============================================================
+        if (comando.accion === 'biblioteca') {
+            const respuesta = await window.vigia._comandoBiblioteca();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'lectura') {
+            const respuesta = await window.vigia._comandoLectura();
+            return respuesta;
+        }
+        
+        // ============================================================
+        // COMANDOS DE SISTEMA
+        // ============================================================
+        if (comando.accion === 'sincronizar') {
+            const respuesta = await window.vigia._comandoSincronizar();
+            return respuesta;
+        }
+        
+        if (comando.accion === 'help') {
+            return window.vigia._comandoHelp();
+        }
+        
+        // ============================================================
+        // COMANDOS EXISTENTES
+        // ============================================================
         switch(comando.accion) {
             case 'espacio_ver':
                 if (window.UIEspacio) {
                     window.UIEspacio._renderizarMiEspacio();
-                    return 'Mi Espacio - Organizacion por Nivel\n\nNivel actual: ' + nivelReal + '\n\nSe ha actualizado la vista. Los elementos se organizan por:\n   Nivel -> Familia Semantica\n\nUsa /espacio-nivel [NIVEL] para ver un nivel especifico.';
+                    return 'Mi Espacio - Organizacion por Nivel\n\nNivel actual: ' + nivelReal + '\nContexto: ' + this._obtenerContextoLabel() + '\n\nSe ha actualizado la vista. Los elementos se organizan por:\n   Nivel -> Familia Semantica\n\nUsa /espacio-nivel [NIVEL] para ver un nivel especifico.';
                 }
                 return 'Error: El modulo Mi Espacio no esta disponible.';
                 
@@ -930,7 +1301,7 @@ class UIChat {
                     if (typeof window.UIEspacio.abrirModalEspacio === 'function') {
                         window.UIEspacio.abrirModalEspacio();
                         const nombreModelo = this._obtenerNombreModelo(window.vigia?.modelo || 'openai/gpt-oss-120b');
-                        return 'Abriendo el generador de Mi Espacio...\n\nNivel actual: ' + nivelReal + '\n\nLas palabras y frases se guardaran con nivel ' + nivelReal + ' y se organizaran por:\n   Nivel ' + nivelReal + ' -> Familia Semantica\n\nModelo activo: ' + nombreModelo;
+                        return 'Abriendo el generador de Mi Espacio...\n\nNivel actual: ' + nivelReal + '\nContexto: ' + this._obtenerContextoLabel() + '\n\nLas palabras y frases se guardaran con nivel ' + nivelReal + ' y se organizaran por:\n   Nivel ' + nivelReal + ' -> Familia Semantica\n\nModelo activo: ' + nombreModelo;
                     }
                 }
                 return 'Error: El modulo Mi Espacio no esta disponible.';
@@ -953,7 +1324,6 @@ class UIChat {
             'diagnostico': '_comandoDiagnostico',
             'estadisticas': '_comandoEstadisticas',
             'exportar': '_comandoExportar',
-            'help': '_comandoHelp',
             'reiniciar': '_comandoReiniciar',
             'list_idiomas': '_comandoListIdiomas',
             'add_idioma': '_comandoAddIdioma',
@@ -975,12 +1345,41 @@ class UIChat {
     _comandoHelp() {
         const nivelReal = this._obtenerNivelRealUsuario();
         const nombreModelo = this._obtenerNombreModelo(window.vigia?.modelo || 'openai/gpt-oss-120b');
+        const contextoLabel = this._obtenerContextoLabel();
         
         return `
 AYUDA - TODOS LOS COMANDOS DISPONIBLES
 
 Tu nivel actual: ${nivelReal}
+Contexto actual: ${contextoLabel}
 Modelo activo: ${nombreModelo}
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+🌌 MODO ELIPSE:
+/elipse -> Ver estado de la Elipse
+/elipse-ver -> Ver todas las ondas de la Elipse
+/elipse-generar -> Instrucciones para generar una nueva onda
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+🌊 MODO ONDAS CRUZADAS:
+/ondas-cruzadas o /oc -> Ver estado del Modo Ondas Cruzadas
+/grafo -> Ver el grafo de elipses
+/interferencias -> Ver interferencias detectadas
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+📚 BIBLIOTECA DE LECTURA:
+/biblioteca -> Ver estado de la Biblioteca de Lectura
+/lectura -> Ver estado de lectura (leídas / por leer)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+⚙️ SISTEMA:
+/sincronizar -> Sincronizar todos los módulos
+/help -> Ver todos los comandos
+/clear -> Limpiar todo el historial del chat
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -1030,16 +1429,6 @@ ANALISIS
 HERRAMIENTAS
 /exportar -> Exportar todos los datos
 /reiniciar -> Reiniciar fase actual
-/clear -> Limpiar todo el historial del chat
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-EJEMPLOS DE MI ESPACIO:
-/espacio-ver -> Ver todo organizado por nivel
-/espacio-nivel B1 -> Ver solo nivel B1
-/espacio-familia Transporte -> Ver familia Transporte
-frases: hola, adios, gracias -> Guardar frases con nivel ${nivelReal}
-palabras: casa, perro, gato -> Guardar palabras con nivel ${nivelReal}
 
 En que mas puedo ayudarte?
 `;
@@ -1068,7 +1457,17 @@ En que mas puedo ayudarte?
             'idiomas': '/idiomas',
             'modo': '/modo',
             'clear': '/clear',
-            'help': '/help'
+            'help': '/help',
+            // Nuevos comandos
+            'elipse': '/elipse',
+            'elipse-ver': '/elipse-ver',
+            'elipse-generar': '/elipse-generar',
+            'ondas-cruzadas': '/ondas-cruzadas',
+            'grafo': '/grafo',
+            'interferencias': '/interferencias',
+            'biblioteca': '/biblioteca',
+            'lectura': '/lectura',
+            'sincronizar': '/sincronizar'
         };
         
         input.value = comandos[tipo] || '';
@@ -1288,7 +1687,7 @@ ESTADISTICAS DEL IDIOMA
         }
     }
 
-    async _consultarVigiaPro(mensaje) {
+    async _consultarVigiaPro(mensaje, contexto = null) {
         const usuario = await db.getUsuario();
         const stats = await db.obtenerEstadisticasNeuro();
         const progreso = await db.obtenerTodoProgreso();
@@ -1304,6 +1703,48 @@ ESTADISTICAS DEL IDIOMA
         const idiomas = gestorIdiomas.getIdiomas();
         const favoritos = await gestorFavoritos.contarFavoritos();
         const nombreModelo = this._obtenerNombreModelo(window.vigia?.modelo || 'openai/gpt-oss-120b');
+        const contextoLabel = this._obtenerContextoLabel();
+        const contextoColor = this._obtenerContextoColor();
+        
+        // Determinar si el usuario está preguntando sobre Elipse, Ondas Cruzadas o Biblioteca
+        const mensajeLower = mensaje.toLowerCase();
+        const esPreguntaElipse = mensajeLower.includes('elipse') || mensajeLower.includes('onda') || mensajeLower.includes('ondas');
+        const esPreguntaOndasCruzadas = mensajeLower.includes('ondas cruzadas') || mensajeLower.includes('cruzadas') || mensajeLower.includes('grafo') || mensajeLower.includes('interferencia');
+        const esPreguntaBiblioteca = mensajeLower.includes('biblioteca') || mensajeLower.includes('lectura') || mensajeLower.includes('leer') || mensajeLower.includes('libro');
+        
+        let contextoAdicional = '';
+        
+        if (esPreguntaElipse && contexto !== 'elipse') {
+            contextoAdicional += `
+INFORMACIÓN DEL MODO ELIPSE (ACTIVAR CON /elipse):
+El Modo Elipse es un sistema de aprendizaje narrativo expansivo.
+- Genera "ondas" (historias) que continúan una narrativa.
+- Cada onda introduce nuevo vocabulario de forma contextual.
+- El sistema mantiene un "recuerdo" de personajes, lugares y eventos.
+- Comandos: /elipse, /elipse-ver, /elipse-generar
+`;
+        }
+        
+        if (esPreguntaOndasCruzadas && contexto !== 'ondasCruzadas') {
+            contextoAdicional += `
+INFORMACIÓN DEL MODO ONDAS CRUZADAS (ACTIVAR CON /ondas-cruzadas):
+El Modo Ondas Cruzadas conecta diferentes Elipses para crear un grafo de conocimiento.
+- Las "interferencias" son puntos de solapamiento semántico entre elipses.
+- El "Recuerdo Global" resume personajes, lugares y vocabulario de todas las elipses.
+- Comandos: /ondas-cruzadas, /grafo, /interferencias
+`;
+        }
+        
+        if (esPreguntaBiblioteca && contexto !== 'biblioteca') {
+            contextoAdicional += `
+INFORMACIÓN DE LA BIBLIOTECA DE LECTURA (ACTIVAR CON /biblioteca):
+La Biblioteca de Lectura organiza todas las historias del sistema por tema y nivel.
+- Permite marcar historias como "leídas" para seguir el progreso de lectura.
+- Agrupa historias por tema y las ordena por nivel (A1 → C2).
+- Incluye un visor de lectura con opción para ocultar traducciones.
+- Comandos: /biblioteca, /lectura
+`;
+        }
         
         let statsAvanzadas = '';
         if (vigia && vigia.getEstadisticasIdioma) {
@@ -1317,7 +1758,7 @@ ESTADISTICAS DEL IDIOMA
             }
         }
         
-        const prompt = 'Eres Vigia, asistente neuroadaptativo PRO de Pipeline Neuro v19.6 usando ' + nombreModelo + '.\n\n' +
+        const prompt = 'Eres Vigia, asistente neuroadaptativo PRO de Pipeline Neuro v20.0 usando ' + nombreModelo + '.\n\n' +
                      'CONTEXTO DEL USUARIO:\n' +
                      '- Nombre: ' + (usuario?.nombre || 'Anonimo') + '\n' +
                      '- Idioma nativo: ' + (usuario?.idiomaNativo || 'es') + '\n' +
@@ -1326,7 +1767,8 @@ ESTADISTICAS DEL IDIOMA
                      '- Idioma activo: ' + idiomaActivo + '\n' +
                      '- Modo inverso: ' + (modoInversoActivo ? 'Activado' : 'Desactivado') + '\n' +
                      '- Racha: ' + racha + ' dias\n' +
-                     '- Mi Espacio: ' + (favoritos.frases + favoritos.palabras) + ' elementos guardados\n\n' +
+                     '- Mi Espacio: ' + (favoritos.frases + favoritos.palabras) + ' elementos guardados\n' +
+                     '- Contexto actual del chat: ' + contextoLabel + '\n\n' +
                      'ESTADISTICAS NEURO:\n' +
                      '- RCN Promedio: ' + (stats.rcnPromedio || 0) + '/5\n' +
                      '- Eficiencia: ' + (stats.eficiencia || 0) + '%\n' +
@@ -1339,15 +1781,17 @@ ESTADISTICAS DEL IDIOMA
                      '- Total palabras: ' + palabras.length + '\n' +
                      '- Frases completadas: ' + progreso.filter(p => p.estado === 'completada').length + '\n' +
                      '- Temas: ' + temas.map(t => t.nombre).join(', ') || 'Ninguno' + '\n\n' +
+                     contextoAdicional +
                      'INSTRUCCIONES IMPORTANTES:\n' +
                      '1. El nivel REAL del usuario es ' + nivel + '. NO uses otro nivel.\n' +
                      '2. Responde en el idioma del usuario (espanol, ingles o chino segun escriba).\n' +
-                     '3. Se util, conciso y aplica principios de neurociencia.\n' +
-                     '4. Si pide ayuda con Mi Espacio, explica que las palabras y frases se organizan por Nivel -> Familia Semantica.\n' +
-                     '5. Si pide ayuda con idiomas, usa el contexto multi-idioma.\n' +
-                     '6. Siempre se positivo y motivador.\n' +
-                     '7. Si el usuario pregunta por su progreso, usa los datos de estadisticas disponibles.\n' +
-                     '8. SIEMPRE menciona el nivel real del usuario (' + nivel + ') cuando hables de progreso o recomendaciones.\n\n' +
+                     '3. Si el usuario pregunta sobre el Modo Elipse, explica que es aprendizaje narrativo expansivo.\n' +
+                     '4. Si el usuario pregunta sobre Ondas Cruzadas, explica que conecta temas en un grafo de conocimiento.\n' +
+                     '5. Si el usuario pregunta sobre la Biblioteca, explica que organiza todas las historias.\n' +
+                     '6. Si el usuario no sabe que comando usar, sugierele /elipse, /ondas-cruzadas, /biblioteca o /help.\n' +
+                     '7. Siempre se positivo y motivador.\n' +
+                     '8. SIEMPRE menciona el nivel real del usuario (' + nivel + ') cuando hables de progreso o recomendaciones.\n' +
+                     '9. Si el usuario está en un contexto especifico (Elipse, Ondas Cruzadas, Biblioteca), usa esa informacion.\n\n' +
                      'MENSAJE DEL USUARIO:\n' + mensaje + '\n\n' +
                      'RESPUESTA:';
 
@@ -1528,10 +1972,17 @@ ESTADISTICAS DEL IDIOMA
     }
 }
 
+// ============================================================
+// INSTANCIA GLOBAL
+// ============================================================
+
 window.UIChat = new UIChat();
 
-console.log('UI Chat v19.6 - CORREGIDO: Caracteres y modelo openai/gpt-oss-120b');
-console.log('  Modelo corregido: gpt-oss-120b -> openai/gpt-oss-120b');
-console.log('  Caracteres especiales corregidos');
-console.log('  Soporte completo para idiomas jeroglificos');
-console.log('  Comandos Mi Espacio con organizacion por nivel -> familia');
+console.log('UI Chat v20.0 - COMPLETO CON EXTENSIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA');
+console.log('  🌌 Comandos de Elipse: /elipse, /elipse-ver, /elipse-generar');
+console.log('  🌊 Comandos de Ondas Cruzadas: /ondas-cruzadas, /grafo, /interferencias');
+console.log('  📚 Comandos de Biblioteca: /biblioteca, /lectura');
+console.log('  ⚙️ Comando de Sistema: /sincronizar, /help');
+console.log('  🎯 Contexto automático del módulo actual');
+console.log('  📌 Sugerencias contextuales según el módulo');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

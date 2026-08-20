@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pipeline Neuro v22.3 - Balanceador de Carga Groq</title>
+    <title>Pipeline Neuro v22.4 - Balanceador de Carga Groq</title>
     <!-- ============================================================ -->
     <!-- FAVICON Y ICONOS PARA TODOS LOS DISPOSITIVOS -->
     <!-- ============================================================ -->
@@ -97,6 +97,61 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           ESTILOS PARA LA TRANSICION DE PANTALLAS
+           ============================================================ */
+        
+        .screen {
+            display: none;
+            width: 100%;
+            min-height: 100vh;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+        
+        #registroScreen {
+            background: linear-gradient(135deg, #f5f6fa, #dfe6e9);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        #registroScreen .container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 32px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+            position: relative;
+            z-index: 2;
+        }
+        
+        #mainScreen {
+            background: var(--bg, #f5f6fa);
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        #mainScreen.active {
+            display: flex;
+        }
+
+        /* Ocultar formulario durante la carga */
+        #registroScreen.cargando .container {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: all 0.3s ease;
+            pointer-events: none;
         }
 
         /* ============================================================
@@ -864,7 +919,7 @@
             position: relative;
         }
         .nivel-bloqueado::after {
-            content: '🔒';
+            content: '\1F512';
             position: absolute;
             top: 50%;
             left: 50%;
@@ -1160,6 +1215,50 @@
             background: var(--bg);
             color: var(--gray);
         }
+
+        /* ============================================================
+           ESTILO PARA EL OVERLAY DE CARGA - SIEMPRE POR ENCIMA
+           ============================================================ */
+        
+        #cargaOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(108, 92, 231, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            animation: fadeIn 0.4s ease;
+        }
+
+        /* ============================================================
+           ESTILOS PARA TONOS
+           ============================================================ */
+        .tono-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .tono-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .tono-card .tono-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+        .tono-card .tono-caracter {
+            font-size: 32px;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -1174,7 +1273,7 @@
                     <i class="fas fa-brain"></i>
                 </div>
                 <h1>Pipeline Neuro</h1>
-                <p>v22.3 · Balanceador de Carga Groq</p>
+                <p>v22.4 - Balanceador de Carga Groq</p>
             </div>
 
             <form id="registroForm">
@@ -1185,7 +1284,7 @@
 
                 <div class="form-group">
                     <label><i class="fas fa-flag"></i> Idioma Nativo</label>
-                    <input type="text" id="idiomaNativo" placeholder="Ej: Español" required>
+                    <input type="text" id="idiomaNativo" placeholder="Ej: Espanol" required>
                 </div>
 
                 <div class="form-group">
@@ -1207,7 +1306,7 @@
                         </div>
                     </div>
                     <button type="button" class="btn-add-idioma" onclick="ui.agregarIdioma()">
-                        <i class="fas fa-plus"></i> Añadir
+                        <i class="fas fa-plus"></i> Anadir
                     </button>
                 </div>
 
@@ -1217,13 +1316,13 @@
                     <small>Obtén tu clave en console.groq.com</small>
                 </div>
 
-                <!-- SELECCIÓN DE MODO DEL TUTOR -->
+                <!-- SELECCION DE MODO DEL TUTOR -->
                 <div class="form-group" style="margin-top:12px;border-top:2px solid var(--light);padding-top:12px;">
                     <label style="font-size:14px;font-weight:600;color:var(--dark);display:block;margin-bottom:8px;">
-                        <i class="fas fa-brain"></i> ¿Cómo quieres que te guíe el Tutor Neuro?
+                        <i class="fas fa-brain"></i> Como quieres que te guie el Tutor Neuro?
                     </label>
                     <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">
-                        Elige el estilo de aprendizaje que mejor se adapte a ti. Puedes cambiarlo más tarde en Configuración.
+                        Elige el estilo de aprendizaje que mejor se adapte a ti. Puedes cambiarlo mas tarde en Configuracion.
                     </p>
                     
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
@@ -1238,7 +1337,7 @@
                                 El tutor decide el camino
                             </div>
                             <div style="font-size:9px;color:var(--gray-light);margin-top:2px;">
-                                🔒 No puedes ignorar
+                                No puedes ignorar
                             </div>
                             <div class="modo-check">✅</div>
                         </div>
@@ -1251,10 +1350,10 @@
                             <div style="font-size:32px;display:block;margin-bottom:2px;">🧠</div>
                             <div style="font-size:13px;font-weight:700;color:var(--dark);">Modo Flexible</div>
                             <div style="font-size:10px;color:var(--gray);margin-top:2px;line-height:1.2;">
-                                El tutor sugiere, tú decides
+                                El tutor sugiere, tu decides
                             </div>
                             <div style="font-size:9px;color:var(--success);margin-top:2px;">
-                                ⭐ Recomendado
+                                Recomendado
                             </div>
                             <div class="modo-check">✅</div>
                         </div>
@@ -1270,14 +1369,14 @@
                                 El tutor no interviene
                             </div>
                             <div style="font-size:9px;color:var(--gray-light);margin-top:2px;">
-                                ❌ Sin intervenciones
+                                Sin intervenciones
                             </div>
                             <div class="modo-check">✅</div>
                         </div>
                     </div>
                     
                     <div style="margin-top:8px;font-size:11px;color:var(--gray-light);text-align:center;">
-                        💡 Puedes cambiar el modo más tarde en <strong>Configuración &gt; Tutor</strong>
+                        Puedes cambiar el modo mas tarde en <strong>Configuracion > Tutor</strong>
                     </div>
                 </div>
 
@@ -1311,7 +1410,7 @@
                 </div>
             </div>
             
-            <!-- CONTENEDOR VIGÍA+CENTINELA+BALANCEADOR -->
+            <!-- CONTENEDOR VIGIA+CENTINELA+BALANCEADOR -->
             <div id="vigiaCentinelaContainer"></div>
             
             <!-- Barra de progreso global -->
@@ -1349,13 +1448,13 @@
                 </div>
             </div>
 
-            <!-- ACTIVIDAD DINÁMICA -->
+            <!-- ACTIVIDAD DINAMICA -->
             <div class="activity-container" id="activityContainer">
                 <div class="activity-bar-wrapper">
                     <div class="activity-label">
                         <span>
                             <span class="activity-status-dot" id="vigiaActivityDot"></span>
-                            <span class="activity-icon">👁️</span> Vigía
+                            <span class="activity-icon">👁️</span> Vigia
                         </span>
                         <span class="activity-value" id="vigiaActivityValue">0%</span>
                     </div>
@@ -1392,11 +1491,11 @@
                 </div>
                 
                 <div class="dashboard-grid" id="dashboardGrid">
-                    <!-- EL CONTENIDO SE RENDERIZA DINÁMICAMENTE DESDE ui.dashboard.js -->
+                    <!-- EL CONTENIDO SE RENDERIZA DINAMICAMENTE DESDE ui.dashboard.js -->
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: ESTUDIAR ===== -->
+            <!-- ===== MODULO: ESTUDIAR ===== -->
             <div id="studyModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1443,15 +1542,15 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: GRAMÁTICA ===== -->
+            <!-- ===== MODULO: GRAMATICA ===== -->
             <div id="grammarModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="module-title">
-                        <h2>📚 Gramática</h2>
-                        <span class="module-breadcrumb">Dashboard / Gramática</span>
+                        <h2>📚 Gramatica</h2>
+                        <span class="module-breadcrumb">Dashboard / Gramatica</span>
                     </div>
                 </div>
                 <div class="module-content">
@@ -1459,7 +1558,7 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: TEMAS ===== -->
+            <!-- ===== MODULO: TEMAS ===== -->
             <div id="temasModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1475,33 +1574,33 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: VIGÍA ===== -->
+            <!-- ===== MODULO: VIGIA ===== -->
             <div id="vigiaModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="module-title">
-                        <h2>🔭 Vigía IA</h2>
-                        <span class="module-breadcrumb">Dashboard / Vigía</span>
+                        <h2>🔭 Vigia IA</h2>
+                        <span class="module-breadcrumb">Dashboard / Vigia</span>
                     </div>
                 </div>
                 <div class="module-content">
                     <div id="vigiaChatProContainer">
-                        <!-- El chat PRO se renderiza aquí -->
+                        <!-- El chat PRO se renderiza aqui -->
                     </div>
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: ESTADÍSTICAS ===== -->
+            <!-- ===== MODULO: ESTADISTICAS ===== -->
             <div id="statsModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="module-title">
-                        <h2>📊 Estadísticas</h2>
-                        <span class="module-breadcrumb">Dashboard / Estadísticas</span>
+                        <h2>📊 Estadisticas</h2>
+                        <span class="module-breadcrumb">Dashboard / Estadisticas</span>
                     </div>
                 </div>
                 <div class="module-content">
@@ -1509,7 +1608,7 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: MI ESPACIO ===== -->
+            <!-- ===== MODULO: MI ESPACIO ===== -->
             <div id="espacioModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1525,7 +1624,7 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: COMPETICIONES ===== -->
+            <!-- ===== MODULO: COMPETICIONES ===== -->
             <div id="competicionesModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1541,7 +1640,7 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: CARACTERES ===== -->
+            <!-- ===== MODULO: CARACTERES ===== -->
             <div id="caracteresModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1557,7 +1656,23 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: FONÉTICA ===== -->
+            <!-- ===== MODULO: TONOS ===== -->
+            <div id="tonosModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🎵 Estudio de Tonos</h2>
+                        <span class="module-breadcrumb">Dashboard / Estudio de Tonos</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="tonosContent"></div>
+                </div>
+            </div>
+
+            <!-- ===== MODULO: FONETICA ===== -->
             <div id="foneticaModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1573,15 +1688,15 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: CONFIGURACIÓN ===== -->
+            <!-- ===== MODULO: CONFIGURACION ===== -->
             <div id="configModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="module-title">
-                        <h2>⚙️ Configuración</h2>
-                        <span class="module-breadcrumb">Dashboard / Configuración</span>
+                        <h2>⚙️ Configuracion</h2>
+                        <span class="module-breadcrumb">Dashboard / Configuracion</span>
                     </div>
                 </div>
                 <div class="module-content">
@@ -1589,7 +1704,7 @@
                 </div>
             </div>
 
-            <!-- ===== MÓDULO: HERRAMIENTAS ===== -->
+            <!-- ===== MODULO: HERRAMIENTAS ===== -->
             <div id="toolsModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1630,7 +1745,7 @@
                             </button>
                             <button class="tool-card" onclick="ui._handleReconectarVigia()">
                                 <i class="fas fa-wifi"></i>
-                                <span>Reconectar Vigía</span>
+                                <span>Reconectar Vigia</span>
                                 <small>Forzar reconexión</small>
                             </button>
                             <button class="tool-card" onclick="pipeline.toggleModoSimplificado()">
@@ -1650,7 +1765,7 @@
                             </button>
                             <button class="tool-card" style="border:2px solid var(--primary);background:linear-gradient(135deg, var(--primary)08, var(--secondary)08);" onclick="ui._mostrarEstadoBalanceador()">
                                 <i class="fas fa-balance-scale"></i>
-                                <span>⚖️ Balanceador Groq</span>
+                                <span>Balanceador Groq</span>
                                 <small id="balanceadorToolStatus">Activo</small>
                             </button>
                         </div>
@@ -1658,7 +1773,7 @@
                 </div>
             </div>
 
-            <!-- ===== 🌌 MÓDULO: MODO ELIPSE ===== -->
+            <!-- ===== MODULO: MODO ELIPSE ===== -->
             <div id="elipseModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1676,7 +1791,7 @@
                 </div>
             </div>
 
-            <!-- ===== 🌊 MÓDULO: ONDAS CRUZADAS ===== -->
+            <!-- ===== MODULO: ONDAS CRUZADAS ===== -->
             <div id="ondasCruzadasModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="ui.volverDashboard()">
@@ -1692,7 +1807,22 @@
                 </div>
             </div>
 
-            <!-- ===== 📖 MÓDULO: MANUAL INTERACTIVO ===== -->
+            <!-- ===== MODULO: BIBLIOTECA DE LECTURA ===== -->
+            <div id="bibliotecaModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="ui.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>📚 Biblioteca de Lectura</h2>
+                        <span class="module-breadcrumb">Dashboard / Biblioteca</span>
+                    </div>
+                </div>
+                <div class="module-content" id="bibliotecaContent">
+                </div>
+            </div>
+
+            <!-- ===== MODULO: MANUAL INTERACTIVO ===== -->
             <div id="manualModule" class="module-view">
                 <div class="module-header">
                     <button class="btn-back" onclick="window.uiCore.volverDashboard()">
@@ -1708,6 +1838,42 @@
                 </div>
             </div>
 
+            <!-- ===== MODULO: TUTOR NEUROADAPTATIVO ===== -->
+            <div id="tutorModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🧠 Tutor NeuroAdaptativo</h2>
+                        <span class="module-breadcrumb">Dashboard / Tutor NeuroAdaptativo</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="tutorContent">
+                        <div id="tutorFullContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MODULO: GENERADOR NEUROADAPTATIVO ===== -->
+            <div id="tutor_generadorModule" class="module-view">
+                <div class="module-header">
+                    <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="module-title">
+                        <h2>🧠 Generador NeuroAdaptativo</h2>
+                        <span class="module-breadcrumb">Dashboard / Generador NeuroAdaptativo</span>
+                    </div>
+                </div>
+                <div class="module-content">
+                    <div id="tutorGeneradorContent">
+                        <div id="tutorGeneradorContainer"></div>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
         <!-- BREADCRUMB NAVIGATION -->
@@ -1716,7 +1882,7 @@
                 <i class="fas fa-th-large"></i> Dashboard
             </span>
             <span class="breadcrumb-separator">›</span>
-            <span class="breadcrumb-item" id="breadcrumbModule">Módulo</span>
+            <span class="breadcrumb-item" id="breadcrumbModule">Modulo</span>
         </nav>
 
     </div>
@@ -1751,7 +1917,7 @@
         <div class="modal-espacio-content">
             <span class="modal-espacio-close" id="cerrarModalGuardarPalabra">&times;</span>
             <div id="modalGuardarPalabraBody">
-                <!-- El contenido se llenará dinámicamente desde JavaScript -->
+                <!-- El contenido se llenara dinamicamente desde JavaScript -->
             </div>
         </div>
     </div>
@@ -1776,14 +1942,14 @@
     <!-- 2. FUNCIONES GLOBALES PARA REGISTRO -->
     <script>
         window._seleccionarModoTutorRegistro = function(modo) {
-            document.querySelectorAll('.tutor-modo-option').forEach(el => {
+            document.querySelectorAll('.tutor-modo-option').forEach(function(el) {
                 el.classList.remove('selected');
                 el.style.border = '3px solid var(--light)';
                 el.style.boxShadow = 'none';
                 el.style.background = 'var(--white)';
             });
             
-            const selected = document.querySelector(`.tutor-modo-option[data-modo="${modo}"]`);
+            var selected = document.querySelector('.tutor-modo-option[data-modo="' + modo + '"]');
             if (selected) {
                 selected.classList.add('selected');
                 selected.style.border = '3px solid var(--primary)';
@@ -1793,32 +1959,32 @@
             
             localStorage.setItem('pipeline_tutor_modo', modo);
             
-            const nombres = {
-                'guiado': '🚀 Modo Guiado',
-                'flexible': '🧠 Modo Flexible',
-                'libre': '📴 Modo Libre'
+            var nombres = {
+                'guiado': 'Modo Guiado',
+                'flexible': 'Modo Flexible',
+                'libre': 'Modo Libre'
             };
             
             if (window.uiCore && window.uiCore.mostrarToast) {
-                window.uiCore.mostrarToast(`✅ Modo seleccionado: ${nombres[modo] || modo}`, 'success');
+                window.uiCore.mostrarToast('Modo seleccionado: ' + (nombres[modo] || modo), 'success');
             } else {
-                console.log(`✅ Modo seleccionado: ${nombres[modo] || modo}`);
+                console.log('Modo seleccionado: ' + (nombres[modo] || modo));
             }
             
             if (window.tutorNeuro) {
                 try {
                     window.tutorNeuro.setModo(modo);
-                    console.log(`🧠 Modo Tutor actualizado a: ${modo}`);
+                    console.log('Tutor modo actualizado a: ' + modo);
                 } catch (e) {
-                    console.warn('⚠️ Error actualizando modo del tutor:', e);
+                    console.warn('Error actualizando modo del tutor:', e);
                 }
             }
         };
 
         document.addEventListener('DOMContentLoaded', function() {
-            const modoGuardado = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
+            var modoGuardado = localStorage.getItem('pipeline_tutor_modo') || 'flexible';
             setTimeout(function() {
-                const opcion = document.querySelector(`.tutor-modo-option[data-modo="${modoGuardado}"]`);
+                var opcion = document.querySelector('.tutor-modo-option[data-modo="' + modoGuardado + '"]');
                 if (opcion) {
                     window._seleccionarModoTutorRegistro(modoGuardado);
                 }
@@ -1826,38 +1992,38 @@
         });
     </script>
 
-    <!-- 3. MÓDULOS CORE -->
+    <!-- 3. MODULOS CORE -->
     <script src="js/core/modoInverso.js"></script>
     <script src="js/core/gestorIdiomas.js"></script>
     <script src="js/core/gestorNiveles.js"></script>
 
-    <!-- 4. MÓDULOS BASE (DB, VIGÍA, CENTINELA, PIPELINE, GRAMÁTICA) -->
+    <!-- 4. MODULOS BASE (DB, VIGIA, CENTINELA, PIPELINE, GRAMATICA) -->
     <script src="js/database.js"></script>
     <script src="js/vigia.js"></script>
     <script src="js/centinela.js"></script>
     <script src="js/pipeline.js"></script>
     <script src="js/gramatica.js"></script>
 
-    <!-- 5. MÓDULOS CORE QUE DEPENDEN DE DB -->
+    <!-- 5. MODULOS CORE QUE DEPENDEN DE DB -->
     <script src="js/core/gestorFavoritos.js"></script>
     <script src="js/core/toastEducativo.js"></script>
 
     <!-- 6. GESTOR DE PROGRESO DE HISTORIAS/ONDAS (SIMBIOSIS) -->
     <script src="js/core/gestorProgresoHistorias.js"></script>
 
-    <!-- 7. VIGÍA GENERATOR -->
+    <!-- 7. VIGIA GENERATOR -->
     <script src="js/vigiaGenerator.js"></script>
 
-    <!-- 8. FONÉTICA -->
+    <!-- 8. FONETICA -->
     <script src="js/fonetica.js"></script>
 
-    <!-- 9. 🌌 MODO ELIPSE -->
+    <!-- 9. MODO ELIPSE -->
     <script src="js/modoElipse.js"></script>
 
-    <!-- 10. 🌊 MODO ONDAS CRUZADAS -->
+    <!-- 10. MODO ONDAS CRUZADAS -->
     <script src="js/modoOndasCruzadas.js"></script>
 
-    <!-- 11. UI - MÓDULOS BASE -->
+    <!-- 11. UI - MODULOS BASE -->
     <script src="js/ui/ui.dialogs.js"></script>
     <script src="js/ui/ui.core.js"></script>
     <script src="js/ui/ui.dashboard.js"></script>
@@ -1871,7 +2037,7 @@
     <!-- 12. UI - BACKUP -->
     <script src="js/ui/ui.backup.js"></script>
 
-    <!-- 13. MÓDULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
+    <!-- 13. MODULOS REFACTORIZADOS (TEMAS, ESPACIO, CARACTERES) -->
     <script src="js/ui/ui.temas.core.js"></script>
     <script src="js/ui/ui.temas.render.js"></script>
     <script src="js/ui/ui.temas.actions.js"></script>
@@ -1882,31 +2048,37 @@
     <script src="js/ui/ui.caracteres.render.js"></script>
     <script src="js/ui/ui.caracteres.actions.js"></script>
 
-    <!-- 14. UI - FONÉTICA -->
+    <!-- 14. UI - FONETICA -->
     <script src="js/ui/ui.fonetica.js"></script>
 
-    <!-- 15. 🌊 UI - ONDAS CRUZADAS -->
+    <!-- 15. UI - ONDAS CRUZADAS -->
     <script src="js/ui/ui.ondasCruzadas.js"></script>
 
-    <!-- 16. 🌌 UI - ELIPSE (VERSIÓN CON SIMBIOSIS) -->
+    <!-- 16. UI - ELIPSE (VERSION CON SIMBIOSIS) -->
     <script src="js/ui/ui.elipse.js"></script>
 
-    <!-- 17. 📖 UI - MANUAL INTERACTIVO -->
+    <!-- 17. UI - BIBLIOTECA DE LECTURA -->
+    <script src="js/ui/ui.biblioteca.js"></script>
+
+    <!-- 18. UI - MANUAL INTERACTIVO -->
     <script src="js/ui/ui.manual.js"></script>
 
-    <!-- 18. PROXY UI -->
+    <!-- 19. PROXY UI -->
     <script src="js/ui.js"></script>
 
-    <!-- 19. COMPETICIONES -->
+    <!-- 20. COMPETICIONES -->
     <script src="js/competiciones.js"></script>
 
-    <!-- 20. TUTOR NEURO -->
+    <!-- 21. TUTOR NEURO -->
     <script src="js/tutorNeuro.js"></script>
 
-    <!-- 21. LEARNING PATH -->
+    <!-- 22. LEARNING PATH -->
     <script src="js/learningPath.js"></script>
 
-    <!-- 22. APP (INICIALIZACIÓN PRINCIPAL) -->
+    <!-- 23. UI - TONOS -->
+    <script src="js/ui/ui.tonos.js"></script>
+
+    <!-- 24. APP (INICIALIZACION PRINCIPAL) -->
     <script src="js/app.js"></script>
 
 </body>

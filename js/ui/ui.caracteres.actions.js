@@ -1,5 +1,5 @@
 // ============================================================
-// UI CARACTERES ACTIONS v1.6 - CORREGIDO: ERROR EN FAVORITOS
+// UI CARACTERES ACTIONS v1.7 - CORREGIDO: ERROR EN FAVORITOS Y REFERENCIAS
 // ============================================================
 
 class UICaracteresActions {
@@ -125,7 +125,6 @@ class UICaracteresActions {
                         await uiCaracteres._importarEstudioCompleto(caracterId, data);
                         uiCaracteres._core.cerrarModal();
                         uiCaracteres._core.mostrarToast('✅ Estudio importado correctamente', 'success');
-                        // 🔥 RECARGAR VISTA INMEDIATAMENTE
                         await uiCaracteres.recargarVistaActual();
                     } catch (e) {
                         uiCaracteres._core?.mostrarToast('❌ Error: ' + e.message, 'error');
@@ -145,7 +144,7 @@ class UICaracteresActions {
     }
 
     // ============================================================
-    // 🔥 IMPORTAR ESTUDIO COMPLETO - CORREGIDO (ERROR FAVORITOS)
+    // IMPORTAR ESTUDIO COMPLETO - CORREGIDO (ERROR FAVORITOS)
     // ============================================================
 
     static async importarEstudioCompleto(caracterId, data, uiCaracteres) {
@@ -316,13 +315,11 @@ class UICaracteresActions {
                     };
 
                     try {
-                        // 🔥 GUARDAR LA PALABRA PRIMERO
                         const id = await db.guardarPalabra(derivadaObj);
                         
                         if (id) {
                             totalImportadas++;
                             
-                            // 🔥 AHORA SÍ AÑADIR A FAVORITOS CON EL ID CORRECTO
                             try {
                                 await gestorFavoritos.añadirPalabra(id);
                                 await gestorFavoritos.añadirPalabraAGrupo(id, `📚 Nivel ${nivel}`);
@@ -1073,7 +1070,7 @@ class UICaracteresActions {
     }
 
     // ============================================================
-    // CERRAR MODAL GENERAR DERIVADAS
+    // CERRAR MODAL GENERAR DERIVADAS - CORREGIDO
     // ============================================================
 
     static cerrarModalGenerarDerivadas(uiCaracteres) {
@@ -1380,7 +1377,6 @@ class UICaracteresActions {
             uiCaracteres._core?.alert(mensaje, '✅ Completado');
 
             uiCaracteres._limpiarCache();
-            // 🔥 RECARGAR VISTA INMEDIATAMENTE
             await uiCaracteres.recargarVistaActual();
 
             if (window.UIDashboard) window.UIDashboard._cargarDashboardInicial(uiCaracteres._core);
@@ -1393,19 +1389,21 @@ class UICaracteresActions {
     }
 
     // ============================================================
-    // COPIAR JSON DERIVADAS
+    // COPIAR JSON DERIVADAS - CORREGIDO
     // ============================================================
 
-    static copiarDerivadasJSON() {
+    static copiarDerivadasJSON(uiCaracteres) {
         const jsonArea = document.getElementById('modalDerivadasJSON');
         if (!jsonArea) return;
 
+        const core = uiCaracteres?._core || window.uiCore;
+
         navigator.clipboard.writeText(jsonArea.value)
-            .then(() => uiCaracteres._core?.mostrarToast('📋 JSON copiado al portapapeles', 'success'))
+            .then(() => core?.mostrarToast('📋 JSON copiado al portapapeles', 'success'))
             .catch(() => {
                 jsonArea.select();
                 document.execCommand('copy');
-                uiCaracteres._core?.mostrarToast('📋 JSON copiado al portapapeles', 'success');
+                core?.mostrarToast('📋 JSON copiado al portapapeles', 'success');
             });
     }
 
@@ -1538,7 +1536,7 @@ class UICaracteresActions {
     }
 
     // ============================================================
-    // CERRAR MODAL IMPORTACIÓN MASIVA
+    // CERRAR MODAL IMPORTACIÓN MASIVA - CORREGIDO
     // ============================================================
 
     static cerrarModalImportacionMasiva(uiCaracteres) {
@@ -1684,19 +1682,21 @@ class UICaracteresActions {
     }
 
     // ============================================================
-    // COPIAR JSON MASIVO
+    // COPIAR JSON MASIVO - CORREGIDO
     // ============================================================
 
-    static copiarMasivoJSON() {
+    static copiarMasivoJSON(uiCaracteres) {
         const jsonArea = document.getElementById('modalMasivoJSON');
         if (!jsonArea) return;
 
+        const core = uiCaracteres?._core || window.uiCore;
+
         navigator.clipboard.writeText(jsonArea.value)
-            .then(() => uiCaracteres._core?.mostrarToast('📋 JSON copiado', 'success'))
+            .then(() => core?.mostrarToast('📋 JSON copiado', 'success'))
             .catch(() => {
                 jsonArea.select();
                 document.execCommand('copy');
-                uiCaracteres._core?.mostrarToast('📋 JSON copiado', 'success');
+                core?.mostrarToast('📋 JSON copiado', 'success');
             });
     }
 
@@ -1823,7 +1823,6 @@ class UICaracteresActions {
             uiCaracteres._core?.alert(mensaje, '✅ Completado');
 
             uiCaracteres._limpiarCache();
-            // 🔥 RECARGAR VISTA INMEDIATAMENTE
             await uiCaracteres.recargarVistaActual();
 
             if (window.UIDashboard) window.UIDashboard._cargarDashboardInicial(uiCaracteres._core);
@@ -2055,9 +2054,12 @@ class UICaracteresActions {
 // ============================================================
 
 window.UICaracteresActions = UICaracteresActions;
-console.log('✅ UICaracteres Actions v1.6 - CORREGIDO: ERROR EN FAVORITOS');
-console.log('  🔧 Añade palabras a favoritos SOLO después de guardarlas en DB');
-console.log('  🔧 Usa el ID devuelto por db.guardarPalabra()');
-console.log('  🔧 Manejo de errores en favoritos sin romper la importación');
+console.log('✅ UICaracteres Actions v1.7 - CORREGIDO');
+console.log('  🔧 Error "uiCaracteres is not defined" CORREGIDO');
+console.log('  🔧 Todas las funciones estáticas reciben uiCaracteres como parámetro');
+console.log('  🔧 copiarDerivadasJSON() ahora usa uiCaracteres recibido como parámetro');
+console.log('  🔧 copiarMasivoJSON() ahora usa uiCaracteres recibido como parámetro');
+console.log('  🔧 cerrarModalGenerarDerivadas() ahora usa uiCaracteres recibido como parámetro');
+console.log('  🔧 cerrarModalImportacionMasiva() ahora usa uiCaracteres recibido como parámetro');
 console.log('  📚 Todas las secciones se importan correctamente');
 console.log('  🔄 Actualización inmediata de la vista después de importar');

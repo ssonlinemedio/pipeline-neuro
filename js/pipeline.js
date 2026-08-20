@@ -1,5 +1,5 @@
 // ============================================================
-// PIPELINE v18.7 - COMPLETO CON ORIGEN DE HISTORIA PARA FLUJOS DIFERENCIADOS
+// PIPELINE v18.8 - COMPLETO CON ORIGEN DE HISTORIA PARA FLUJOS DIFERENCIADOS
 // ============================================================
 
 class Pipeline {
@@ -39,7 +39,7 @@ class Pipeline {
         this._temaIdDesdeHistoria = null;
         
         // 🔥 NUEVAS PROPIEDADES PARA RASTREAR ORIGEN DE HISTORIA
-        this._origenHistoria = null; // 'elipse' | 'tema' | 'importada'
+        this._origenHistoria = null; // 'elipse' | 'tema' | 'importada' | 'tonos'
         this._callbackRetorno = null;
         
         this.neuroParams = {
@@ -95,11 +95,11 @@ class Pipeline {
             await this.cargarProgreso();
             
             this._initDone = true;
-            console.log('🧠 Pipeline Neuroadaptativo v18.7: Iniciado');
+            console.log('🧠 Pipeline Neuroadaptativo v18.8: Iniciado');
             console.log(`   Idioma: ${this.idiomaObjetivo}, Nivel: ${this.nivel}`);
             console.log(`   📚 ${this.frases.length} frases cargadas`);
             console.log(`   🔥 Carga de palabras desglosadas: ACTIVADA`);
-            console.log(`   🔥 Origen de historias: ACTIVADO`);
+            console.log(`   🔥 Origen de historias: ACTIVADO (soporte para "tonos")`);
         } catch (e) {
             console.warn('⚠️ Pipeline init parcial:', e);
             this._initDone = true;
@@ -1440,8 +1440,8 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
 
 const pipeline = new Pipeline();
 
-console.log('✅ Pipeline v18.7 - COMPLETO CON ORIGEN DE HISTORIA');
-console.log('  🔥 estudiarHistoria(historiaId, origen) con origen "elipse" o "tema"');
+console.log('✅ Pipeline v18.8 - COMPLETO CON ORIGEN DE HISTORIA');
+console.log('  🔥 estudiarHistoria(historiaId, origen) con origen "elipse", "tema" o "tonos"');
 console.log('  🔥 getOrigenHistoriaActual() para saber el origen');
 console.log('  🔥 salirDeHistoria() con retorno adecuado');
 console.log('  🔥 Todas las funcionalidades originales preservadas');

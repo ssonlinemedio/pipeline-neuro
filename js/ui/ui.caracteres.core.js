@@ -1,5 +1,5 @@
 // ============================================================
-// UI CARACTERES CORE v1.2 - COMPLETO Y CORREGIDO
+// UI CARACTERES CORE v1.3 - CORREGIDO: RECARGA INMEDIATA
 // ============================================================
 
 class UICaracteresCore {
@@ -23,6 +23,9 @@ class UICaracteresCore {
         this._generadorAbierto = false;
         this._escapeHandlerDerivadas = null;
         this._escapeHandlerMasivo = null;
+        this._paginaActual = 1;
+        this._paginaDerivadas = 1;
+        this._itemsPorPagina = 9;
 
         this.IDIOMAS_JEROGLIFICOS = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean', 'mandarin', 'mandarín'];
         this.NIVELES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -50,8 +53,9 @@ class UICaracteresCore {
         this._cacheEstudiosCompletos = {};
         this._cacheLogros = {};
         this._cacheEjercicios = {};
+        this._cacheFamilias = {};
         this._ultimaActualizacion = 0;
-        this._tiempoCache = 60000;
+        this._tiempoCache = 10000; // 10 segundos
 
         this.LOGROS_BASE = {
             'primer_estudio': { nombre: '🌟 Primer Estudio', desc: 'Estudia tu primer carácter', icono: '🌟' },
@@ -104,10 +108,16 @@ class UICaracteresCore {
             }
         });
 
+        // 🔥 NUEVO: Evento para recargar después de importar derivadas
+        window.addEventListener('derivadasImportadas', () => {
+            this._limpiarCache();
+            this._recargarCompleto();
+        });
+
         await this._cargarLogros();
 
         this._initDone = true;
-        console.log('✅ Sistema de Caracteres v2.9 inicializado');
+        console.log('✅ Sistema de Caracteres v2.10 inicializado');
         return this;
     }
 
@@ -132,40 +142,69 @@ class UICaracteresCore {
     }
 
     // ============================================================
-    // 🔥 RECARGAR VISTA ACTUAL (PARA ACTUALIZACIÓN INMEDIATA)
+    // 🔥 RECARGAR VISTA ACTUAL - FORZANDO RECARGA COMPLETA
     // ============================================================
 
     async recargarVistaActual() {
         console.log('🔄 Recargando vista actual de caracteres:', this._vistaActual);
-        switch (this._vistaActual) {
-            case 'biblioteca':
-                await this._renderizarModulo();
-                break;
-            case 'estudio':
-                if (this._familiaSeleccionada) {
-                    await this._renderizarModulo();
-                } else {
-                    await this._renderizarModulo();
-                }
-                break;
-            case 'detalle':
-                if (this._caracterSeleccionado) {
-                    await this._renderizarModulo();
-                } else {
-                    await this._renderizarModulo();
-                }
-                break;
-            case 'estudio_completo':
-                if (this._caracterSeleccionado) {
-                    await this._renderizarModulo();
-                } else {
-                    await this._renderizarModulo();
-                }
-                break;
-            default:
-                await this._renderizarModulo();
+        
+        // 🔥 Limpiar caché completamente antes de recargar
+        this._limpiarCache();
+        
+        // 🔥 Forzar recarga desde la base de datos
+        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+        
+        // Si estamos en estudio, recargar la familia seleccionada desde DB
+        if (this._vistaActual === 'estudio' && this._familiaSeleccionada) {
+            const familias = await db.obtenerFamiliasCaracteres(idioma);
+            const familiaActualizada = familias.find(f => 
+                f.caracterRaiz.id === this._familiaSeleccionada.caracterRaiz.id
+            );
+            if (familiaActualizada) {
+                this._familiaSeleccionada = familiaActualizada;
+            }
         }
-        console.log('✅ Vista de caracteres recargada');
+        
+        // Si estamos en detalle, recargar el carácter seleccionado desde DB
+        if (this._vistaActual === 'detalle' && this._caracterSeleccionado) {
+            const caracterActualizado = await db.get('palabras', this._caracterSeleccionado.id);
+            if (caracterActualizado) {
+                this._caracterSeleccionado = caracterActualizado;
+            }
+        }
+        
+        // Si estamos en estudio_completo, recargar el carácter seleccionado desde DB
+        if (this._vistaActual === 'estudio_completo' && this._caracterSeleccionado) {
+            const caracterActualizado = await db.get('palabras', this._caracterSeleccionado.id);
+            if (caracterActualizado) {
+                this._caracterSeleccionado = caracterActualizado;
+            }
+        }
+        
+        // 🔥 Renderizar con datos frescos
+        await this._renderizarModulo();
+        console.log('✅ Vista de caracteres recargada con datos frescos');
+    }
+
+    // ============================================================
+    // 🔥 RECARGAR COMPLETO - FORZAR DESDE CERO
+    // ============================================================
+
+    async _recargarCompleto() {
+        console.log('🔄 Recarga completa forzada de caracteres');
+        this._limpiarCache();
+        this._paginaActual = 1;
+        this._paginaDerivadas = 1;
+        
+        // Resetear selecciones si es necesario
+        if (this._vistaActual === 'estudio' || this._vistaActual === 'detalle' || this._vistaActual === 'estudio_completo') {
+            this._vistaActual = 'biblioteca';
+            this._familiaSeleccionada = null;
+            this._caracterSeleccionado = null;
+        }
+        
+        await this._renderizarModulo();
+        console.log('✅ Recarga completa finalizada');
     }
 
     // ============================================================
@@ -233,7 +272,9 @@ class UICaracteresCore {
         this._cacheFrasesEjemplo = {};
         this._cacheEstudiosCompletos = {};
         this._cacheEjercicios = {};
+        this._cacheFamilias = {};
         this._ultimaActualizacion = 0;
+        this._estadisticas = null;
     }
 
     _getColorFamiliaSemantica(familia) {
@@ -291,12 +332,14 @@ class UICaracteresCore {
         this._vistaActual = 'biblioteca';
         this._familiaSeleccionada = null;
         this._caracterSeleccionado = null;
+        this._limpiarCache();
         this._renderizarModulo();
     }
 
     _volverEstudio() {
         this._vistaActual = 'estudio';
         this._caracterSeleccionado = null;
+        this._limpiarCache();
         this._renderizarModulo();
     }
 
@@ -315,7 +358,7 @@ class UICaracteresCore {
     }
 
     // ============================================================
-    // 🔥 NUEVO: VER ESTUDIO COMPLETO
+    // VER ESTUDIO COMPLETO
     // ============================================================
 
     async _verEstudioCompleto(caracterId) {
@@ -414,7 +457,7 @@ class UICaracteresCore {
     }
 
     _copiarDerivadasJSON() {
-        window.UICaracteresActions.copiarDerivadasJSON();
+        window.UICaracteresActions.copiarDerivadasJSON(this);
     }
 
     async _abrirModalImportacionMasiva() {
@@ -430,7 +473,7 @@ class UICaracteresCore {
     }
 
     _copiarMasivoJSON() {
-        window.UICaracteresActions.copiarMasivoJSON();
+        window.UICaracteresActions.copiarMasivoJSON(this);
     }
 
     async _importarDerivadasMasivas() {
@@ -479,6 +522,14 @@ class UICaracteresCore {
     async _obtenerLogrosCaracter(caracterId) {
         return window.UICaracteresActions.obtenerLogrosCaracter(caracterId, this);
     }
+
+    // ============================================================
+    // 🔥 CARGAR FAMILIA SELECCIONADA (para uso desde acciones)
+    // ============================================================
+
+    async _cargarFamiliaSeleccionada(palabraId) {
+        return window.UICaracteresActions.cargarFamiliaSeleccionada(palabraId, this);
+    }
 }
 
 // ============================================================
@@ -486,9 +537,9 @@ class UICaracteresCore {
 // ============================================================
 
 window.UICaracteres = new UICaracteresCore();
-console.log('✅ UICaracteres Core v1.2 - CON VISTA DE ESTUDIO COMPLETO');
-console.log('  📚 Nuevo método: _verEstudioCompleto(caracterId)');
-console.log('  🔄 Nueva vista: "estudio_completo"');
-console.log('  🖱️ Botón "Ver Estudio" en tarjetas y detalle');
-console.log('  📖 Muestra todas las secciones del estudio importado');
-console.log('  🔄 Método recargarVistaActual() para actualización inmediata');
+console.log('✅ UICaracteres Core v1.3 - CON RECARGA INMEDIATA FORZADA');
+console.log('  🔥 recargarVistaActual() limpia caché y recarga desde DB');
+console.log('  🔥 _recargarCompleto() fuerza recarga desde cero');
+console.log('  🔥 Evento "derivadasImportadas" para actualización automática');
+console.log('  🔄 Tiempo de caché reducido a 10 segundos');
+console.log('  📚 Nueva propiedad _cacheFamilias para mejor gestión');

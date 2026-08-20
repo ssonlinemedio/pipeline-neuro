@@ -1,5 +1,5 @@
 // ============================================================
-// VIGÍA v22.3 - COMPLETO SIN HEALTH CHECKS
+// VIGÍA v22.4 - COMPLETO CON EXTENSIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA
 // ============================================================
 
 class Vigia {
@@ -162,7 +162,7 @@ class Vigia {
 
     async init() {
         if (this._initDone) return this;
-        console.log('🔄 Vigía v22.3: Inicializando (SIN HEALTH CHECKS)...');
+        console.log('🔄 Vigía v22.4: Inicializando (SIN HEALTH CHECKS)...');
         
         try {
             // Inicializar balanceador si está disponible
@@ -217,6 +217,7 @@ class Vigia {
         console.log(`   🪙 Límite diario: ${this._limitesTokens.diario} tokens`);
         console.log(`   🔥 Health Checks: DESACTIVADOS (sin peticiones automáticas)`);
         console.log(`   🔥 Feedback Proactivo: DESACTIVADO`);
+        console.log(`   🔥 Chat con contexto para Elipse, Ondas Cruzadas y Biblioteca: ACTIVADO`);
         if (this.enLinea) {
             this._ultimaPeticionExitosa = Date.now();
             this._offlineDesde = 0;
@@ -1086,18 +1087,574 @@ Responde SOLO con la transcripción fonética:`;
         return '💡 Piensa en el contexto de la frase.';
     }
 
-    async chat(mensaje) {
+    // ============================================================
+    // 🔥 CHAT CON CONTEXTO PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA
+    // ============================================================
+
+    async chat(mensaje, contexto = null) {
         try {
             if (!this.enLinea) return '🔴 Vigía está offline. Por favor, reconéctate usando el botón de reconexión.';
+
+            // 🔥 EXTENSIÓN: MANEJO DE NUEVOS COMANDOS
+            const mensajeLower = mensaje.toLowerCase().trim();
+            
+            // Comandos para el Modo Elipse
+            if (mensajeLower === '/elipse') {
+                return await this._comandoElipse();
+            }
+            if (mensajeLower === '/elipse-ver') {
+                return await this._comandoElipseVer();
+            }
+            if (mensajeLower === '/elipse-generar') {
+                return await this._comandoElipseGenerar();
+            }
+            
+            // Comandos para Ondas Cruzadas
+            if (mensajeLower === '/ondas-cruzadas' || mensajeLower === '/oc') {
+                return await this._comandoOndasCruzadas();
+            }
+            if (mensajeLower === '/grafo') {
+                return await this._comandoGrafo();
+            }
+            if (mensajeLower === '/interferencias') {
+                return await this._comandoInterferencias();
+            }
+            
+            // Comandos para Biblioteca
+            if (mensajeLower === '/biblioteca') {
+                return await this._comandoBiblioteca();
+            }
+            if (mensajeLower === '/lectura') {
+                return await this._comandoLectura();
+            }
+            
+            // Comando de sincronización
+            if (mensajeLower === '/sincronizar') {
+                return await this._comandoSincronizar();
+            }
+            
+            // Comando de ayuda extendida
+            if (mensajeLower === '/help') {
+                return this._comandoHelp();
+            }
+
+            // 🔥 OBTENER INFORMACIÓN DEL CONTEXTO DEL MÓDULO
             const usuario = await db.getUsuario();
             const stats = await this.getEstadisticasIdioma();
             const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
             const nivel = gestorIdiomas?.getInfoActivo()?.nivel || 'A1';
             const modeloActual = this._balanceador?.getModeloActivo() || this.modelo;
-            const prompt = `Eres Vigía, el asistente lingüístico de Pipeline Neuro.\n\nContexto del usuario:\n- Nombre: ${usuario?.nombre || 'Anónimo'}\n- Idioma objetivo: ${idioma}\n- Nivel: ${nivel}\n- Vocabulario aprendido: ${stats?.palabrasAprendidas || 0} palabras\n- Cobertura del nivel: ${stats?.coberturaNivel || 0}%\n- Frases completadas: ${stats?.completadas || 0}\n- Modelo actual: ${modeloActual}\n\nResponde a la siguiente consulta del usuario de manera útil, amigable y didáctica:\n\n${mensaje}`;
-            return await this._consultarGroq(prompt, 'text') || 'Lo siento, no pude procesar tu consulta.';
-        } catch (e) { return '❌ Error procesando tu mensaje. Intenta de nuevo.'; }
+
+            let contextoModulo = 'El usuario está en el módulo general.';
+            let modulosInfo = '';
+
+            if (contexto) {
+                contextoModulo = `El usuario está en el módulo "${contexto}".`;
+                switch (contexto) {
+                    case 'elipse':
+                        const elipseData = window.modoElipse?.getEstado() || {};
+                        modulosInfo = `
+                            - Modo Elipse: ${elipseData.totalOndas || 0} ondas generadas, ${elipseData.ondasCompletadas || 0} completadas.
+                            - Tema activo: ${elipseData.elipseActiva || 'Ninguno'}.
+                            - Progreso global: ${elipseData.estadisticas?.totalOndas || 0} ondas en total.
+                        `;
+                        break;
+                    case 'ondasCruzadas':
+                        const ocData = window.modoOndasCruzadas?.getEstado() || {};
+                        modulosInfo = `
+                            - Modo Ondas Cruzadas: ${ocData.grafoSize || 0} elipses en el grafo.
+                            - Interferencias: ${ocData.interferencias || 0}.
+                            - Ondas totales: ${ocData.ondasTotales || 0}.
+                            - Recuerdo global: ${ocData.recuerdoGlobal?.eventos || 0} eventos, ${ocData.recuerdoGlobal?.vocabulario || 0} palabras.
+                        `;
+                        break;
+                    case 'biblioteca':
+                        const todasHistorias = await db.obtenerHistoriasPorIdioma(idioma);
+                        const leidas = (await window.UIBiblioteca?._historiasLeidas) || new Set();
+                        const completadas = todasHistorias.filter(h => h.estado === 'completada' || h._completada).length;
+                        modulosInfo = `
+                            - Biblioteca de Lectura: ${todasHistorias.length} historias totales, ${leidas.size} leídas.
+                            - ${completadas} historias completadas (RCN >= 4.0).
+                        `;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            // Obtener información adicional según el contexto
+            let contextoAdicional = '';
+            if (contexto === 'elipse' && window.modoElipse) {
+                const elipseActiva = window.modoElipse._elipseActiva;
+                if (elipseActiva) {
+                    const tema = await db.obtenerTema(elipseActiva);
+                    if (tema) {
+                        contextoAdicional = `Tema actual de la Elipse: "${tema.nombre}".`;
+                    }
+                }
+            }
+
+            if (contexto === 'ondasCruzadas' && window.modoOndasCruzadas) {
+                const grafo = window.modoOndasCruzadas.getGrafoElipse() || {};
+                const temas = Object.keys(grafo);
+                if (temas.length > 0) {
+                    const nombres = [];
+                    for (const id of temas.slice(0, 3)) {
+                        const tema = await db.obtenerTema(id);
+                        if (tema) nombres.push(tema.nombre);
+                    }
+                    contextoAdicional = `Elipses en el grafo: ${nombres.join(', ')}${temas.length > 3 ? ` y ${temas.length - 3} más` : ''}.`;
+                }
+            }
+
+            if (contexto === 'biblioteca') {
+                const idiomaNombre = this._getNombreIdioma(idioma);
+                contextoAdicional = `Biblioteca de ${idiomaNombre}.`;
+            }
+
+            const prompt = `Eres Vigía, el asistente lingüístico de Pipeline Neuro.
+
+Contexto del usuario:
+- Nombre: ${usuario?.nombre || 'Anónimo'}
+- Idioma objetivo: ${idioma}
+- Nivel: ${nivel}
+- Vocabulario aprendido: ${stats?.palabrasAprendidas || 0} palabras
+- Cobertura del nivel: ${stats?.coberturaNivel || 0}%
+- Frases completadas: ${stats?.completadas || 0}
+- Modelo actual: ${modeloActual}
+- Módulo actual: ${contextoModulo}
+- Información del módulo: ${modulosInfo}
+- Contexto adicional: ${contextoAdicional}
+
+${contexto === 'elipse' ? `
+INFORMACIÓN DEL MODO ELIPSE:
+El Modo Elipse es un sistema de aprendizaje narrativo expansivo. Permite generar "ondas" (historias) que continúan una narrativa, introduciendo nuevo vocabulario de forma contextual.
+- Cada onda es una nueva historia que continúa la anterior.
+- El sistema mantiene un "recuerdo" de personajes, lugares y eventos.
+- Las ondas se sincronizan con los temas cuando se completan (RCN >= 4.0).
+- Comandos disponibles: /elipse, /elipse-ver, /elipse-generar
+` : ''}
+
+${contexto === 'ondasCruzadas' ? `
+INFORMACIÓN DEL MODO ONDAS CRUZADAS:
+El Modo Ondas Cruzadas conecta diferentes Elipses (temas) para crear un grafo de conocimiento interconectado.
+- Las "interferencias" son puntos de solapamiento semántico entre elipses.
+- El "Recuerdo Global" resume personajes, lugares y vocabulario de todas las elipses.
+- Permite generar ondas que cruzan temas, combinando conceptos de diferentes dominios.
+- Comandos disponibles: /ondas-cruzadas, /grafo, /interferencias
+` : ''}
+
+${contexto === 'biblioteca' ? `
+INFORMACIÓN DE LA BIBLIOTECA DE LECTURA:
+La Biblioteca de Lectura organiza todas las historias del sistema por tema y nivel.
+- Permite marcar historias como "leídas" para seguir el progreso de lectura.
+- Agrupa historias por tema y las ordena por nivel (A1 → C2).
+- Incluye un visor de lectura con opción para ocultar traducciones.
+- Comandos disponibles: /biblioteca, /lectura
+` : ''}
+
+${contexto === 'general' ? `
+INFORMACIÓN GENERAL DE PIPELINE NEURO:
+Pipeline Neuro es un ecosistema neuroadaptativo para el aprendizaje de idiomas.
+- Basado en el modelo RCN (Ratings of Cognitive Neuroconsolidation).
+- Módulos principales: Estudiar, Gramática, Temas, Elipse, Ondas Cruzadas, Biblioteca, Vigía IA.
+- El Modo Elipse permite aprendizaje narrativo expansivo.
+- El Modo Ondas Cruzadas conecta diferentes temas en un grafo de conocimiento.
+- La Biblioteca de Lectura organiza todas las historias del sistema.
+- Comandos disponibles: /elipse, /ondas-cruzadas, /biblioteca, /sincronizar, /help
+` : ''}
+
+Responde a la siguiente consulta del usuario de manera útil, amigable y didáctica.
+Si el usuario pregunta sobre el Modo Elipse, Ondas Cruzadas o la Biblioteca, explícale cómo funcionan.
+Si te pide generar una onda o ver el grafo, indícale que debe usar los botones en la interfaz.
+Sé conciso pero informativo. Usa emojis para hacer la respuesta más amigable.
+
+Consulta del usuario: "${mensaje}"`;
+
+            return await this._consultarGroq(prompt, 'text') || 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.';
+
+        } catch (e) {
+            console.error('❌ Error en chat:', e);
+            return '❌ Error procesando tu mensaje. Intenta de nuevo.';
+        }
     }
+
+    // ============================================================
+    // 🔥 COMANDOS DEL CHAT
+    // ============================================================
+
+    async _comandoElipse() {
+        const elipseData = window.modoElipse?.getEstado() || {};
+        const historias = window.modoElipse?.getHistoriasElipse(elipseData.elipseActiva) || [];
+        const tema = await db.obtenerTema(elipseData.elipseActiva);
+
+        if (!tema) {
+            return `🌌 **Modo Elipse**\n\nNo hay una Elipse activa. Selecciona un tema desde el módulo Elipse para comenzar tu viaje narrativo.\n\n💡 Usa el botón **"Seleccionar Tema"** en el módulo Elipse para empezar.`;
+        }
+
+        const total = elipseData.totalOndas || 0;
+        const completadas = elipseData.ondasCompletadas || 0;
+        const ultima = historias.length > 0 ? historias[historias.length - 1] : null;
+
+        let resumen = `🌌 **Modo Elipse - "${tema.nombre}"**\n\n`;
+        resumen += `📊 ${total} ondas generadas · ✅ ${completadas} completadas\n`;
+        resumen += `📖 Progreso: ${elipseData.progreso || 0}%\n`;
+        if (ultima) {
+            resumen += `\n📘 Última onda: "${ultima.titulo}" (RCN: ${ultima.rcnPromedio?.toFixed(1) || 'N/A'})\n`;
+        }
+        if (elipseData.palabrasNuevas) {
+            resumen += `📝 Palabras nuevas: ${elipseData.palabrasNuevas}\n`;
+        }
+        resumen += `\n💡 Usa el botón **"Generar Plantilla"** en el módulo Elipse para crear una nueva onda.`;
+        resumen += `\n📌 Comandos relacionados: /elipse-ver, /elipse-generar`;
+        return resumen;
+    }
+
+    async _comandoElipseVer() {
+        if (!window.modoElipse) {
+            return '🌌 **Modo Elipse**\n\nEl módulo Elipse no está disponible. Asegúrate de que el sistema esté completamente cargado.';
+        }
+
+        const historias = window.modoElipse._historiasElipse || [];
+        if (historias.length === 0) {
+            return '🌌 **Modo Elipse**\n\nNo hay ondas en la Elipse. Genera tu primera onda para comenzar tu viaje narrativo.';
+        }
+
+        let resumen = '🌌 **Historia de la Elipse**\n\n';
+        for (let i = 0; i < historias.length; i++) {
+            const h = historias[i];
+            const estado = h.completada ? '✅' : '📖';
+            const rcn = h.rcnPromedio?.toFixed(1) || 'N/A';
+            resumen += `${i + 1}. ${estado} "${h.titulo}" (RCN: ${rcn})\n`;
+        }
+        resumen += `\n📊 Total: ${historias.length} ondas · ${historias.filter(h => h.completada).length} completadas`;
+        return resumen;
+    }
+
+    async _comandoElipseGenerar() {
+        const elipseData = window.modoElipse?.getEstado() || {};
+        if (!elipseData.elipseActiva) {
+            return '🌌 **Modo Elipse**\n\nNo hay una Elipse activa. Selecciona un tema primero desde el módulo Elipse.';
+        }
+
+        const tema = await db.obtenerTema(elipseData.elipseActiva);
+        const total = elipseData.totalOndas || 0;
+        const maxOndas = window.modoElipse?._config?.maxOndas || 10;
+
+        if (total >= maxOndas) {
+            return `🌌 **Modo Elipse**\n\nHas alcanzado el límite de ondas (${maxOndas}). No puedes generar más ondas en este tema.\n\n💡 Considera sincronizar las ondas completadas o seleccionar otro tema.`;
+        }
+
+        let resumen = `🌌 **Modo Elipse - Generar Nueva Onda**\n\n`;
+        resumen += `📌 Tema: "${tema?.nombre || 'Sin nombre'}"\n`;
+        resumen += `📊 Ondas actuales: ${total}/${maxOndas}\n\n`;
+        resumen += `Para generar una nueva onda:\n`;
+        resumen += `1. Ve al módulo Elipse\n`;
+        resumen += `2. Haz clic en el botón **"Generar Plantilla"**\n`;
+        resumen += `3. Completa el JSON con la IA y luego importa la nueva onda\n\n`;
+        resumen += `💡 La nueva onda continuará la historia de la última onda generada.`;
+        return resumen;
+    }
+
+    async _comandoOndasCruzadas() {
+        const ocData = window.modoOndasCruzadas?.getEstado() || {};
+        const grafo = window.modoOndasCruzadas?.getGrafoElipse() || {};
+        const interferencias = window.modoOndasCruzadas?.getInterferencias() || {};
+
+        const totalElipses = ocData.grafoSize || 0;
+        const totalInterferencias = ocData.interferencias || 0;
+
+        let resumen = `🌊 **Modo Ondas Cruzadas**\n\n`;
+        resumen += `🕸️ ${totalElipses} elipses en el grafo\n`;
+        resumen += `🔗 ${totalInterferencias} interferencias (conexiones) detectadas\n`;
+        resumen += `📝 ${ocData.ondasTotales || 0} ondas totales\n`;
+
+        if (ocData.recuerdoGlobal) {
+            resumen += `📚 Recuerdo global: ${ocData.recuerdoGlobal.personajes || 0} personajes, ${ocData.recuerdoGlobal.lugares || 0} lugares, ${ocData.recuerdoGlobal.vocabulario || 0} palabras\n`;
+        }
+
+        if (totalElipses > 0) {
+            resumen += `\n📋 **Elipses detectadas:**\n`;
+            const temas = Object.keys(grafo);
+            for (const temaId of temas.slice(0, 5)) {
+                const elipse = grafo[temaId];
+                const tema = await db.obtenerTema(temaId);
+                const nombre = tema?.nombre || 'Sin nombre';
+                resumen += `- ${nombre}: ${elipse.totalOndas || 0} ondas\n`;
+            }
+            if (temas.length > 5) {
+                resumen += `  y ${temas.length - 5} más...\n`;
+            }
+        }
+
+        resumen += `\n💡 Las Ondas Cruzadas te permiten conectar temas y crear un grafo de conocimiento.`;
+        resumen += `\n📌 Comandos relacionados: /grafo, /interferencias`;
+        return resumen;
+    }
+
+    async _comandoGrafo() {
+        if (!window.modoOndasCruzadas) {
+            return '🌊 **Grafo de Elipses**\n\nEl módulo Ondas Cruzadas no está disponible.';
+        }
+
+        const grafo = window.modoOndasCruzadas.getGrafoElipse() || {};
+        const temas = Object.keys(grafo);
+
+        if (temas.length === 0) {
+            return '🌊 **Grafo de Elipses**\n\nNo hay elipses en el grafo. Genera ondas en el Modo Elipse para crear conexiones.';
+        }
+
+        let resumen = '🌊 **Grafo de Elipses**\n\n';
+        let conexiones = 0;
+
+        for (const temaId of temas) {
+            const elipse = grafo[temaId];
+            const tema = await db.obtenerTema(temaId);
+            const nombre = tema?.nombre || 'Sin nombre';
+            const conectados = window.modoOndasCruzadas.getTemasConectados(temaId) || [];
+            conexiones += conectados.length;
+
+            resumen += `📌 **${nombre}** (${elipse.totalOndas || 0} ondas)\n`;
+            if (conectados.length > 0) {
+                const nombresConectados = [];
+                for (const id of conectados.slice(0, 3)) {
+                    const t = await db.obtenerTema(id);
+                    if (t) nombresConectados.push(t.nombre);
+                }
+                const resto = conectados.length > 3 ? ` y ${conectados.length - 3} más` : '';
+                resumen += `   🔗 Conectado a: ${nombresConectados.join(', ')}${resto}\n`;
+            } else {
+                resumen += `   🔗 Sin conexiones\n`;
+            }
+            resumen += '\n';
+        }
+
+        resumen += `📊 Total: ${temas.length} elipses · ${conexiones} conexiones`;
+        return resumen;
+    }
+
+    async _comandoInterferencias() {
+        if (!window.modoOndasCruzadas) {
+            return '🌊 **Interferencias**\n\nEl módulo Ondas Cruzadas no está disponible.';
+        }
+
+        const interferencias = window.modoOndasCruzadas.getInterferencias() || {};
+        const temas = Object.keys(interferencias);
+
+        if (temas.length === 0) {
+            return '🌊 **Interferencias**\n\nNo hay interferencias detectadas. Genera más ondas en diferentes temas para crear conexiones.';
+        }
+
+        let resumen = '🌊 **Interferencias Detectadas**\n\n';
+        let totalPesos = 0;
+        let maxPeso = 0;
+        let maxTema = '';
+
+        for (const temaId of temas.slice(0, 5)) {
+            const data = interferencias[temaId];
+            if (!data || !data.temasConectados) continue;
+
+            const tema = await db.obtenerTema(temaId);
+            const nombre = tema?.nombre || 'Sin nombre';
+
+            if (data.temasConectados.length > 0) {
+                const primerPeso = data.pesos?.[data.temasConectados[0]] || 0;
+                if (primerPeso > maxPeso) {
+                    maxPeso = primerPeso;
+                    maxTema = nombre;
+                }
+                totalPesos += data.temasConectados.length;
+
+                resumen += `📌 **${nombre}**: ${data.temasConectados.length} conexiones\n`;
+                const conectados = data.temasConectados.slice(0, 3);
+                for (const id of conectados) {
+                    const t = await db.obtenerTema(id);
+                    const peso = data.pesos?.[id] || 0;
+                    if (t) {
+                        resumen += `   🔗 ${t.nombre} (${Math.round(peso * 100)}% coincidencia)\n`;
+                    }
+                }
+                if (data.temasConectados.length > 3) {
+                    resumen += `   y ${data.temasConectados.length - 3} más\n`;
+                }
+                resumen += '\n';
+            }
+        }
+
+        if (temas.length > 5) {
+            resumen += `... y ${temas.length - 5} temas más\n\n`;
+        }
+
+        resumen += `📊 Total de interferencias: ${totalPesos}`;
+        if (maxTema) {
+            resumen += `\n🔝 Mayor interferencia: "${maxTema}" (${Math.round(maxPeso * 100)}%)`;
+        }
+        return resumen;
+    }
+
+    async _comandoBiblioteca() {
+        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+        const todasHistorias = await db.obtenerHistoriasPorIdioma(idioma);
+        const leidas = (await window.UIBiblioteca?._historiasLeidas) || new Set();
+        const completadas = todasHistorias.filter(h => h.estado === 'completada' || h._completada).length;
+        const nombreIdioma = this._getNombreIdioma(idioma);
+
+        // Obtener estadísticas por origen
+        let elipseCount = 0;
+        let cruzadasCount = 0;
+        let temasCount = 0;
+        let importadasCount = 0;
+
+        for (const h of todasHistorias) {
+            if (h._esOndaCruzada === true) cruzadasCount++;
+            else if (h._esOnda === true) elipseCount++;
+            else if (h._importadoDesdeJSON === true || h._esImportada === true) importadasCount++;
+            else temasCount++;
+        }
+
+        // Obtener temas con historias
+        const temasSet = new Set();
+        for (const h of todasHistorias) {
+            if (h.temaId) temasSet.add(h.temaId);
+        }
+
+        let resumen = `📚 **Biblioteca de Lectura** (${nombreIdioma})\n\n`;
+        resumen += `📖 ${todasHistorias.length} historias disponibles\n`;
+        resumen += `✅ ${leidas.size} historias marcadas como leídas\n`;
+        resumen += `🎓 ${completadas} historias completadas (RCN >= 4.0)\n`;
+        resumen += `📂 ${temasSet.size} temas con historias\n\n`;
+
+        resumen += `📊 **Distribución por origen:**\n`;
+        if (temasCount > 0) resumen += `   📚 Temas: ${temasCount}\n`;
+        if (elipseCount > 0) resumen += `   🌌 Elipse: ${elipseCount}\n`;
+        if (cruzadasCount > 0) resumen += `   🌊 Ondas Cruzadas: ${cruzadasCount}\n`;
+        if (importadasCount > 0) resumen += `   📥 Importadas: ${importadasCount}\n`;
+
+        const pctLeidas = todasHistorias.length > 0 ? Math.round((leidas.size / todasHistorias.length) * 100) : 0;
+        resumen += `\n📈 Progreso de lectura: ${pctLeidas}%`;
+
+        resumen += `\n\n💡 En la Biblioteca puedes leer todas las historias de tus temas, la Elipse y las Ondas Cruzadas. ¡Marca tus lecturas para seguir tu progreso!`;
+        resumen += `\n📌 Comandos relacionados: /lectura`;
+        return resumen;
+    }
+
+    async _comandoLectura() {
+        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
+        const todasHistorias = await db.obtenerHistoriasPorIdioma(idioma);
+        const leidas = (await window.UIBiblioteca?._historiasLeidas) || new Set();
+
+        if (todasHistorias.length === 0) {
+            return '📖 **Estado de Lectura**\n\nNo hay historias disponibles para leer. Importa o genera contenido para comenzar.';
+        }
+
+        const noLeidas = todasHistorias.filter(h => !leidas.has(h.id));
+        const leidasList = todasHistorias.filter(h => leidas.has(h.id));
+
+        let resumen = '📖 **Estado de Lectura**\n\n';
+
+        if (noLeidas.length > 0) {
+            resumen += `📌 **Historias por leer (${noLeidas.length}):**\n`;
+            for (const h of noLeidas.slice(0, 5)) {
+                const origen = h._esOndaCruzada ? '🌊' : h._esOnda ? '🌌' : '📚';
+                resumen += `   ${origen} ${h.titulo || 'Sin título'}\n`;
+            }
+            if (noLeidas.length > 5) {
+                resumen += `   y ${noLeidas.length - 5} más...\n`;
+            }
+            resumen += '\n';
+        }
+
+        if (leidasList.length > 0) {
+            resumen += `✅ **Historias leídas (${leidasList.length}):**\n`;
+            for (const h of leidasList.slice(0, 3)) {
+                const origen = h._esOndaCruzada ? '🌊' : h._esOnda ? '🌌' : '📚';
+                resumen += `   ${origen} ${h.titulo || 'Sin título'}\n`;
+            }
+            if (leidasList.length > 3) {
+                resumen += `   y ${leidasList.length - 3} más...\n`;
+            }
+            resumen += '\n';
+        }
+
+        const pct = todasHistorias.length > 0 ? Math.round((leidas.size / todasHistorias.length) * 100) : 0;
+        resumen += `📊 Progreso: ${leidas.size}/${todasHistorias.length} (${pct}%)`;
+
+        if (noLeidas.length > 0) {
+            resumen += `\n\n💡 Ve a la Biblioteca de Lectura para leer las historias pendientes.`;
+        } else {
+            resumen += `\n\n🎉 ¡Has leído todas las historias disponibles!`;
+        }
+
+        return resumen;
+    }
+
+    async _comandoSincronizar() {
+        try {
+            let mensajes = [];
+            
+            if (window.modoElipse) {
+                window.modoElipse._guardarEstadoElipse();
+                mensajes.push('✅ Estado de Elipse guardado');
+            }
+            
+            if (window.modoOndasCruzadas) {
+                window.modoOndasCruzadas._guardarDatos();
+                mensajes.push('✅ Estado de Ondas Cruzadas guardado');
+            }
+            
+            if (window.UIClipse) {
+                await window.UIClipse._guardarEstadoActual();
+                mensajes.push('✅ Estado del tema actual guardado');
+            }
+            
+            if (window.UITemas) {
+                await window.UITemas._forzarRefresco();
+                mensajes.push('✅ Temas refrescados');
+            }
+            
+            if (window.UIBiblioteca) {
+                await window.UIBiblioteca.cargar(window.uiCore);
+                mensajes.push('✅ Biblioteca recargada');
+            }
+            
+            return `🔄 **Sincronización manual completada.**\n\n${mensajes.join('\n')}\n\nTodas las vistas están actualizadas.`;
+        } catch (e) {
+            return `❌ Error al sincronizar: ${e.message}`;
+        }
+    }
+
+    _comandoHelp() {
+        return `📖 **Comandos del Chat Vigía**
+
+**🌌 Modo Elipse:**
+  /elipse          → Ver estado de la Elipse
+  /elipse-ver      → Ver todas las ondas
+  /elipse-generar  → Instrucciones para generar una nueva onda
+
+**🌊 Modo Ondas Cruzadas:**
+  /ondas-cruzadas o /oc → Ver estado del Modo Ondas Cruzadas
+  /grafo                 → Ver el grafo de elipses
+  /interferencias        → Ver interferencias detectadas
+
+**📚 Biblioteca de Lectura:**
+  /biblioteca      → Ver estado de la Biblioteca
+  /lectura         → Ver estado de lectura (leídas / por leer)
+
+**⚙️ Sistema:**
+  /sincronizar     → Sincronizar todos los módulos
+  /help            → Mostrar esta ayuda
+
+**💡 Consejos:**
+- Escribe en lenguaje natural para preguntar sobre cualquier tema.
+- El chat tiene contexto del módulo en el que te encuentras.
+- Usa los comandos para obtener información rápida.
+
+📌 **Ejemplo:** "¿Cómo funciona el Modo Elipse?" o "/elipse"`;
+    }
+
+    // ============================================================
+    // MÉTODOS DE UTILIDAD (MANTENIDOS)
+    // ============================================================
 
     _getNombreIdioma(idioma) {
         const nombres = {
@@ -1494,16 +2051,15 @@ class VigiaGramatical extends Vigia {
     }
 
     async _actualizarEdadGramatical(idioma) {
-        const infoUsuario = gestorIdiomas?.getInfoIdioma(idioma);
-        const nivelUsuario = infoUsuario?.nivel || 'A1';
-        const edadBase = this._edadPorNivel[nivelUsuario] || 20;
+        const infoUsuario = gestorIdiomas?.getInfoIdioma(idioma)?.nivel || 'A1';
+        const edadBase = this._edadPorNivel[infoUsuario] || 20;
         const edadObjetivo = Math.min(95, edadBase + 15);
         
         const reglas = await db.obtenerReglasGramaticales(idioma);
         const totalReglas = reglas.length;
         const reglasPorNivel = this._getReglasPorNivel(reglas);
         
-        const nivelIndex = this._niveles.indexOf(nivelUsuario);
+        const nivelIndex = this._niveles.indexOf(infoUsuario);
         let reglasEsperadas = 0;
         for (const [nivel, reglasArray] of Object.entries(reglasPorNivel)) {
             const nivelIdx = this._niveles.indexOf(nivel);
@@ -1515,7 +2071,7 @@ class VigiaGramatical extends Vigia {
         const coberturaReglas = totalReglas > 0 ? Math.min(1, totalReglas / Math.max(reglasEsperadas || totalReglas, 1)) : 0.5;
         
         this._edadGramatical = Math.round(edadObjetivo * (0.7 + 0.3 * coberturaReglas));
-        const edadMinima = this._edadPorNivel[nivelUsuario] + 10;
+        const edadMinima = this._edadPorNivel[infoUsuario] + 10;
         this._edadGramatical = Math.max(edadMinima, this._edadGramatical);
         
         if (this._usuarioId) {
@@ -1532,7 +2088,7 @@ class VigiaGramatical extends Vigia {
             });
         }
         
-        console.log(`🧠 Edad gramatical: ${this._edadGramatical}% (${this._getEdadNombre()}) | Usuario: ${nivelUsuario}`);
+        console.log(`🧠 Edad gramatical: ${this._edadGramatical}% (${this._getEdadNombre()}) | Usuario: ${infoUsuario}`);
         window.dispatchEvent(new CustomEvent('vigiaGramaticalActualizado', { detail: { edad: this._edadGramatical, nombre: this._getEdadNombre() } }));
     }
 
@@ -2404,11 +2960,15 @@ Responde en JSON:
 var vigia = new Vigia();
 var vigiaGramatical = new VigiaGramatical();
 
-console.log('✅ Vigía v22.3 - COMPLETO SIN HEALTH CHECKS');
+console.log('✅ Vigía v22.4 - COMPLETO CON EXTENSIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA');
 console.log('  🔥 Health Checks: ELIMINADOS (sin peticiones automáticas)');
 console.log('  🔥 Feedback Proactivo: ELIMINADO');
 console.log('  🔥 Verificación de conexión: ELIMINADA');
 console.log('  🔥 SOLO peticiones bajo demanda del usuario');
+console.log('  🔥 Chat con contexto para Elipse, Ondas Cruzadas y Biblioteca: ACTIVADO');
+console.log('  🔥 Comandos: /elipse, /elipse-ver, /elipse-generar');
+console.log('  🔥 Comandos: /ondas-cruzadas, /grafo, /interferencias');
+console.log('  🔥 Comandos: /biblioteca, /lectura, /sincronizar, /help');
 console.log('  ⚖️ Balanceador de carga integrado');
 console.log('  🪙 Monitorización de tokens');
 console.log('  📊 Transcripción fonética');

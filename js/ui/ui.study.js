@@ -1,18 +1,18 @@
 // ============================================================
-// UI STUDY v23.6 - CORREGIDO: ONDAS CRUZADAS REDIRIGEN A ONDAS CRUZADAS
+// UI STUDY v23.9 - CORREGIDO: DETECCIÓN DE ORIGEN "TONOS" Y REDIRECCIÓN
 // ============================================================
 
 (function() {
     'use strict';
     
-    if (window.UIStudy && window.UIStudy._version === '23.6') {
+    if (window.UIStudy && window.UIStudy._version === '23.9') {
         console.log('⚠️ UIStudy ya está cargado, saltando...');
         return;
     }
 
     class UIStudy {
         constructor() {
-            this._version = '23.6';
+            this._version = '23.9';
             this._modoEstudio = 'flashcard';
             this._pistaActual = '';
             this._opcionesMultiple = [];
@@ -60,6 +60,10 @@
             this._modalAvanzadoAbierto = false;
             
             this._origenAccion = null;
+            
+            // 🔥 CONTROL DE PROGRESO
+            this._ultimaActualizacionProgreso = 0;
+            this._progresoRecargado = false;
         }
 
         // ============================================================
@@ -195,7 +199,7 @@
         }
 
         // ============================================================
-        // OBTENER TRANSCRIPCIÓN - SIMPLIFICADA Y SEGURA
+        // OBTENER TRANSCRIPCIÓN
         // ============================================================
 
         async _obtenerTranscripcionFrase(frase) {
@@ -346,7 +350,7 @@
         }
 
         // ============================================================
-        // CARGA PRINCIPAL
+        // CARGA PRINCIPAL - SIN BOTÓN LIBRO DE LECTURA
         // ============================================================
 
         cargar(core) {
@@ -358,7 +362,8 @@
             this._eventosEnlazados = false;
             this._enlaceIntentos = 0;
             this._origenHistoriaActual = null;
-            this._añadirBotonLibro();
+            this._progresoRecargado = false;
+            this._ultimaActualizacionProgreso = 0;
             
             if (pipeline._estudiandoHistoria && pipeline._historiaIdActual) {
                 console.log(`📖 Cargando historia específica: ${pipeline._historiaIdActual}`);
@@ -394,6 +399,14 @@
                                     }
                                 }, 1500);
                                 return;
+                            } else if (this._origenHistoriaActual === 'tonos') {
+                                this.core?.mostrarToast('🎵 Historia tonal completada. Volviendo al Estudio de Tonos...', 'info');
+                                setTimeout(() => {
+                                    if (window._volverAlModoTonos) {
+                                        window._volverAlModoTonos('🎵 Historia tonal completada. Volviendo al Estudio de Tonos');
+                                    }
+                                }, 1500);
+                                return;
                             } else {
                                 this.core?.mostrarToast('📖 Esta historia ya está completada. Volviendo a Temas...', 'info');
                                 setTimeout(() => {
@@ -412,7 +425,8 @@
                 if (pipeline && pipeline.frases && pipeline.frases.length > 0) {
                     if (pipeline.fraseActual) {
                         if (this._modoVista === 'libro' && !this._cerrandoLibro) {
-                            this._abrirLibroLectura();
+                            this._modoVista = 'frase';
+                            this._renderizarFraseInteractiva();
                         } else if (this._modoVista === 'historia_completa') {
                             this._renderizarHistoriaCompletaDesdeLibro();
                         } else {
@@ -429,47 +443,6 @@
             } catch (e) {
                 console.error('❌ Error en cargar:', e);
                 this.mostrarPantallaInicio();
-            }
-        }
-
-        // ============================================================
-        // AÑADIR BOTÓN DE LIBRO DE LECTURA
-        // ============================================================
-
-        _añadirBotonLibro() {
-            try {
-                const header = document.querySelector('.module-header');
-                if (!header) return;
-                let btnLibro = document.getElementById('btnLibroLectura');
-                if (btnLibro) return;
-                btnLibro = document.createElement('button');
-                btnLibro.id = 'btnLibroLectura';
-                btnLibro.className = 'btn-secondary';
-                btnLibro.style.cssText = `
-                    padding: 6px 14px;
-                    font-size: 12px;
-                    background: linear-gradient(135deg, #6C5CE7, #A29BFE);
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    margin-left: 8px;
-                `;
-                btnLibro.innerHTML = '📚 Libro de Lectura';
-                btnLibro.onmouseover = () => {
-                    btnLibro.style.transform = 'translateY(-2px)';
-                    btnLibro.style.boxShadow = '0 4px 20px rgba(108,92,231,0.3)';
-                };
-                btnLibro.onmouseout = () => {
-                    btnLibro.style.transform = 'none';
-                    btnLibro.style.boxShadow = 'none';
-                };
-                btnLibro.onclick = () => { this._abrirLibroLectura(); };
-                const titleDiv = header.querySelector('.module-title');
-                if (titleDiv) titleDiv.appendChild(btnLibro);
-            } catch (e) {
-                console.warn('⚠️ Error añadiendo botón libro:', e);
             }
         }
 
@@ -565,7 +538,7 @@
         }
 
         // ============================================================
-        // VERIFICAR PROGRESO DEL TEMA (CORREGIDO PARA CRUZADAS)
+        // VERIFICAR PROGRESO DEL TEMA - CORREGIDO CON DETECCIÓN DE "TONOS"
         // ============================================================
 
         async _verificarProgresoTema() {
@@ -577,6 +550,8 @@
 
             this._verificandoProgreso = true;
             try {
+                await this._recargarProgresoCompleto();
+                
                 const frases = pipeline.frases || [];
                 if (frases.length === 0) { this._verificandoProgreso = false; return; }
                 
@@ -601,7 +576,19 @@
                     const origen = this._origenHistoriaActual || pipeline.getOrigenHistoriaActual ? pipeline.getOrigenHistoriaActual() : 'tema';
                     console.log(`   🔥 Origen detectado: ${origen}`);
                     
-                    // 🔥 DETECTAR SI ES CRUZADA (prioridad a _esOndaCruzada)
+                    // 🔥 DETECTAR SI VIENE DE TONOS
+                    let esTono = false;
+                    try {
+                        const historia = await db.get('historias', pipeline._historiaIdActual);
+                        if (historia && historia._esTono === true) {
+                            esTono = true;
+                            console.log(`🎵 La historia ${pipeline._historiaIdActual} es una Historia Tonal (directo de DB)`);
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Error verificando si es tonal:', e);
+                    }
+                    
+                    // 🔥 DETECTAR SI VIENE DE CRUZADA
                     let esCruzada = false;
                     try {
                         const historia = await db.get('historias', pipeline._historiaIdActual);
@@ -613,8 +600,7 @@
                         console.warn('⚠️ Error verificando si es cruzada:', e);
                     }
                     
-                    // Si es cruzada, forzar origen a 'cruzada'
-                    const origenFinal = esCruzada ? 'cruzada' : origen;
+                    const origenFinal = esTono ? 'tonos' : (esCruzada ? 'cruzada' : origen);
                     console.log(`   📌 Origen final: ${origenFinal}`);
                     
                     if (origenFinal === 'elipse' && pipeline._historiaIdActual) {
@@ -647,6 +633,11 @@
                             window._volverAlModoOndasCruzadas('🌊 Onda Cruzada completada. Volviendo al Modo Ondas Cruzadas');
                         }, 2500);
                         return;
+                    } else if (origenFinal === 'tonos' && window._volverAlModoTonos) {
+                        setTimeout(() => {
+                            window._volverAlModoTonos('🎵 Historia completada. Volviendo al Estudio de Tonos');
+                        }, 2500);
+                        return;
                     } else {
                         setTimeout(() => {
                             this._salirDeHistoria();
@@ -661,6 +652,100 @@
                 console.warn('⚠️ Error verificando progreso:', error);
             } finally {
                 this._verificandoProgreso = false;
+            }
+        }
+
+        // ============================================================
+        // RECARGAR PROGRESO COMPLETO
+        // ============================================================
+
+        async _recargarProgresoCompleto() {
+            try {
+                const ahora = Date.now();
+                if (ahora - this._ultimaActualizacionProgreso < 2000 && this._progresoRecargado) {
+                    console.log('⏳ Progreso recargado recientemente, saltando...');
+                    return;
+                }
+                
+                console.log('🔄 Recargando progreso completo desde DB...');
+                
+                await pipeline.cargarProgreso();
+                
+                const frases = pipeline.frases || [];
+                for (const f of frases) {
+                    if (f.id) {
+                        const progresoActualizado = await db.obtenerProgreso(f.id);
+                        if (progresoActualizado) {
+                            f.progreso = progresoActualizado;
+                        }
+                    }
+                }
+                
+                if (pipeline.fraseActual && pipeline.fraseActual.id) {
+                    const progresoActualizado = await db.obtenerProgreso(pipeline.fraseActual.id);
+                    if (progresoActualizado) {
+                        pipeline.fraseActual.progreso = progresoActualizado;
+                        pipeline.faseActual = progresoActualizado.fase || 1;
+                        pipeline.estadoNeuro.rcn = progresoActualizado.rcn || 0;
+                        console.log(`   📊 Frase actual: RCN=${pipeline.estadoNeuro.rcn.toFixed(1)}, Fase=${pipeline.faseActual}`);
+                    }
+                }
+                
+                if (pipeline._estudiandoTema && pipeline._temaActual) {
+                    const tema = await db.obtenerTema(pipeline._temaActual);
+                    if (tema) {
+                        const historias = await db.obtenerHistoriasPorTema(tema.id);
+                        let todasCompletadas = true;
+                        let totalFrases = 0;
+                        let completadasTotal = 0;
+                        
+                        for (const h of historias) {
+                            const frasesHistoria = await db.obtenerFrasesPorHistoria(h.id);
+                            let completadas = 0;
+                            for (const f of frasesHistoria) {
+                                totalFrases++;
+                                const prog = await db.obtenerProgreso(f.id);
+                                if (prog && (prog.estado === 'completada' || prog.rcn >= 4)) {
+                                    completadas++;
+                                    completadasTotal++;
+                                }
+                            }
+                            if (completadas < frasesHistoria.length && frasesHistoria.length > 0) {
+                                todasCompletadas = false;
+                            }
+                        }
+                        
+                        if (todasCompletadas && totalFrases > 0 && tema.estado !== 'completado') {
+                            console.log(`✅ Todas las historias del tema "${tema.nombre}" completadas. Marcando tema como completado.`);
+                            tema.estado = 'completado';
+                            tema._completado = true;
+                            tema._fechaCompletado = Date.now();
+                            await db.update('temas', tema);
+                            
+                            const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
+                            const temaOriginalId = tema._temaOriginalId || tema.id;
+                            window.dispatchEvent(new CustomEvent('temaCompletado', {
+                                detail: {
+                                    idioma: idioma,
+                                    temaId: temaOriginalId,
+                                    temaDbId: tema.id,
+                                    completado: true,
+                                    tema: tema,
+                                    origen: 'tema',
+                                    totalFrases: totalFrases,
+                                    completadas: completadasTotal
+                                }
+                            }));
+                        }
+                    }
+                }
+                
+                this._progresoRecargado = true;
+                this._ultimaActualizacionProgreso = Date.now();
+                console.log('✅ Progreso recargado correctamente');
+                
+            } catch (error) {
+                console.error('❌ Error recargando progreso:', error);
             }
         }
 
@@ -801,7 +886,7 @@
         }
 
         // ============================================================
-        // MOSTRAR MODAL DE HISTORIA COMPLETADA (CORREGIDO PARA CRUZADAS)
+        // MOSTRAR MODAL DE HISTORIA COMPLETADA - CON SOPORTE PARA "TONOS"
         // ============================================================
 
         async _mostrarModalHistoriaCompletada(historiaId, origen) {
@@ -811,6 +896,7 @@
                 
                 const esElipse = origen === 'elipse';
                 const esCruzada = origen === 'cruzada';
+                const esTono = origen === 'tonos';
                 const esTema = origen === 'tema';
                 
                 const frases = await db.obtenerFrasesPorHistoria(historiaId);
@@ -844,6 +930,13 @@
                     botonTexto = '🌊 Volver al Modo Ondas Cruzadas';
                     botonAccion = `window._volverAlModoOndasCruzadas ? window._volverAlModoOndasCruzadas('🔄 Volviendo al Modo Ondas Cruzadas') : window.uiCore.irAModulo('ondasCruzadas')`;
                     colorBoton = 'linear-gradient(135deg, #6C5CE7, #00CEC9)';
+                } else if (esTono) {
+                    titulo = '🎵 ¡Historia Tonal Completada!';
+                    icono = '🎵';
+                    mensaje = `Has completado la historia tonal "${historia.titulo}" en el Estudio de Tonos.`;
+                    botonTexto = '🎵 Volver al Estudio de Tonos';
+                    botonAccion = `window._volverAlModoTonos ? window._volverAlModoTonos('🔄 Volviendo al Estudio de Tonos') : window.uiCore.irAModulo('tonos')`;
+                    colorBoton = 'linear-gradient(135deg, #FDCB6E, #E17055)';
                 } else {
                     titulo = '📖 ¡Historia Completada!';
                     icono = '📖';
@@ -902,6 +995,7 @@
                                 <p style="color: var(--success); font-weight: 600; margin: 0;">
                                     ${esElipse ? '🌊 Esta onda se ha sincronizado con el tema.' : 
                                       esCruzada ? '🌊 Esta onda cruzada se ha sincronizado con el tema.' : 
+                                      esTono ? '🎵 Esta historia tonal se ha guardado en Mi Espacio.' :
                                       '✅ Historia completada correctamente.'}
                                     ${esTema ? '🎉 El progreso del tema se ha actualizado.' : ''}
                                 </p>
@@ -941,6 +1035,9 @@
                     if (esCruzada && window.UIOndasCruzadas) {
                         window.UIOndasCruzadas.cargar(window.uiCore);
                     }
+                    if (esTono && window.UITonos) {
+                        window.UITonos.cargar(window.uiCore);
+                    }
                     if (window.UIDashboard) {
                         window.UIDashboard._cargarDashboardInicial(window.uiCore);
                     }
@@ -955,7 +1052,7 @@
         }
 
         // ============================================================
-        // SALIR DE HISTORIA (CORREGIDO PARA CRUZADAS)
+        // SALIR DE HISTORIA
         // ============================================================
 
         async _salirDeHistoria() {
@@ -1000,6 +1097,13 @@
                     } else if (this.core) {
                         this.core.irAModulo('ondasCruzadas');
                         this.core.mostrarToast('🔄 Volviendo al Modo Ondas Cruzadas', 'info');
+                    }
+                } else if (origen === 'tonos') {
+                    if (this.core && window._volverAlModoTonos) {
+                        window._volverAlModoTonos('🔄 Volviendo al Estudio de Tonos');
+                    } else if (this.core) {
+                        this.core.irAModulo('tonos');
+                        this.core.mostrarToast('🔄 Volviendo al Estudio de Tonos', 'info');
                     }
                 } else {
                     if (this.core) {
@@ -1135,7 +1239,7 @@
         }
 
         // ============================================================
-        // RENDERIZADO PRINCIPAL
+        // RENDERIZADO PRINCIPAL - CORREGIDO CON PROGRESO ACTUALIZADO
         // ============================================================
         
         async _renderizarFraseInteractiva() {
@@ -1161,6 +1265,8 @@
                     this._renderizando = false;
                     return;
                 }
+
+                await this._recargarProgresoCompleto();
 
                 container.innerHTML = '';
                 
@@ -1207,12 +1313,15 @@
                 
                 const origen = this._origenHistoriaActual || pipeline.getOrigenHistoriaActual ? pipeline.getOrigenHistoriaActual() : null;
                 
-                // Determinar si es cruzada para mostrar badge
                 let esCruzada = false;
+                let esTono = false;
                 try {
                     const historia = await db.get('historias', pipeline._historiaIdActual);
                     if (historia && historia._esOndaCruzada === true) {
                         esCruzada = true;
+                    }
+                    if (historia && historia._esTono === true) {
+                        esTono = true;
                     }
                 } catch (e) {}
                 
@@ -1231,6 +1340,8 @@
                                 <span style="font-size:10px;color:var(--primary);background:var(--primary)08;padding:2px 10px;border-radius:12px;">🌌 Elipse</span>
                             ` : origen === 'cruzada' || esCruzada ? `
                                 <span style="font-size:10px;color:#00CEC9;background:#00CEC908;padding:2px 10px;border-radius:12px;">🌊 Cruzada</span>
+                            ` : origen === 'tonos' || esTono ? `
+                                <span style="font-size:10px;color:#FDCB6E;background:#FDCB6E08;padding:2px 10px;border-radius:12px;">🎵 Tonos</span>
                             ` : origen === 'tema' ? `
                                 <span style="font-size:10px;color:var(--secondary);background:var(--secondary)08;padding:2px 10px;border-radius:12px;">📚 Tema</span>
                             ` : ''}
@@ -1776,7 +1887,7 @@
         }
 
         // ============================================================
-        // VALIDACIÓN DE RESPUESTA ESCRITA
+        // VALIDACIÓN DE RESPUESTA ESCRITA - CORREGIDO CON RECARGA
         // ============================================================
         
         async _validarRespuestaEscrita() {
@@ -1875,8 +1986,10 @@
                     await this._debilistarElemento(frase.id, 'frase');
                 }
                 
+                await this._recargarProgresoCompleto();
                 await this._guardarIndiceEstudio();
                 await this._verificarProgresoTema();
+                
             } catch (e) {
                 console.error('❌ Error validando respuesta:', e);
                 this.core.mostrarToast('❌ Error al validar la respuesta', 'error');
@@ -3113,7 +3226,7 @@
         }
 
         // ============================================================
-        // LIBRO DE LECTURA
+        // LIBRO DE LECTURA - MANTENIDO PARA COMPATIBILIDAD CON BIBLIOTECA
         // ============================================================
 
         async _abrirLibroLectura() {
@@ -3406,8 +3519,10 @@
                 this.core?.mostrarToast('📖 Cargando historia...', 'info');
                 const esOnda = historia && historia._esOnda === true;
                 const esCruzada = historia && historia._esOndaCruzada === true;
+                const esTono = historia && historia._esTono === true;
                 let origen = 'tema';
                 if (esCruzada) origen = 'cruzada';
+                else if (esTono) origen = 'tonos';
                 else if (esOnda) origen = 'elipse';
                 this._origenHistoriaActual = origen;
                 console.log(`📖 Estudiando historia "${historia?.titulo}" con origen: ${origen}`);
@@ -4021,16 +4136,19 @@
         }
 
         // ============================================================
-        // RESPUESTA Y NAVEGACIÓN - CORREGIDO
+        // RESPUESTA Y NAVEGACIÓN - CORREGIDO CON RECARGA
         // ============================================================
         
-        _responderEstudio(tipo) {
+        async _responderEstudio(tipo) {
             if (pipeline && pipeline.procesarRespuesta) {
                 this._resetearEstadoFrase();
                 pipeline.procesarRespuesta(tipo);
                 this._guardarIndiceEstudio();
                 setTimeout(async () => {
                     this._resetearEstadoFrase();
+                    
+                    await this._recargarProgresoCompleto();
+                    
                     await this._verificarProgresoTema();
                     if (!this._temaFinalizado) {
                         this._renderizarFraseInteractiva();
@@ -4049,6 +4167,7 @@
                 this._guardarIndiceEstudio();
                 setTimeout(async () => {
                     this._resetearEstadoFrase();
+                    await this._recargarProgresoCompleto();
                     await this._verificarProgresoTema();
                     if (!this._temaFinalizado) {
                         this._renderizarFraseInteractiva();
@@ -4064,6 +4183,7 @@
                 this._guardarIndiceEstudio();
                 setTimeout(async () => {
                     this._resetearEstadoFrase();
+                    await this._recargarProgresoCompleto();
                     await this._verificarProgresoTema();
                     if (!this._temaFinalizado) {
                         this._renderizarFraseInteractiva();
@@ -4078,10 +4198,16 @@
     // ============================================================
 
     window.UIStudy = new UIStudy();
-    console.log('✅ UIStudy v23.6 - CORREGIDO: ONDAS CRUZADAS REDIRIGEN A ONDAS CRUZADAS');
-    console.log('  🔥 Detección de _esOndaCruzada en la historia');
-    console.log('  🔥 Modal para cruzadas con botón "Volver al Modo Ondas Cruzadas"');
-    console.log('  🔥 Badge "Cruzada" en la interfaz de estudio');
-    console.log('  🔥 Función _volverAlModoOndasCruzadas para redirección');
+    console.log('✅ UIStudy v23.9 - CON DETECCIÓN DE ORIGEN "TONOS"');
+    console.log('  🎵 Detección de origen "tonos" para redirección al Estudio de Tonos');
+    console.log('  🎵 Modal de completado con botón "Volver al Estudio de Tonos"');
+    console.log('  🎵 Redirección automática al módulo Tonos al completar una historia tonal');
+    console.log('  🗑️ Botón "Libro de Lectura" eliminado del módulo Estudiar');
+    console.log('  📚 El acceso a la Biblioteca de Lectura se hará desde el Dashboard');
+    console.log('  🔥 Recarga de progreso completo después de cada respuesta');
+    console.log('  🔥 Sincronización de fase actualizada con el progreso de DB');
+    console.log('  🔥 Corrección de propagación de RCN 5.0 + Fase 2');
+    console.log('  🔥 Verificación de completado de tema con progreso real');
+    console.log('  🔥 Método _recargarProgresoCompleto() para refresco total');
     console.log('  ✅ Todas las funcionalidades originales preservadas');
 })();

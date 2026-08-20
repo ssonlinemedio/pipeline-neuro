@@ -1,5 +1,5 @@
 // ============================================================
-// UI MANUAL INTERACTIVO v3.0 - GUÍA DEFINITIVA DE PIPELINE NEURO
+// UI MANUAL INTERACTIVO v4.0 - CON SECCIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA
 // ============================================================
 
 class UIManual {
@@ -19,7 +19,7 @@ class UIManual {
         this._itemsPorPagina = 10;
         
         // ============================================================
-        // SECCIONES DEL MANUAL - ESTRUCTURA COMPLETA Y MEJORADA
+        // SECCIONES DEL MANUAL - CON NUEVAS SECCIONES
         // ============================================================
         this._SECCIONES = {
             'inicio': {
@@ -33,7 +33,7 @@ class UIManual {
                         <div style="font-size:72px;margin-bottom:16px;">🧠</div>
                         <h1 style="font-size:32px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Pipeline Neuro</h1>
                         <p style="font-size:18px;color:var(--gray);margin-bottom:8px;">Un Ecosistema Neuroadaptativo para el Aprendizaje de Idiomas</p>
-                        <p style="font-size:14px;color:var(--gray-light);">Versión 22.3 · Guía Suprema del Sistema</p>
+                        <p style="font-size:14px;color:var(--gray-light);">Versión 22.4 · Guía Suprema del Sistema</p>
                         <div style="margin:20px auto;max-width:600px;background:var(--bg);border-radius:12px;padding:16px;border:2px solid var(--primary)20;">
                             <p style="font-size:14px;color:var(--dark);line-height:1.6;">
                                 <strong>Pipeline Neuro</strong> no es una aplicación de aprendizaje de idiomas al uso. 
@@ -43,21 +43,13 @@ class UIManual {
                             </p>
                         </div>
                         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-                            <button class="btn-primary" onclick="window.UIManual._irASeccion('fundamentos')" style="padding:10px 24px;">
-                                <i class="fas fa-rocket"></i> Comenzar
-                            </button>
-                            <button class="btn-secondary" onclick="window.UIManual._abrirBuscadorAvanzado()" style="padding:10px 24px;">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
-                            <button class="btn-secondary" onclick="window.UIManual._alternarVista()" style="padding:10px 24px;">
-                                <i class="fas fa-eye"></i> Vista ${this._modoVista === 'completo' ? 'Resumida' : 'Completa'}
-                            </button>
-                            <button class="btn-secondary" onclick="window.UIManual._exportarManual()" style="padding:10px 24px;">
-                                <i class="fas fa-download"></i> Exportar PDF
-                            </button>
-                            <button class="btn-secondary" onclick="window.uiCore.irAModulo('manual')" style="padding:10px 24px;">
-                                <i class="fas fa-undo"></i> Recargar
-                            </button>
+                            <button class="btn-primary" onclick="window.UIManual._irASeccion('fundamentos')" style="padding:10px 24px;"><i class="fas fa-rocket"></i> Fundamentos</button>
+                            <button class="btn-primary" onclick="window.UIManual._irASeccion('elipse_manual')" style="padding:10px 24px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);"><i class="fas fa-wave-square"></i> Modo Elipse</button>
+                            <button class="btn-primary" onclick="window.UIManual._irASeccion('ondas_cruzadas_manual')" style="padding:10px 24px;background:linear-gradient(135deg,#00CEC9,#6C5CE7);"><i class="fas fa-network-wired"></i> Ondas Cruzadas</button>
+                            <button class="btn-primary" onclick="window.UIManual._irASeccion('biblioteca_manual')" style="padding:10px 24px;background:linear-gradient(135deg,#FDCB6E,#E17055);"><i class="fas fa-book"></i> Biblioteca</button>
+                            <button class="btn-secondary" onclick="window.UIManual._abrirBuscadorAvanzado()" style="padding:10px 24px;"><i class="fas fa-search"></i> Buscar</button>
+                            <button class="btn-secondary" onclick="window.UIManual._exportarManual()" style="padding:10px 24px;"><i class="fas fa-download"></i> Exportar</button>
+                            <button class="btn-secondary" onclick="window.uiCore.irAModulo('manual')" style="padding:10px 24px;"><i class="fas fa-undo"></i> Recargar</button>
                         </div>
                     </div>
                 `
@@ -253,6 +245,7 @@ class UIManual {
                             <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irAFonetica()">🎤 Fonética</div>
                             <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irAElipse()">🌌 Modo Elipse</div>
                             <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irAOndasCruzadas()">🌊 Ondas Cruzadas</div>
+                            <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irABiblioteca()">📚 Biblioteca</div>
                             <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irAModulo('config')">⚙️ Configuración</div>
                             <div style="background:var(--white);padding:8px 12px;border-radius:8px;border:1px solid var(--light);text-align:center;font-size:12px;cursor:pointer;" onclick="window.uiCore.irAModulo('tools')">🛠️ Herramientas</div>
                         </div>
@@ -385,6 +378,10 @@ class UIManual {
                                 <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/modo</code></span>
                                 <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/feedback</code></span>
                                 <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/help</code></span>
+                                <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/elipse</code></span>
+                                <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/ondas-cruzadas</code></span>
+                                <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/biblioteca</code></span>
+                                <span style="background:var(--white);padding:4px 10px;border-radius:4px;border:1px solid var(--light);"><code>/sincronizar</code></span>
                             </div>
                         </div>
 
@@ -465,100 +462,191 @@ class UIManual {
                     </div>
                 `
             },
-            'elipse': {
-                id: 'elipse',
-                titulo: '🌌 El Modo Elipse',
+            // ============================================================
+            // 🔥 NUEVA SECCIÓN: MODO ELIPSE
+            // ============================================================
+            'elipse_manual': {
+                id: 'elipse_manual',
+                titulo: '🌌 Modo Elipse',
                 icono: '🌌',
-                descripcion: 'Aprendizaje narrativo expansivo',
+                descripcion: 'Aprendizaje narrativo expansivo por ondas',
                 modulo: 'elipse',
                 contenido: `
                     <div style="padding:12px 0;">
-                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">🌌 El Modo Elipse</h2>
-                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">Transforma el aprendizaje lineal en un viaje narrativo expansivo.</p>
+                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">🌌 Modo Elipse</h2>
+                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">Transforma el aprendizaje lineal en un viaje narrativo expansivo. Genera "ondas" (historias) que continúan una narrativa, introduciendo nuevo vocabulario de forma contextual.</p>
 
                         <div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:16px;border-left:4px solid var(--primary);">
                             <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:6px;">🌊 El Concepto de "Onda"</h3>
-                            <p style="font-size:13px;color:var(--gray);">El aprendizaje no es una línea recta, sino una serie de ondas que se expanden desde una historia base. Cada onda es una nueva historia que continúa la narrativa anterior.</p>
+                            <p style="font-size:13px;color:var(--gray);">El aprendizaje no es una línea recta, sino una serie de ondas que se expanden desde una historia base. Cada onda es una nueva historia que continúa la narrativa anterior, manteniendo personajes, lugares y trama.</p>
+                            <div style="background:var(--white);border-radius:6px;padding:10px 14px;margin-top:8px;border:1px solid var(--light);">
+                                <p style="font-size:12px;color:var(--gray-light);margin:0;">
+                                    📖 <strong>Ejemplo:</strong> "La aventura en el mercado" → "El misterio del mercado" → "El secreto del mercado"
+                                </p>
+                            </div>
                         </div>
 
-                        <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);">
+                        <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px;">
                             <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:6px;">🔄 El Flujo de Trabajo</h3>
                             <ol style="font-size:13px;color:var(--gray);line-height:1.8;margin-left:20px;">
                                 <li><strong>Seleccionar un Tema:</strong> Elige un tema de tu biblioteca.</li>
                                 <li><strong>Generar Plantilla:</strong> El sistema genera un JSON con el contexto de ondas anteriores (el "Recuerdo").</li>
                                 <li><strong>Completar con IA:</strong> Envía la plantilla a un modelo de IA para que escriba la continuación.</li>
                                 <li><strong>Importar:</strong> Añade la nueva onda a la elipse.</li>
-                                <li><strong>Sincronizar:</strong> Cuando se completa, se sincroniza con el tema principal.</li>
+                                <li><strong>Sincronizar:</strong> Cuando se completa (RCN >= 4.0), se sincroniza con el tema principal.</li>
                             </ol>
+                        </div>
+
+                        <div style="background:var(--warning)10;border-radius:12px;padding:12px 16px;border:1px solid var(--warning);">
+                            <p style="font-size:13px;color:var(--warning);margin:0;">
+                                💡 <strong>Consejo:</strong> El Modo Elipse es ideal para aprender vocabulario en contexto. Cada onda te expone a nuevas palabras mientras mantienes la coherencia narrativa, ayudando a la consolidación.
+                            </p>
                             <button class="btn-primary" onclick="window.uiCore.irAElipse()" style="margin-top:8px;padding:4px 16px;font-size:12px;">
                                 <i class="fas fa-wave-square"></i> Ir a Elipse
                             </button>
                         </div>
+
+                        <div style="margin-top:12px;">
+                            <h4 style="font-size:14px;font-weight:600;color:var(--dark);">📌 Comandos del Chat Vigía para Elipse:</h4>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/elipse</code>
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/elipse-ver</code>
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/elipse-generar</code>
+                            </div>
+                        </div>
                     </div>
                 `
             },
-            'ondas_cruzadas': {
-                id: 'ondas_cruzadas',
-                titulo: '🌊 El Modo Ondas Cruzadas',
+            // ============================================================
+            // 🔥 NUEVA SECCIÓN: ONDAS CRUZADAS
+            // ============================================================
+            'ondas_cruzadas_manual': {
+                id: 'ondas_cruzadas_manual',
+                titulo: '🌊 Modo Ondas Cruzadas',
                 icono: '🌊',
                 descripcion: 'La síntesis del conocimiento',
                 modulo: 'ondasCruzadas',
                 contenido: `
                     <div style="padding:12px 0;">
-                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">🌊 El Modo Ondas Cruzadas</h2>
-                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">El pináculo de la integración del conocimiento en Pipeline Neuro.</p>
+                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">🌊 Modo Ondas Cruzadas</h2>
+                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">El pináculo de la integración del conocimiento en Pipeline Neuro. Conecta diferentes Elipses (temas) para crear un grafo de conocimiento interconectado.</p>
 
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px;">
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--primary);">
                                 <div style="font-weight:700;font-size:15px;">🕸️ El Grafo de Elipses</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Visualiza tus elipses como nodos interconectados</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Visualiza tus elipses como nodos interconectados, mostrando cómo se relacionan los diferentes temas.</div>
                             </div>
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--secondary);">
                                 <div style="font-weight:700;font-size:15px;">🔗 Interferencias</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Puntos de solapamiento semántico entre elipses</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Puntos de solapamiento semántico entre elipses (vocabulario, personajes, lugares). Cuanto mayor sea la interferencia, más fuerte es la conexión.</div>
                             </div>
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--success);">
                                 <div style="font-weight:700;font-size:15px;">📚 Recuerdo Global</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Personajes, lugares y vocabulario clave de todas las elipses</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Personajes, lugares y vocabulario clave de todas las elipses, creando un resumen del conocimiento adquirido.</div>
                             </div>
                         </div>
-                        <button class="btn-primary" onclick="window.uiCore.irAOndasCruzadas()" style="margin-top:8px;padding:4px 16px;font-size:12px;">
+
+                        <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px;">
+                            <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:6px;">🎯 Cómo Generar una Onda Cruzada</h3>
+                            <ol style="font-size:13px;color:var(--gray);line-height:1.8;margin-left:20px;">
+                                <li><strong>Tener al menos 2 Elipses:</strong> Necesitas ondas generadas en al menos dos temas diferentes.</li>
+                                <li><strong>Seleccionar Tema Principal:</strong> Elige el tema sobre el que quieres generar la nueva onda.</li>
+                                <li><strong>Configurar:</strong> Define cuántas ondas de otros temas quieres "cruzar".</li>
+                                <li><strong>Generar Plantilla:</strong> El sistema crea un JSON con instrucciones y el "Recuerdo Global".</li>
+                                <li><strong>Completar e Importar:</strong> La IA completa la nueva historia, integrando elementos de los temas cruzados.</li>
+                            </ol>
+                            <p style="font-size:13px;color:var(--gray);margin-top:8px;">Esto crea conexiones neuronales más fuertes al asociar conceptos de diferentes dominios.</p>
+                        </div>
+
+                        <div style="background:var(--info)10;border-radius:12px;padding:12px 16px;border:1px solid var(--info);">
+                            <p style="font-size:13px;color:var(--info);margin:0;">
+                                🧠 <strong>Beneficio Neurocognitivo:</strong> Las Ondas Cruzadas fomentan la <strong>transferencia de aprendizaje</strong>, un proceso cognitivo clave donde el conocimiento adquirido en un dominio se aplica a otro.
+                            </p>
+                        </div>
+
+                        <button class="btn-primary" onclick="window.uiCore.irAOndasCruzadas()" style="margin-top:12px;padding:8px 20px;">
                             <i class="fas fa-network-wired"></i> Ir a Ondas Cruzadas
                         </button>
+
+                        <div style="margin-top:12px;">
+                            <h4 style="font-size:14px;font-weight:600;color:var(--dark);">📌 Comandos del Chat Vigía para Ondas Cruzadas:</h4>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/ondas-cruzadas</code>
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/grafo</code>
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/interferencias</code>
+                            </div>
+                        </div>
                     </div>
                 `
             },
-            'competiciones': {
-                id: 'competiciones',
-                titulo: '🏆 El Juego del Conocimiento',
-                icono: '🏆',
-                descripcion: 'El módulo "Competiciones" - Aprende jugando',
-                modulo: 'competiciones',
+            // ============================================================
+            // 🔥 NUEVA SECCIÓN: BIBLIOTECA DE LECTURA
+            // ============================================================
+            'biblioteca_manual': {
+                id: 'biblioteca_manual',
+                titulo: '📚 Biblioteca de Lectura',
+                icono: '📚',
+                descripcion: 'Gestiona y lee todas tus historias',
+                modulo: 'biblioteca',
                 contenido: `
                     <div style="padding:12px 0;">
-                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">🏆 El Módulo "Competiciones"</h2>
-                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">Convierte el aprendizaje en un desafío atractivo.</p>
+                        <h2 style="font-size:24px;font-weight:700;color:var(--dark);margin-bottom:12px;">📚 Biblioteca de Lectura</h2>
+                        <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">El centro de gestión de todas las historias del sistema, organizadas por tema y nivel para facilitar su lectura y seguimiento.</p>
 
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px;">
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--primary);">
-                                <div style="font-weight:700;font-size:15px;">👥 NPCs Inteligentes</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Oponentes controlados por IA con personalidad única</div>
+                                <div style="font-weight:700;font-size:15px;">📋 Agrupación por Tema</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Todas las historias se agrupan por el tema al que pertenecen, permitiéndote ver el progreso de cada tema.</div>
                             </div>
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--secondary);">
-                                <div style="font-weight:700;font-size:15px;">🎮 4 Modos de Juego</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Carrera, Duelo, Torneo y Sprint</div>
+                                <div style="font-weight:700;font-size:15px;">📊 Orden por Nivel</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Dentro de cada tema, las historias se ordenan por nivel (A1 → C2), ayudándote a seguir una progresión lógica.</div>
                             </div>
                             <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--success);">
-                                <div style="font-weight:700;font-size:15px;">🏅 Sistema de Premios</div>
-                                <div style="font-size:12px;color:var(--gray-light);">Monedas Neuro, medallas y logros</div>
+                                <div style="font-weight:700;font-size:15px;">👁️ Visor de Lectura</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Lee historias en un visor especial que te permite ocultar las traducciones para practicar la comprensión.</div>
+                            </div>
+                            <div style="background:var(--bg);border-radius:12px;padding:14px;border-left:4px solid var(--warning);">
+                                <div style="font-weight:700;font-size:15px;">✅ Marcador de Lectura</div>
+                                <div style="font-size:12px;color:var(--gray-light);">Marca historias como "leídas" para seguir tu progreso de lectura, independientemente del RCN.</div>
                             </div>
                         </div>
-                        <button class="btn-primary" onclick="window.uiCore.irAModulo('competiciones')" style="padding:8px 20px;">
-                            <i class="fas fa-trophy"></i> Ir a Competiciones
+
+                        <div style="background:var(--bg);border-radius:12px;padding:16px;border-left:4px solid var(--primary);margin-bottom:12px;">
+                            <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:6px;">🔍 Filtrar y Buscar</h3>
+                            <p style="font-size:13px;color:var(--gray);">
+                                Puedes filtrar las historias por <strong>origen</strong> (Temas, Elipse, Ondas Cruzadas, Importadas), por <strong>estado</strong> (Leídas, No leídas, Completadas, En curso) y buscar por <strong>título o tema</strong>.
+                            </p>
+                            <div style="background:var(--white);border-radius:6px;padding:8px 12px;margin-top:6px;border:1px solid var(--light);">
+                                <p style="font-size:11px;color:var(--gray-light);margin:0;">
+                                    🔍 <strong>Ejemplo de filtro:</strong> "Mostrar solo historias de Ondas Cruzadas que estén completadas"
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style="background:var(--success)10;border-radius:12px;padding:12px 16px;border:1px solid var(--success);">
+                            <p style="font-size:13px;color:var(--success);margin:0;">
+                                📖 <strong>Consejo de lectura:</strong> Usa la Biblioteca de Lectura como tu "estante personal". Marca las historias que ya has leído para tener una visión clara de tu progreso de lectura.
+                            </p>
+                        </div>
+
+                        <button class="btn-primary" onclick="window.uiCore.irABiblioteca()" style="margin-top:12px;padding:8px 20px;">
+                            <i class="fas fa-book"></i> Ir a la Biblioteca
                         </button>
+
+                        <div style="margin-top:12px;">
+                            <h4 style="font-size:14px;font-weight:600;color:var(--dark);">📌 Comandos del Chat Vigía para Biblioteca:</h4>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/biblioteca</code>
+                                <code style="background:var(--bg);padding:4px 10px;border-radius:4px;font-size:11px;">/lectura</code>
+                            </div>
+                        </div>
                     </div>
                 `
             },
+            // ============================================================
+            // SECCIONES EXISTENTES (MANTENIDAS)
+            // ============================================================
             'configuracion': {
                 id: 'configuracion',
                 titulo: '⚙️ El Centro de Control',
@@ -665,9 +753,12 @@ class UIManual {
         } catch (e) {}
         
         this._initDone = true;
-        console.log('📚 Manual Interactivo v3.0: Inicializado (SUPER POTENTE)');
+        console.log('📚 Manual Interactivo v4.0: Inicializado con secciones para Elipse, Ondas Cruzadas y Biblioteca');
         console.log(`   📖 ${Object.keys(this._SECCIONES).length} secciones disponibles`);
         console.log(`   ⭐ ${this._favoritosManual.size} favoritos`);
+        console.log(`   🌌 Sección Elipse: ACTIVADA`);
+        console.log(`   🌊 Sección Ondas Cruzadas: ACTIVADA`);
+        console.log(`   📚 Sección Biblioteca: ACTIVADA`);
         return this;
     }
 
@@ -713,7 +804,6 @@ class UIManual {
                 return titulo.includes(terminoLower) || desc.includes(terminoLower) || contenido.includes(terminoLower);
             });
             
-            // Actualizar resultados
             this._resultadosBusqueda = seccionesFiltradas.map(s => s.id);
         }
         
@@ -734,7 +824,7 @@ class UIManual {
                     <div>
                         <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
                             📖 Guía Definitiva de Pipeline Neuro
-                            <span style="font-size:14px;font-weight:400;color:var(--gray);margin-left:8px;">v3.0</span>
+                            <span style="font-size:14px;font-weight:400;color:var(--gray);margin-left:8px;">v4.0</span>
                         </h2>
                         <p style="font-size:13px;color:var(--gray);margin:4px 0 0;">
                             ${secciones.length} secciones · ⭐ ${totalFavoritos} favoritos
@@ -743,6 +833,11 @@ class UIManual {
                                 Última lectura: ${this._ultimaLectura ? new Date(this._ultimaLectura).toLocaleString() : 'Nunca'}
                             </span>
                         </p>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                            <span style="font-size:10px;padding:2px 12px;background:#6C5CE7;color:white;border-radius:12px;">🌌 Elipse</span>
+                            <span style="font-size:10px;padding:2px 12px;background:#00CEC9;color:white;border-radius:12px;">🌊 Ondas Cruzadas</span>
+                            <span style="font-size:10px;padding:2px 12px;background:#FDCB6E;color:var(--dark);border-radius:12px;">📚 Biblioteca</span>
+                        </div>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button class="btn-secondary" onclick="window.UIManual._abrirBuscadorAvanzado()" style="padding:6px 14px;font-size:12px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;">
@@ -830,7 +925,7 @@ class UIManual {
                     <span>⭐ ${totalFavoritos} favoritos</span>
                     <span>${this._busqueda ? `🔎 ${this._resultadosBusqueda.length} resultados` : ''}</span>
                     <span>📌 Módulo actual: ${seccionActual.modulo || 'dashboard'}</span>
-                    <span>📊 Versión 3.0</span>
+                    <span>🌌 Elipse · 🌊 Ondas Cruzadas · 📚 Biblioteca</span>
                     <span>💾 ${this._historialNavegacion.length} visitas</span>
                 </div>
             </div>
@@ -856,7 +951,7 @@ class UIManual {
     }
 
     // ============================================================
-    // VISTA DE TARJETAS (MODO TARJETAS)
+    // VISTA DE TARJETAS
     // ============================================================
 
     _renderizarVistaTarjetas(secciones) {
@@ -1096,7 +1191,6 @@ class UIManual {
                     this._busqueda = input.value.trim();
                     const resultadosContainer = document.getElementById('buscadorManualResultados');
                     if (resultadosContainer) {
-                        // Actualizar resultados dinámicamente
                         if (this._busqueda && this._busqueda.length >= 2) {
                             const terminoLower = this._busqueda.toLowerCase();
                             const secciones = Object.values(this._SECCIONES);
@@ -1139,7 +1233,6 @@ class UIManual {
                     }
                 });
                 
-                // Enter para ir al primer resultado
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && this._resultadosBusqueda.length > 0) {
                         this._irASeccion(this._resultadosBusqueda[0]);
@@ -1216,7 +1309,7 @@ class UIManual {
 
     _exportarManual() {
         let contenido = '# 📖 Guía Suprema de Pipeline Neuro\n\n';
-        contenido += `Versión 22.3 · ${new Date().toLocaleDateString()}\n\n`;
+        contenido += `Versión 22.4 · ${new Date().toLocaleDateString()}\n\n`;
         contenido += '---\n\n';
         contenido += '## 📚 Tabla de Contenidos\n\n';
         
@@ -1245,7 +1338,8 @@ class UIManual {
         contenido += `- Total de secciones: ${secciones.length}\n`;
         contenido += `- Favoritos: ${this._favoritosManual.size}\n`;
         contenido += `- Última actualización: ${new Date().toLocaleString()}\n`;
-        contenido += `- Versión del manual: 3.0\n`;
+        contenido += `- Versión del manual: 4.0\n`;
+        contenido += `- Módulos cubiertos: Temas, Elipse, Ondas Cruzadas, Biblioteca, Vigía, Gramática, Caracteres, Fonética, Competiciones\n`;
         
         // Crear y descargar archivo
         const blob = new Blob([contenido], { type: 'text/markdown' });
@@ -1266,7 +1360,11 @@ class UIManual {
 
 window.UIManual = new UIManual();
 
-console.log('✅ Manual Interactivo v3.0 - SUPER POTENTE');
+console.log('✅ Manual Interactivo v4.0 - CON SECCIONES PARA ELIPSE, ONDAS CRUZADAS Y BIBLIOTECA');
+console.log('  🌌 Sección "Modo Elipse": ACTIVADA');
+console.log('  🌊 Sección "Ondas Cruzadas": ACTIVADA');
+console.log('  📚 Sección "Biblioteca de Lectura": ACTIVADA');
+console.log('  🔥 Botones de acceso directo en el inicio');
 console.log('  📖 Guía Definitiva de Pipeline Neuro');
 console.log('  🔍 Búsqueda avanzada en tiempo real');
 console.log('  ⭐ Sistema de favoritos mejorado');
@@ -1274,6 +1372,4 @@ console.log('  📄 Exportación a Markdown con TOC');
 console.log('  📱 Vista de tarjetas interactivas');
 console.log('  🎯 Links directos a módulos de la aplicación');
 console.log('  📜 Historial de navegación');
-console.log('  🔄 Navegación mejorada con botones');
-console.log('  📊 Estadísticas en tiempo real');
 console.log('  ✅ Todas las funcionalidades originales preservadas');
