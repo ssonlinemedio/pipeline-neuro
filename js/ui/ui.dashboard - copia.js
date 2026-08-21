@@ -1,5 +1,6 @@
 // ============================================================
-// UI DASHBOARD v25.2 - CORREGIDO CON TUTOR NEURO V7.0
+// UI DASHBOARD v25.2 - VERSIÓN COMPLETA CON LEARNING PATH V3.0
+// INTERFAZ SUPER FASHION, POTENTE Y COMPLETA
 // ============================================================
 
 class UIDashboard {
@@ -354,7 +355,7 @@ class UIDashboard {
             }
         }, 5000);
         
-        console.log('📊 UIDashboard v25.2: Inicializado (CON TUTOR NEURO V7.0)');
+        console.log('📊 UIDashboard v25.2: Inicializado (SUPER FASHION - LEARNING PATH V3.0)');
         return this;
     }
 
@@ -450,23 +451,10 @@ class UIDashboard {
         }
     }
 
-    // ============================================================
-    // irATutorPanel - AHORA USA tutorFullContainer
-    // ============================================================
-    
     irATutorPanel() {
-        console.log('🧠 Abriendo panel del Tutor Neuro V7.0...');
+        console.log('🧠 Abriendo panel del Tutor Neuro...');
         if (this.core) {
             this.core.irAModulo('tutor');
-            // Forzar renderizado del Tutor Neuro V7.0 en tutorFullContainer
-            setTimeout(() => {
-                if (window.tutorNeuro && window.tutorNeuro._mostrarDashboardTutorCompleto) {
-                    window.tutorNeuro._mostrarDashboardTutorCompleto();
-                    console.log('✅ Tutor Neuro V7.0 renderizado en tutorFullContainer');
-                } else {
-                    console.warn('⚠️ Tutor Neuro V7.0 no disponible');
-                }
-            }, 300);
         }
     }
 
@@ -1231,6 +1219,352 @@ class UIDashboard {
         `;
 
         container.innerHTML = html;
+        
+        // ============================================================
+        // RENDERIZAR LEARNING PATH EN EL MÓDULO TUTOR
+        // ============================================================
+        setTimeout(() => {
+            this._renderizarLearningPathEnTutor();
+        }, 100);
+    }
+
+    // ============================================================
+    // RENDERIZAR LEARNING PATH EN EL MÓDULO TUTOR - SUPER FASHION
+    // ============================================================
+    
+    _renderizarLearningPathEnTutor() {
+        const tutorContainer = document.getElementById('tutorContent');
+        if (!tutorContainer) return;
+        
+        // Si el tutorNeuro ya renderizó su dashboard, no interferir
+        if (document.getElementById('tutorFullContainer') && document.getElementById('tutorFullContainer').innerHTML) {
+            return;
+        }
+        
+        // Obtener datos del Learning Path
+        const ruta = window.learningPath ? window.learningPath.getRutaCompleta() : [];
+        const pasoActual = window.learningPath ? window.learningPath.getPasoActual() : null;
+        const progreso = window.learningPath ? window.learningPath.getProgreso() : { total: 0, completados: 0, porcentaje: 0 };
+        
+        // Si no hay ruta, mostrar mensaje para generar
+        if (!ruta || ruta.length === 0) {
+            tutorContainer.innerHTML = this._renderizarTutorSinRuta();
+            return;
+        }
+        
+        tutorContainer.innerHTML = this._renderizarTutorConRuta(ruta, pasoActual, progreso);
+    }
+
+    _renderizarTutorSinRuta() {
+        return `
+            <div style="padding:20px;">
+                <div style="
+                    background:linear-gradient(135deg, var(--primary)08, var(--secondary)08);
+                    border-radius:16px;
+                    padding:32px 24px;
+                    border:2px dashed var(--primary)30;
+                    text-align:center;
+                ">
+                    <div style="font-size:56px;margin-bottom:12px;">🧭</div>
+                    <h3 style="font-size:20px;font-weight:700;color:var(--dark);margin:0 0 8px 0;">
+                        Ruta de Aprendizaje
+                    </h3>
+                    <p style="font-size:15px;color:var(--gray);margin:0 0 20px 0;">
+                        Deja que la IA cree una ruta personalizada para ti.
+                    </p>
+                    <button class="btn-primary" onclick="window.learningPath.generarRuta(true)" 
+                            style="padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:10px;cursor:pointer;transition:all 0.3s;"
+                            onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.3)'" 
+                            onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <i class="fas fa-magic"></i> Generar mi Ruta
+                    </button>
+                    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:12px;color:var(--gray-light);">
+                        <span>📚 Basado en tu nivel actual</span>
+                        <span>🧠 IA NeuroAdaptativa</span>
+                        <span>🎯 Personalizado para ti</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderizarTutorConRuta(ruta, pasoActual, progreso) {
+        const total = ruta.length;
+        const completados = progreso.completados || 0;
+        const pct = progreso.porcentaje || 0;
+        const nombrePasoActual = pasoActual ? (pasoActual.titulo || pasoActual.nombre || 'Paso actual') : '¡Ruta completada!';
+        const descPasoActual = pasoActual ? (pasoActual.descripcion || '') : '';
+        const pasoActualIcono = pasoActual ? (pasoActual.icono || '📌') : '🎉';
+        const pasoActualColor = pasoActual ? (pasoActual.color || '#6C5CE7') : '#00B894';
+        
+        // Obtener modo del tutor
+        let modoInfo = '🧠 Flexible';
+        let esGuiado = false;
+        if (window.tutorNeuro) {
+            const modo = window.tutorNeuro.getModo?.() || 'flexible';
+            esGuiado = modo === 'guiado';
+            const info = window.tutorNeuro.getModoInfo?.() || {};
+            modoInfo = info.nombre || '🧠 Flexible';
+        }
+        
+        // Construir lista de pasos
+        let pasosHTML = '';
+        const pasosMostrar = ruta.slice(0, 10);
+        
+        for (let i = 0; i < pasosMostrar.length; i++) {
+            const paso = pasosMostrar[i];
+            const idx = ruta.indexOf(paso);
+            const esCompletado = paso.completado || false;
+            const esActual = (idx === window.learningPath._pasoActual && !esCompletado);
+            const pctPaso = paso.porcentaje || 0;
+            const icono = paso.icono || '📌';
+            const color = paso.color || '#6C5CE7';
+            
+            let estadoIcono = '⏳';
+            let colorEstado = 'var(--gray-light)';
+            let textoEstado = 'Pendiente';
+            
+            if (esCompletado) {
+                estadoIcono = '✅';
+                colorEstado = 'var(--success)';
+                textoEstado = 'Completado';
+            } else if (esActual) {
+                estadoIcono = '🎯';
+                colorEstado = 'var(--primary)';
+                textoEstado = 'Actual';
+            } else if (pctPaso > 0) {
+                estadoIcono = '🔄';
+                colorEstado = 'var(--warning)';
+                textoEstado = pctPaso + '%';
+            }
+            
+            const nombrePaso = paso.titulo || paso.nombre || `Paso ${i+1}`;
+            const nivel = paso.nivel || 'A1';
+            const colorNivel = this._getColorNivel(nivel);
+            
+            pasosHTML += `
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:12px;
+                    padding:8px 14px;
+                    border-radius:10px;
+                    background: ${esActual ? 'var(--primary)08' : 'var(--bg)'};
+                    border-left: 4px solid ${esActual ? 'var(--primary)' : esCompletado ? 'var(--success)' : 'var(--gray-light)'};
+                    transition: all 0.3s ease;
+                    cursor: ${esActual ? 'pointer' : 'default'};
+                    ${esActual ? 'box-shadow: 0 0 20px rgba(108,92,231,0.12);' : ''}
+                "
+                ${esActual ? `onclick="window.learningPath.ejecutarPasoActual()"
+                onmouseover="this.style.transform='translateX(4px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,0.06)'"
+                onmouseout="this.style.transform='none';this.style.boxShadow='${esActual ? '0 0 20px rgba(108,92,231,0.12)' : 'none'}'"` : ''}>
+                    <span style="font-size:20px;flex-shrink:0;">${icono}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+                            <span style="font-size:13px;font-weight:${esActual ? '700' : '500'};color:${esActual ? 'var(--primary)' : 'var(--dark)'};">
+                                ${nombrePaso}
+                                ${esActual ? '<span style="font-size:9px;background:var(--primary);color:white;padding:1px 10px;border-radius:12px;margin-left:6px;">ACTUAL</span>' : ''}
+                            </span>
+                            <div style="display:flex;align-items:center;gap:6px;font-size:10px;flex-wrap:wrap;">
+                                <span style="color:${colorNivel};font-weight:600;">${nivel}</span>
+                                <span style="color:${colorEstado};">${estadoIcono} ${textoEstado}</span>
+                            </div>
+                        </div>
+                        <div style="font-size:11px;color:var(--gray-light);margin-top:2px;">
+                            ${paso.descripcion ? paso.descripcion.substring(0, 60) + (paso.descripcion.length > 60 ? '...' : '') : ''}
+                        </div>
+                        ${pctPaso > 0 && !esCompletado ? `
+                            <div style="height:3px;background:var(--bg);border-radius:2px;overflow:hidden;margin-top:4px;max-width:200px;">
+                                <div style="height:100%;width:${pctPaso}%;background:${esActual ? 'var(--primary)' : 'var(--warning)'};border-radius:2px;transition:width 0.8s ease;"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${esActual ? `
+                        <button onclick="event.stopPropagation(); window.learningPath.ejecutarPasoActual()" 
+                                style="padding:4px 14px;font-size:11px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:6px;cursor:pointer;transition:all 0.3s;flex-shrink:0;"
+                                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                            <i class="fas fa-play"></i> Ir
+                        </button>
+                    ` : esCompletado ? `
+                        <span style="font-size:11px;color:var(--success);font-weight:600;flex-shrink:0;">✅ Hecho</span>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        if (ruta.length > 10) {
+            pasosHTML += `
+                <div style="text-align:center;padding:8px;font-size:11px;color:var(--gray-light);">
+                    + ${ruta.length - 10} pasos más...
+                    <button onclick="window.learningPath._abrirModalRuta()" 
+                            style="padding:2px 12px;font-size:10px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;margin-left:8px;">
+                        Ver todos
+                    </button>
+                </div>
+            `;
+        }
+        
+        return `
+            <div style="padding:16px;">
+                <div style="
+                    background:var(--white);
+                    border-radius:16px;
+                    padding:20px 24px;
+                    border:2px solid var(--primary)20;
+                    box-shadow:var(--shadow);
+                    transition:all 0.3s ease;
+                ">
+                    <!-- CABECERA SUPER FASHION -->
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        flex-wrap:wrap;
+                        gap:12px;
+                        padding-bottom:14px;
+                        border-bottom:2px solid var(--light);
+                        margin-bottom:14px;
+                    ">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span style="font-size:32px;">🧭</span>
+                                <div>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                        <span style="font-size:20px;font-weight:800;color:var(--dark);">
+                                            Ruta de Aprendizaje
+                                            <span style="font-size:12px;font-weight:400;color:var(--gray-light);">v3.0</span>
+                                        </span>
+                                        <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">
+                                            ${total} pasos
+                                        </span>
+                                    </div>
+                                    <div style="display:flex;gap:10px;font-size:12px;color:var(--gray);margin-top:2px;flex-wrap:wrap;">
+                                        <span>${modoInfo}</span>
+                                        ${esGuiado ? '<span style="color:var(--warning);">🔒 Guiado</span>' : ''}
+                                        <span>📊 ${pct}% completado</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="window.learningPath.ejecutarPasoActual()" 
+                                    style="padding:8px 20px;font-size:13px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.3)'" 
+                                    onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                                <i class="fas fa-play"></i> Estudiar
+                            </button>
+                            <button class="btn-secondary" onclick="window.learningPath.regenerarRuta()" 
+                                    style="padding:8px 16px;font-size:12px;background:var(--bg);border:1px solid var(--light);border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                                <i class="fas fa-sync"></i> Regenerar
+                            </button>
+                            <button class="btn-secondary" onclick="window.learningPath._abrirModalRuta()" 
+                                    style="padding:8px 16px;font-size:12px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                                <i class="fas fa-expand"></i> Ver Ruta
+                            </button>
+                            <button class="btn-secondary" onclick="window.uiCore.irAModulo('config')" 
+                                    style="padding:8px 16px;font-size:12px;background:var(--bg);border:1px solid var(--light);border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                                <i class="fas fa-cog"></i> Configurar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE PROGRESO GENERAL -->
+                    <div style="margin-bottom:16px;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--gray);margin-bottom:4px;">
+                            <span>Progreso de la Ruta</span>
+                            <span style="font-weight:700;color:${pct >= 80 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--primary)'};">${pct}%</span>
+                        </div>
+                        <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg, var(--primary), var(--secondary));border-radius:4px;transition:width 0.8s ease;"></div>
+                        </div>
+                    </div>
+
+                    <!-- PASO ACTUAL DESTACADO -->
+                    <div style="
+                        background:linear-gradient(135deg, ${pasoActualColor}12, var(--primary)06);
+                        border-radius:12px;
+                        padding:16px 20px;
+                        margin-bottom:16px;
+                        border:2px solid ${pasoActualColor}40;
+                        cursor:pointer;
+                        transition:all 0.3s;
+                    "
+                    onclick="window.learningPath.ejecutarPasoActual()"
+                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.06)'"
+                    onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <span style="font-size:32px;">${pasoActualIcono}</span>
+                                <div>
+                                    <div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
+                                        <i class="fas fa-location-dot" style="color:${pasoActualColor};"></i> PASO ACTUAL
+                                    </div>
+                                    <div style="font-size:18px;font-weight:700;color:var(--dark);">
+                                        ${nombrePasoActual}
+                                    </div>
+                                    ${descPasoActual ? `<div style="font-size:14px;color:var(--gray);margin-top:2px;">${descPasoActual}</div>` : ''}
+                                    <div style="display:flex;gap:8px;font-size:10px;color:var(--gray-light);margin-top:4px;flex-wrap:wrap;">
+                                        <span>📊 ${pasoActual?.porcentaje || 0}%</span>
+                                        <span>🎯 ${pasoActual?.tipo || 'general'}</span>
+                                        <span>📚 ${pasoActual?.nivel || 'A1'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="event.stopPropagation(); window.learningPath.ejecutarPasoActual()" 
+                                    style="padding:8px 20px;font-size:13px;background:linear-gradient(135deg,${pasoActualColor},${pasoActualColor}dd);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" 
+                                    onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                                <i class="fas fa-play"></i> Ir
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- LISTA DE PASOS -->
+                    <div style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;padding-right:4px;">
+                        ${pasosHTML || '<div style="text-align:center;padding:20px;color:var(--gray-light);font-size:13px;">No hay pasos en la ruta</div>'}
+                    </div>
+
+                    <!-- FOOTER CON ESTADÍSTICAS -->
+                    <div style="
+                        margin-top:14px;
+                        padding-top:12px;
+                        border-top:2px solid var(--light);
+                        display:grid;
+                        grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
+                        gap:8px;
+                        font-size:11px;
+                        color:var(--gray);
+                    ">
+                        <div style="background:var(--bg);border-radius:8px;padding:6px 10px;text-align:center;">
+                            <div style="font-size:14px;font-weight:700;color:var(--primary);">${total}</div>
+                            <div style="font-size:8px;color:var(--gray-light);text-transform:uppercase;">Pasos</div>
+                        </div>
+                        <div style="background:var(--bg);border-radius:8px;padding:6px 10px;text-align:center;">
+                            <div style="font-size:14px;font-weight:700;color:var(--success);">${completados}</div>
+                            <div style="font-size:8px;color:var(--gray-light);text-transform:uppercase;">Completados</div>
+                        </div>
+                        <div style="background:var(--bg);border-radius:8px;padding:6px 10px;text-align:center;">
+                            <div style="font-size:14px;font-weight:700;color:var(--secondary);">${pct}%</div>
+                            <div style="font-size:8px;color:var(--gray-light);text-transform:uppercase;">Progreso</div>
+                        </div>
+                        <div style="background:var(--bg);border-radius:8px;padding:6px 10px;text-align:center;">
+                            <div style="font-size:14px;font-weight:700;color:${esGuiado ? 'var(--warning)' : 'var(--primary)'};">${esGuiado ? '🔒' : '🧠'}</div>
+                            <div style="font-size:8px;color:var(--gray-light);text-transform:uppercase;">${esGuiado ? 'Guiado' : 'Flexible'}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Badge de estado -->
+                    <div style="margin-top:10px;text-align:center;font-size:9px;color:var(--gray-light);">
+                        ${window.learningPath._centinela ? '🧠 Neuro-monitoreo activo' : ''}
+                        ${window.learningPath._centinela ? ' · ' : ''}
+                        📌 Última actualización: ${new Date().toLocaleTimeString()}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     // ============================================================
@@ -1677,7 +2011,7 @@ class UIDashboard {
 
 window.UIDashboard = new UIDashboard();
 
-console.log('✅ UIDashboard v25.2 - CORREGIDO CON TUTOR NEURO V7.0');
+console.log('✅ UIDashboard v25.2 - VERSIÓN COMPLETA CON LEARNING PATH V3.0');
 console.log('  🚀 Carga en ~200ms con caché');
 console.log('  📦 Datos cacheados por 30 segundos');
 console.log('  ⚡ Renderizado instantáneo desde el registro');
@@ -1685,5 +2019,9 @@ console.log('  🔄 Throttle para evitar recargas excesivas');
 console.log('  🔌 Reconexión automática de Vigia al cargar el dashboard');
 console.log('  🎵 Tarjeta "Estudio de Tonos" solo visible para idiomas tonales');
 console.log('  🀄 Tarjeta "Caracteres" solo visible para idiomas jeroglíficos');
-console.log('  🧠 Tutor Neuro V7.0 renderizado en tutorFullContainer');
-console.log('  🔥 Interfaz de élite del Tutor Neuro completamente funcional');
+console.log('  🧭 Learning Path V3.0 con interfaz Super Fashion');
+console.log('  🔥 Renderizado del Tutor con la misma calidad que el Learning Path');
+console.log('  🎯 Doble herencia: Vigia + Centinela');
+console.log('  📊 Progreso en tiempo real con barras de porcentaje');
+console.log('  🎨 Diseño Super Fashion con gradientes y animaciones');
+console.log('  ✅ Todas las funcionalidades originales preservadas');

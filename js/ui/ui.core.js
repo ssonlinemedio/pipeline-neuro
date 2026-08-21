@@ -1,5 +1,6 @@
 // ============================================================
-// UI CORE v18.36 - COMPLETO CON MÓDULO TONOS REGISTRADO
+// UI CORE v18.37 - COMPLETO Y CORREGIDO
+// CON TODOS LOS MÓDULOS REGISTRADOS Y ERRORES SOLUCIONADOS
 // ============================================================
 
 class UICore {
@@ -26,7 +27,7 @@ class UICore {
         this._cargarPreferenciaDashboard();
         
         // ============================================================
-        // MÓDULOS REGISTRADOS - INCLUYE TONOS
+        // MÓDULOS REGISTRADOS - INCLUYE TODOS
         // ============================================================
         this._moduleNames = {
             'dashboard': 'Dashboard',
@@ -41,7 +42,7 @@ class UICore {
             'espacio': 'Mi Espacio',
             'competiciones': '🏆 Liga Neuro',
             'caracteres': '🀄 Caracteres',
-            'tonos': '🎵 Estudio de Tonos',      // 🔥 AÑADIDO
+            'tonos': '🎵 Estudio de Tonos',
             'fonetica': '🎤 Fonética',
             'neuro': '🧠 Estado Neuro',
             'familias': '🧠 Familias de Caracteres',
@@ -88,7 +89,7 @@ class UICore {
         this._navegacionOndasCruzadasPendiente = false;
         this._navegacionManualPendiente = false;
         this._navegacionBibliotecaPendiente = false;
-        this._navegacionTonosPendiente = false;   // 🔥 AÑADIDO
+        this._navegacionTonosPendiente = false;
         
         window.addEventListener('resize', () => {
             this._isMobile = window.innerWidth < 640;
@@ -154,7 +155,7 @@ class UICore {
     }
 
     // ============================================================
-    // IR A BIBLIOTECA v2.0
+    // IR A MÓDULOS
     // ============================================================
 
     irABiblioteca() {
@@ -162,20 +163,57 @@ class UICore {
         this.irAModulo('biblioteca');
     }
 
+    irAManual() {
+        console.log('📖 Navegando a Manual Interactivo...');
+        this.irAModulo('manual');
+    }
+
+    irATonos() {
+        console.log('🎵 Navegando a Estudio de Tonos...');
+        const idioma = gestorIdiomas?.getIdiomaActivo?.() || 'es';
+        const esTonal = this._esTonal(idioma);
+        if (!esTonal) {
+            this.mostrarToast(`⚠️ El idioma "${idioma}" no es tonal. Este módulo está diseñado para idiomas tonales como Chino, Tailandés o Vietnamita.`, 'warning');
+            return;
+        }
+        this.irAModulo('tonos');
+    }
+
+    irAElipse() {
+        console.log('🌌 Navegando a Modo Elipse...');
+        this.irAModulo('elipse');
+    }
+
+    irAOndasCruzadas() {
+        console.log('🌊 Navegando a Modo Ondas Cruzadas...');
+        this.irAModulo('ondasCruzadas');
+    }
+
+    irAFonetica() {
+        console.log('🎤 Navegando a Fonética...');
+        this.irAModulo('fonetica');
+    }
+
+    irACaracteres() {
+        const idioma = gestorIdiomas?.getIdiomaActivo?.() || 'es';
+        if (!this._esJeroglifico(idioma)) {
+            this.mostrarToast(`⚠️ El idioma "${idioma}" no es jeroglífico. Este módulo solo está disponible para idiomas asiáticos.`, 'warning');
+            return;
+        }
+        this.irAModulo('caracteres');
+    }
+
     // ============================================================
-    // REGISTRAR MÓDULO MANUAL
+    // REGISTRAR MÓDULOS
     // ============================================================
 
     _registrarModuloManual() {
         console.log('📖 Registrando módulo Manual Interactivo...');
-        
         if (this._moduleNames['manual']) {
             console.log('📖 Módulo Manual ya registrado');
             return;
         }
-        
         this._moduleNames['manual'] = '📖 Manual Interactivo';
-        
         if (window.UIManual && typeof window.UIManual.init === 'function') {
             try {
                 if (!window.UIManual._initDone) {
@@ -191,27 +229,19 @@ class UICore {
         } else {
             console.warn('⚠️ UIManual no está disponible para registrar');
         }
-        
         if (this._navegacionManualPendiente) {
             this._navegacionManualPendiente = false;
             this._cargarContenidoModulo('manual');
         }
     }
 
-    // ============================================================
-    // REGISTRAR MÓDULO BIBLIOTECA v2.0
-    // ============================================================
-
     _registrarModuloBiblioteca() {
         console.log('📚 Registrando módulo Biblioteca v2.0...');
-        
         if (this._moduleNames['biblioteca']) {
             console.log('📚 Módulo Biblioteca ya registrado');
             return;
         }
-        
         this._moduleNames['biblioteca'] = '📚 Biblioteca de Lectura v2.0';
-        
         if (window.UIBiblioteca && typeof window.UIBiblioteca.init === 'function') {
             try {
                 if (!window.UIBiblioteca._initDone) {
@@ -229,27 +259,19 @@ class UICore {
         } else {
             console.warn('⚠️ UIBiblioteca no está disponible para registrar');
         }
-        
         if (this._navegacionBibliotecaPendiente) {
             this._navegacionBibliotecaPendiente = false;
             this._cargarContenidoModulo('biblioteca');
         }
     }
 
-    // ============================================================
-    // REGISTRAR MÓDULO TONOS - 🔥 NUEVO
-    // ============================================================
-
     _registrarModuloTonos() {
         console.log('🎵 Registrando módulo Estudio de Tonos...');
-        
         if (this._moduleNames['tonos']) {
             console.log('🎵 Módulo Tonos ya registrado');
             return;
         }
-        
         this._moduleNames['tonos'] = '🎵 Estudio de Tonos';
-        
         if (window.UITonos && typeof window.UITonos.init === 'function') {
             try {
                 if (!window.UITonos._initDone) {
@@ -265,27 +287,19 @@ class UICore {
         } else {
             console.warn('⚠️ UITonos no está disponible para registrar');
         }
-        
         if (this._navegacionTonosPendiente) {
             this._navegacionTonosPendiente = false;
             this._cargarContenidoModulo('tonos');
         }
     }
 
-    // ============================================================
-    // REGISTRAR MÓDULO ELIPSE
-    // ============================================================
-
     _registrarModuloElipse() {
         console.log('🌌 Registrando módulo Elipse...');
-        
         if (this._moduleNames['elipse']) {
             console.log('🌌 Módulo Elipse ya registrado');
             return;
         }
-        
         this._moduleNames['elipse'] = '🌌 Modo Elipse';
-        
         if (window.UIClipse && typeof window.UIClipse.init === 'function') {
             try {
                 if (!window.UIClipse._initDone) {
@@ -301,27 +315,19 @@ class UICore {
         } else {
             console.warn('⚠️ UIClipse no está disponible para registrar');
         }
-        
         if (this._navegacionElipsePendiente) {
             this._navegacionElipsePendiente = false;
             this._cargarContenidoModulo('elipse');
         }
     }
 
-    // ============================================================
-    // REGISTRAR MÓDULO ONDAS CRUZADAS
-    // ============================================================
-
     _registrarModuloOndasCruzadas() {
         console.log('🌊 Registrando módulo Ondas Cruzadas...');
-        
         if (this._moduleNames['ondasCruzadas']) {
             console.log('🌊 Módulo Ondas Cruzadas ya registrado');
             return;
         }
-        
         this._moduleNames['ondasCruzadas'] = '🌊 Modo Ondas Cruzadas';
-        
         if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
             try {
                 if (!window.UIOndasCruzadas._initDone) {
@@ -337,21 +343,36 @@ class UICore {
         } else {
             console.warn('⚠️ UIOndasCruzadas no está disponible para registrar');
         }
-        
         if (this._navegacionOndasCruzadasPendiente) {
             this._navegacionOndasCruzadasPendiente = false;
             this._cargarContenidoModulo('ondasCruzadas');
         }
     }
 
+    _registrarModuloCompeticiones() {
+        console.log('🏆 Registrando módulo de competiciones...');
+        if (window.SistemaCompeticiones) {
+            try {
+                if (typeof window.SistemaCompeticiones.init === 'function') {
+                    window.SistemaCompeticiones.init(this);
+                    console.log('✅ SistemaCompeticiones inicializado correctamente');
+                }
+            } catch (e) {
+                console.warn('⚠️ Error inicializando SistemaCompeticiones:', e.message);
+            }
+        } else {
+            console.warn('⚠️ SistemaCompeticiones no disponible');
+        }
+    }
+
     // ============================================================
-    // INICIALIZACIÓN
+    // INICIALIZACIÓN PRINCIPAL
     // ============================================================
 
     async init() {
         if (this._initDone || this._inicializado) return this;
         
-        console.log('🎨 Inicializando UI Core v18.36 con soporte para Tonos...');
+        console.log('🎨 Inicializando UI Core v18.37 con soporte para todos los módulos...');
         
         try {
             this._esperandoDatos = true;
@@ -404,8 +425,8 @@ class UICore {
             this._registrarModuloElipse();
             this._registrarModuloOndasCruzadas();
             this._registrarModuloManual();
-            this._registrarModuloBiblioteca(); // v2.0
-            this._registrarModuloTonos();      // 🔥 NUEVO
+            this._registrarModuloBiblioteca();
+            this._registrarModuloTonos();
             
             setTimeout(() => {
                 this._actualizarIndicadoresSeguro();
@@ -421,12 +442,13 @@ class UICore {
             
             this._inicializado = true;
             this._initDone = true;
-            console.log('🎨 UI Core v18.36: Inicializada correctamente');
+            console.log('🎨 UI Core v18.37: Inicializada correctamente');
             console.log(`   📌 Modo Dashboard: ${this._modoDashboard === 'lite' ? '🧘 Lite' : '🚀 Expandido'}`);
             console.log('  📌 Módulos registrados:', Object.keys(this._moduleNames));
             console.log('  🎵 Módulo "tonos" registrado correctamente');
             console.log('  📚 Biblioteca v2.0: Registrada');
             console.log('  📖 Manual Interactivo: Registrado');
+            console.log('  📊 Estadísticas: Registrado');
         } catch (e) {
             console.warn('⚠️ UI Core init parcial:', e);
             this._inicializado = true;
@@ -437,39 +459,109 @@ class UICore {
     }
 
     // ============================================================
-    // REGISTRAR EVENTOS DEL BALANCEADOR
+    // ESPERAR DATOS CARGADOS
     // ============================================================
 
-    _registrarEventosBalanceador() {
-        if (this._balanceadorEventosRegistrados || !this._balanceador) return;
-        
-        console.log('🔗 Registrando eventos del balanceador...');
-        
-        try {
-            if (typeof this._balanceador.onCambioModelo === 'function') {
-                this._balanceador.onCambioModelo((modelo) => {
-                    console.log(`⚖️ Balanceador: Modelo cambiado a ${modelo}`);
-                    this._actualizarIndicadorBalanceador();
-                    this.mostrarToast(`🔄 Modelo activo: ${modelo}`, 'info');
-                });
+    async _esperarDatosCargados() {
+        return new Promise((resolve) => {
+            if (this._cargaCompletada) {
+                console.log('✅ Datos ya cargados');
+                resolve(true);
+                return;
             }
             
-            if (typeof this._balanceador.onEstadoActualizado === 'function') {
-                this._balanceador.onEstadoActualizado(() => {
-                    this._actualizarIndicadorBalanceador();
-                });
+            if (window.app && window.app._datosCargados) {
+                this._cargaCompletada = true;
+                console.log('✅ Datos cargados (app._datosCargados)');
+                resolve(true);
+                return;
             }
             
-            this._balanceadorEventosRegistrados = true;
-            console.log('✅ Eventos del balanceador registrados');
-        } catch (e) {
-            console.warn('⚠️ Error registrando eventos del balanceador:', e.message);
-            this._balanceadorEventosRegistrados = true;
-        }
+            try {
+                const usuario = localStorage.getItem('pipeline_usuario');
+                if (usuario) {
+                    const parsed = JSON.parse(usuario);
+                    if (parsed && parsed.nombre) {
+                        console.log('📦 Usuario encontrado en localStorage, datos disponibles');
+                        this._cargaCompletada = true;
+                        resolve(true);
+                        return;
+                    }
+                }
+            } catch (e) {}
+            
+            this._cargaTimeout = setTimeout(() => {
+                console.warn('⚠️ Timeout esperando datos (15s)');
+                resolve(false);
+            }, 15000);
+            
+            let intentos = 0;
+            const checkInterval = setInterval(() => {
+                intentos++;
+                
+                if (window.app && window.app._datosCargados) {
+                    this._cargaCompletada = true;
+                    clearInterval(checkInterval);
+                    clearTimeout(this._cargaTimeout);
+                    console.log('✅ Datos cargados después de ' + intentos + ' intentos');
+                    resolve(true);
+                } else if (intentos >= this._maxIntentosCarga) {
+                    console.warn('⚠️ Máximo de intentos alcanzado (' + this._maxIntentosCarga + ')');
+                    clearInterval(checkInterval);
+                    clearTimeout(this._cargaTimeout);
+                    resolve(false);
+                }
+            }, 500);
+        });
     }
 
     // ============================================================
-    // CARGAR CONTENIDO DE MÓDULO - CON TONOS
+    // INICIALIZAR SUBMÓDULOS
+    // ============================================================
+
+    async _initSubmodulos() {
+        console.log('🔄 Inicializando sub-módulos UI...');
+        
+        const submodulos = [
+            { name: 'UIDashboard', obj: window.UIDashboard },
+            { name: 'UIStudy', obj: window.UIStudy },
+            { name: 'UIGrammar', obj: window.UIGrammar },
+            { name: 'UITemas', obj: window.UITemas },
+            { name: 'UIChat', obj: window.UIChat },
+            { name: 'UIConfig', obj: window.UIConfig },
+            { name: 'UITools', obj: window.UITools },
+            { name: 'UIJSON', obj: window.UIJSON },
+            { name: 'UIEspacio', obj: window.UIEspacio },
+            { name: 'UIManual', obj: window.UIManual },
+            { name: 'UIBiblioteca', obj: window.UIBiblioteca },
+            { name: 'UITonos', obj: window.UITonos },
+            { name: 'SistemaCompeticiones', obj: window.SistemaCompeticiones },
+            { name: 'UICaracteres', obj: window.UICaracteres },
+            { name: 'UIFonetica', obj: window.UIFonetica },
+            { name: 'UIClipse', obj: window.UIClipse },
+            { name: 'UIOndasCruzadas', obj: window.UIOndasCruzadas }
+        ];
+        
+        for (const mod of submodulos) {
+            try {
+                if (mod.obj && typeof mod.obj.init === 'function') {
+                    await mod.obj.init(this);
+                    console.log(`  ✅ ${mod.name} inicializado`);
+                } else if (mod.obj) {
+                    console.log(`  ⚠️ ${mod.name} no tiene init()`);
+                } else {
+                    console.log(`  ⚠️ ${mod.name} no disponible`);
+                }
+            } catch (e) {
+                console.warn(`  ⚠️ Error inicializando ${mod.name}:`, e.message);
+            }
+        }
+        
+        console.log('✅ Sub-módulos UI inicializados');
+    }
+
+    // ============================================================
+    // CARGAR CONTENIDO DE MÓDULO - COMPLETO Y CORREGIDO
     // ============================================================
 
     _cargarContenidoModulo(module) {
@@ -494,7 +586,34 @@ class UICore {
                     if (window.UITemas) window.UITemas.cargarHistorias(this);
                     break;
                 case 'stats':
-                    if (window.UIDashboard) window.UIDashboard.cargarEstadisticas(this);
+                    // ============================================================
+                    // CORREGIDO: stats usa el método correcto de UIDashboard
+                    // ============================================================
+                    if (window.UIDashboard) {
+                        console.log('📊 Cargando estadísticas...');
+                        if (typeof window.UIDashboard._cargarDashboardInicial === 'function') {
+                            window.UIDashboard._cargarDashboardInicial(this);
+                        } else if (typeof window.UIDashboard.cargar === 'function') {
+                            window.UIDashboard.cargar(this);
+                        } else {
+                            console.warn('⚠️ UIDashboard no tiene método de carga');
+                            const content = document.getElementById('statsContent');
+                            if (content) {
+                                content.innerHTML = `
+                                    <div style="padding:20px;text-align:center;">
+                                        <h3>📊 Estadísticas</h3>
+                                        <p style="color:var(--gray);">Cargando estadísticas...</p>
+                                        <button onclick="window.uiCore._cargarContenidoModulo('stats')" 
+                                                style="padding:8px 20px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;margin-top:8px;">
+                                            🔄 Reintentar
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                        }
+                    } else {
+                        console.warn('⚠️ UIDashboard no disponible para estadísticas');
+                    }
                     break;
                 case 'vigia':
                     if (window.UIChat) window.UIChat.cargar(this);
@@ -527,7 +646,7 @@ class UICore {
                         }, 500);
                     }
                     break;
-                case 'tonos':  // 🔥 NUEVO
+                case 'tonos':
                     if (window.UITonos) {
                         console.log('🎵 Cargando módulo Estudio de Tonos...');
                         window.UITonos.cargar(this);
@@ -634,6 +753,21 @@ class UICore {
             }
         } catch (e) {
             console.warn('⚠️ Error cargando módulo:', module, e);
+            if (module === 'stats') {
+                const content = document.getElementById('statsContent');
+                if (content) {
+                    content.innerHTML = `
+                        <div style="padding:20px;text-align:center;">
+                            <h3>📊 Estadísticas</h3>
+                            <p style="color:var(--gray);">Error al cargar estadísticas: ${e.message}</p>
+                            <button onclick="window.uiCore._cargarContenidoModulo('stats')" 
+                                    style="padding:8px 20px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;margin-top:8px;">
+                                🔄 Reintentar
+                            </button>
+                        </div>
+                    `;
+                }
+            }
         } finally {
             if (this._cargandoModulo === module) {
                 setTimeout(() => {
@@ -694,561 +828,7 @@ class UICore {
     }
 
     // ============================================================
-    // IR A TONOS - 🔥 NUEVO
-    // ============================================================
-
-    irATonos() {
-        console.log('🎵 Navegando a Estudio de Tonos...');
-        this.irAModulo('tonos');
-    }
-
-    // ============================================================
-    // MOSTRAR CARGANDO BIBLIOTECA
-    // ============================================================
-
-    _mostrarCargandoBiblioteca() {
-        const container = document.getElementById('bibliotecaContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">📚</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
-                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Biblioteca de Lectura v2.0...</span>
-                </div>
-                <p style="font-size:14px;color:var(--gray-light);">Preparando tu colección de historias agrupadas por temas</p>
-                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarBiblioteca()" style="margin-top:12px;padding:8px 20px;">
-                    <i class="fas fa-sync"></i> Reintentar
-                </button>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // REINTENTAR CARGAR BIBLIOTECA
-    // ============================================================
-
-    _reintentarCargarBiblioteca() {
-        console.log('🔄 Reintentando cargar Biblioteca v2.0...');
-        this._navegacionBibliotecaPendiente = false;
-        this._registrarModuloBiblioteca();
-        setTimeout(() => {
-            if (window.UIBiblioteca) {
-                this._cargarContenidoModulo('biblioteca');
-            } else {
-                this.mostrarToast('⚠️ El módulo Biblioteca aún no está disponible. Recarga la página.', 'warning');
-                this._mostrarCargandoBiblioteca();
-            }
-        }, 500);
-    }
-
-    // ============================================================
-    // ERROR DE BIBLIOTECA
-    // ============================================================
-
-    _mostrarErrorBiblioteca(mensaje) {
-        const container = document.getElementById('bibliotecaContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar la Biblioteca</h3>
-                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarBiblioteca()" style="padding:8px 20px;">
-                        <i class="fas fa-sync"></i> Reintentar
-                    </button>
-                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
-                        <i class="fas fa-redo"></i> Recargar página
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // MOSTRAR CARGANDO MANUAL
-    // ============================================================
-
-    _mostrarCargandoManual() {
-        const container = document.getElementById('manualContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">📖</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
-                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Manual Interactivo...</span>
-                </div>
-                <p style="font-size:14px;color:var(--gray-light);">Preparando la Guía Suprema de Pipeline Neuro</p>
-                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarManual()" style="margin-top:12px;padding:8px 20px;">
-                    <i class="fas fa-sync"></i> Reintentar
-                </button>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // REINTENTAR CARGAR MANUAL
-    // ============================================================
-
-    _reintentarCargarManual() {
-        console.log('🔄 Reintentando cargar Manual...');
-        this._navegacionManualPendiente = false;
-        this._registrarModuloManual();
-        setTimeout(() => {
-            if (window.UIManual) {
-                this._cargarContenidoModulo('manual');
-            } else {
-                this.mostrarToast('⚠️ El módulo Manual aún no está disponible. Recarga la página.', 'warning');
-                this._mostrarCargandoManual();
-            }
-        }, 500);
-    }
-
-    // ============================================================
-    // ERROR DE MANUAL
-    // ============================================================
-
-    _mostrarErrorManual(mensaje) {
-        const container = document.getElementById('manualContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Manual</h3>
-                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarManual()" style="padding:8px 20px;">
-                        <i class="fas fa-sync"></i> Reintentar
-                    </button>
-                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
-                        <i class="fas fa-redo"></i> Recargar página
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // ESPERAR DATOS CARGADOS
-    // ============================================================
-
-    async _esperarDatosCargados() {
-        return new Promise((resolve) => {
-            if (this._cargaCompletada) {
-                console.log('✅ Datos ya cargados');
-                resolve(true);
-                return;
-            }
-            
-            if (window.app && window.app._datosCargados) {
-                this._cargaCompletada = true;
-                console.log('✅ Datos cargados (app._datosCargados)');
-                resolve(true);
-                return;
-            }
-            
-            try {
-                const usuario = localStorage.getItem('pipeline_usuario');
-                if (usuario) {
-                    const parsed = JSON.parse(usuario);
-                    if (parsed && parsed.nombre) {
-                        console.log('📦 Usuario encontrado en localStorage, datos disponibles');
-                        this._cargaCompletada = true;
-                        resolve(true);
-                        return;
-                    }
-                }
-            } catch (e) {}
-            
-            this._cargaTimeout = setTimeout(() => {
-                console.warn('⚠️ Timeout esperando datos (15s)');
-                resolve(false);
-            }, 15000);
-            
-            let intentos = 0;
-            const checkInterval = setInterval(() => {
-                intentos++;
-                
-                if (window.app && window.app._datosCargados) {
-                    this._cargaCompletada = true;
-                    clearInterval(checkInterval);
-                    clearTimeout(this._cargaTimeout);
-                    console.log('✅ Datos cargados después de ' + intentos + ' intentos');
-                    resolve(true);
-                } else if (intentos >= this._maxIntentosCarga) {
-                    console.warn('⚠️ Máximo de intentos alcanzado (' + this._maxIntentosCarga + ')');
-                    clearInterval(checkInterval);
-                    clearTimeout(this._cargaTimeout);
-                    resolve(false);
-                }
-            }, 500);
-        });
-    }
-
-    // ============================================================
-    // INICIALIZAR SUBMÓDULOS
-    // ============================================================
-
-    async _initSubmodulos() {
-        console.log('🔄 Inicializando sub-módulos UI...');
-        
-        const submodulos = [
-            { name: 'UIDashboard', obj: window.UIDashboard },
-            { name: 'UIStudy', obj: window.UIStudy },
-            { name: 'UIGrammar', obj: window.UIGrammar },
-            { name: 'UITemas', obj: window.UITemas },
-            { name: 'UIChat', obj: window.UIChat },
-            { name: 'UIConfig', obj: window.UIConfig },
-            { name: 'UITools', obj: window.UITools },
-            { name: 'UIJSON', obj: window.UIJSON },
-            { name: 'UIEspacio', obj: window.UIEspacio },
-            { name: 'UIManual', obj: window.UIManual },
-            { name: 'UIBiblioteca', obj: window.UIBiblioteca },
-            { name: 'UITonos', obj: window.UITonos },        // 🔥 NUEVO
-            { name: 'SistemaCompeticiones', obj: window.SistemaCompeticiones },
-            { name: 'UICaracteres', obj: window.UICaracteres },
-            { name: 'UIFonetica', obj: window.UIFonetica },
-            { name: 'UIClipse', obj: window.UIClipse },
-            { name: 'UIOndasCruzadas', obj: window.UIOndasCruzadas }
-        ];
-        
-        for (const mod of submodulos) {
-            try {
-                if (mod.obj && typeof mod.obj.init === 'function') {
-                    await mod.obj.init(this);
-                    console.log(`  ✅ ${mod.name} inicializado`);
-                } else if (mod.obj) {
-                    console.log(`  ⚠️ ${mod.name} no tiene init()`);
-                } else {
-                    console.log(`  ⚠️ ${mod.name} no disponible`);
-                }
-            } catch (e) {
-                console.warn(`  ⚠️ Error inicializando ${mod.name}:`, e.message);
-            }
-        }
-        
-        console.log('✅ Sub-módulos UI inicializados');
-    }
-
-    // ============================================================
-    // TOAST EDUCATIVO
-    // ============================================================
-
-    _inicializarToastEducativo() {
-        if (window.toastEducativo) {
-            console.log('📚 Toast Educativo Proactivo activado');
-            window.addEventListener('reiniciarToasts', () => {
-                if (window.toastEducativo) {
-                    window.toastEducativo.reiniciar();
-                    this.mostrarToast('📚 Consejos educativos reiniciados', 'info');
-                }
-            });
-            console.log('💡 Para reiniciar los toasters educativos: window.dispatchEvent(new Event("reiniciarToasts"))');
-        } else {
-            console.warn('⚠️ Toast Educativo no disponible');
-        }
-    }
-
-    // ============================================================
-    // ACTUALIZAR ESPACIO STATS
-    // ============================================================
-
-    async _actualizarEspacioStats() {
-        try {
-            if (!window.gestorFavoritos) {
-                console.warn('⚠️ gestorFavoritos no disponible para actualizar stats');
-                return;
-            }
-            const stats = await window.gestorFavoritos.contarFavoritos();
-            const meta = document.getElementById('dashEspacioMeta');
-            const progress = document.getElementById('dashEspacioProgress');
-            if (meta) {
-                meta.textContent = `${stats.frases} frases · ${stats.palabras} palabras`;
-            }
-            if (progress) {
-                const total = stats.frases + stats.palabras;
-                const pct = Math.min(100, Math.round((total / 100) * 100));
-                progress.style.width = pct + '%';
-            }
-        } catch (e) {
-            console.warn('⚠️ Error actualizando stats de Mi Espacio:', e);
-        }
-    }
-
-    // ============================================================
-    // DIÁLOGOS
-    // ============================================================
-
-    async alert(message, title) {
-        if (!this._dialogs) {
-            console.warn('⚠️ _dialogs es null, creando...');
-            this._dialogs = new UIDialogs();
-            try {
-                this._dialogs._crearDialogPersonalizado();
-            } catch (e) {
-                console.warn('⚠️ Error creando diálogo de emergencia:', e);
-                alert(message);
-                return;
-            }
-        }
-        return this._dialogs.alert(message, title);
-    }
-
-    async confirm(message, title) {
-        if (!this._dialogs) {
-            console.warn('⚠️ _dialogs es null, creando...');
-            this._dialogs = new UIDialogs();
-            try {
-                this._dialogs._crearDialogPersonalizado();
-            } catch (e) {
-                console.warn('⚠️ Error creando diálogo de emergencia:', e);
-                return confirm(message);
-            }
-        }
-        return this._dialogs.confirm(message, title);
-    }
-
-    async prompt(message, defaultValue, placeholder, title) {
-        if (!this._dialogs) {
-            console.warn('⚠️ _dialogs es null, creando...');
-            this._dialogs = new UIDialogs();
-            try {
-                this._dialogs._crearDialogPersonalizado();
-            } catch (e) {
-                console.warn('⚠️ Error creando diálogo de emergencia:', e);
-                return prompt(message, defaultValue);
-            }
-        }
-        return this._dialogs.prompt(message, defaultValue, placeholder, title);
-    }
-
-    mostrarToast(mensaje, tipo) {
-        if (this._toastActive) return;
-        this._toastActive = true;
-        
-        try {
-            const existing = document.querySelector('.toast');
-            if (existing) existing.remove();
-            if (this.toastTimeout) {
-                clearTimeout(this.toastTimeout);
-                this.toastTimeout = null;
-            }
-
-            const toast = document.createElement('div');
-            toast.className = 'toast ' + (tipo || 'info');
-            toast.textContent = mensaje || '';
-            document.body.appendChild(toast);
-
-            this.toastTimeout = setTimeout(() => {
-                if (toast && toast.parentNode) toast.remove();
-                this._toastActive = false;
-                this.toastTimeout = null;
-            }, 3000);
-
-            toast.onclick = () => {
-                if (toast && toast.parentNode) toast.remove();
-                if (this.toastTimeout) {
-                    clearTimeout(this.toastTimeout);
-                    this.toastTimeout = null;
-                }
-                this._toastActive = false;
-            };
-        } catch (e) {
-            console.warn('⚠️ Error en toast:', e);
-            this._toastActive = false;
-        }
-    }
-
-    // ============================================================
-    // NAVEGACIÓN
-    // ============================================================
-
-    irAModulo(module) {
-        if (!this._navLock && module) {
-            this._navLock = true;
-            this._irAModulo(module);
-            setTimeout(() => { this._navLock = false; }, 300);
-        }
-    }
-
-    volverDashboard() {
-        if (!this._navLock) {
-            this._navLock = true;
-            this._irADashboard();
-            setTimeout(() => { this._navLock = false; }, 300);
-        }
-    }
-
-    _irAModulo(module) {
-        if (!module || module === 'dashboard') {
-            this._irADashboard();
-            return;
-        }
-        
-        console.log('🔀 Navegando a módulo:', module);
-        
-        if (module === 'neuro') {
-            console.log('ℹ️ Módulo "neuro" es solo una tarjeta, no un módulo navegable');
-            return;
-        }
-        
-        // Verificar si el módulo existe en el mapa
-        if (!this._moduleNames[module]) {
-            console.warn(`⚠️ Módulo desconocido: ${module}`);
-            // 🔥 INTENTAR REGISTRAR TONOS SI NO ESTÁ REGISTRADO
-            if (module === 'tonos' && window.UITonos) {
-                console.log('🎵 Cargando módulo Tonos (fallback)...');
-                this._registrarModuloTonos();
-                this._irAModulo('tonos');
-                return;
-            }
-            this.mostrarToast(`⚠️ Módulo "${module}" no disponible`, 'error');
-            return;
-        }
-        
-        document.querySelectorAll('.view, .module-view').forEach(el => {
-            el.classList.remove('active');
-        });
-        
-        let moduleEl = document.getElementById(module + 'Module');
-        
-        // Crear módulo si no existe
-        if (!moduleEl) {
-            console.log(`📦 Creando módulo para: ${module}`);
-            const mainContent = document.getElementById('mainContent');
-            if (mainContent) {
-                moduleEl = document.createElement('div');
-                moduleEl.id = module + 'Module';
-                moduleEl.className = 'module-view';
-                moduleEl.innerHTML = `
-                    <div class="module-header">
-                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <div class="module-title">
-                            <h2>${this._getModuleName(module)}</h2>
-                            <span class="module-breadcrumb">Dashboard / ${this._getModuleName(module)}</span>
-                        </div>
-                    </div>
-                    <div class="module-content" id="${module}Content">
-                    </div>
-                `;
-                mainContent.appendChild(moduleEl);
-            }
-        }
-        
-        if (moduleEl) {
-            moduleEl.classList.add('active');
-            this.moduloActual = module;
-            this._actualizarBreadcrumb(module);
-            this._cargarContenidoModulo(module);
-        } else {
-            console.error('❌ No se pudo crear el módulo:', module);
-        }
-    }
-
-    _getModuleName(module) {
-        return this._moduleNames[module] || module;
-    }
-
-    _irADashboard() {
-        console.log('🔀 Navegando a Dashboard');
-        
-        document.querySelectorAll('.view, .module-view').forEach(el => {
-            el.classList.remove('active');
-        });
-        
-        const dashboard = document.getElementById('dashboardView');
-        if (dashboard) {
-            dashboard.classList.add('active');
-            this.moduloActual = 'dashboard';
-            this._actualizarBreadcrumb('dashboard');
-            setTimeout(() => this._cargarDashboardInicial(), 100);
-        }
-    }
-
-    _actualizarBreadcrumb(module) {
-        const breadcrumb = document.getElementById('breadcrumbModule');
-        if (breadcrumb) {
-            breadcrumb.textContent = this._getModuleName(module);
-            
-            document.querySelectorAll('.breadcrumb-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.module === module) {
-                    item.classList.add('active');
-                }
-            });
-        }
-    }
-
-    // ============================================================
-    // MOSTRAR CARGANDO TONOS - 🔥 NUEVO
-    // ============================================================
-
-    _mostrarCargandoTonos() {
-        const container = document.getElementById('tonosContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">🎵</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--primary);"></i>
-                    <span style="font-size:18px;font-weight:600;color:var(--dark);">Cargando Estudio de Tonos...</span>
-                </div>
-                <p style="font-size:14px;color:var(--gray-light);">Preparando el estudio de tonos</p>
-                <button class="btn-secondary" onclick="window.uiCore._reintentarCargarTonos()" style="margin-top:12px;padding:8px 20px;">
-                    <i class="fas fa-sync"></i> Reintentar
-                </button>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // REINTENTAR CARGAR TONOS - 🔥 NUEVO
-    // ============================================================
-
-    _reintentarCargarTonos() {
-        console.log('🔄 Reintentando cargar Tonos...');
-        this._navegacionTonosPendiente = false;
-        this._registrarModuloTonos();
-        setTimeout(() => {
-            if (window.UITonos) {
-                this._cargarContenidoModulo('tonos');
-            } else {
-                this.mostrarToast('⚠️ El módulo Tonos aún no está disponible. Recarga la página.', 'warning');
-                this._mostrarCargandoTonos();
-            }
-        }, 500);
-    }
-
-    // ============================================================
-    // ERROR DE TONOS - 🔥 NUEVO
-    // ============================================================
-
-    _mostrarErrorTonos(mensaje) {
-        const container = document.getElementById('tonosContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px 20px;color:var(--gray);">
-                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <h3 style="font-size:18px;font-weight:700;color:var(--danger);">Error al cargar el Estudio de Tonos</h3>
-                <p style="font-size:14px;color:var(--gray);">${mensaje || 'Error desconocido'}</p>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
-                    <button class="btn-primary" onclick="window.uiCore._reintentarCargarTonos()" style="padding:8px 20px;">
-                        <i class="fas fa-sync"></i> Reintentar
-                    </button>
-                    <button class="btn-secondary" onclick="location.reload()" style="padding:8px 20px;">
-                        <i class="fas fa-redo"></i> Recargar página
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    // ============================================================
-    // RENDERIZAR TUTOR DIRECTO
+    // RENDERIZAR TUTOR DIRECTO - CORREGIDO
     // ============================================================
 
     _renderizarTutorDirecto() {
@@ -1278,19 +858,18 @@ class UICore {
             let pasosConEstado = [];
 
             if (window.tutorNeuro) {
-                tutorInfo = window.tutorNeuro.getModoInfo();
-                tutorModo = window.tutorNeuro.getModo();
-                intervenciones = window.tutorNeuro.getIntervencionesPendientes() || [];
-                siguienteTema = window.tutorNeuro.getSiguienteTema();
+                tutorInfo = window.tutorNeuro.getModoInfo ? window.tutorNeuro.getModoInfo() : null;
+                tutorModo = window.tutorNeuro.getModo ? window.tutorNeuro.getModo() : 'flexible';
+                intervenciones = window.tutorNeuro.getIntervencionesPendientes ? window.tutorNeuro.getIntervencionesPendientes() : [];
+                siguienteTema = window.tutorNeuro.getSiguienteTema ? window.tutorNeuro.getSiguienteTema() : null;
                 mapaProgreso = window.tutorNeuro._mapaAprendizaje?.progresoGeneral || 0;
             }
 
             if (window.LearningPath) {
-                ruta = window.LearningPath.getRutaCompleta() || [];
-                pasoActual = window.LearningPath.getPasoActual();
-                progresoRuta = window.LearningPath.getProgreso() || { completados: 0, total: 0, porcentaje: 0 };
-                pasosConEstado = window.LearningPath.getPasosConEstado ? 
-                    window.LearningPath.getPasosConEstado() : [];
+                ruta = window.LearningPath.getRutaCompleta ? window.LearningPath.getRutaCompleta() : [];
+                pasoActual = window.LearningPath.getPasoActual ? window.LearningPath.getPasoActual() : null;
+                progresoRuta = window.LearningPath.getProgreso ? window.LearningPath.getProgreso() : { completados: 0, total: 0, porcentaje: 0 };
+                pasosConEstado = window.LearningPath.getPasosConEstado ? window.LearningPath.getPasosConEstado() : [];
             }
 
             const nombreUsuario = localStorage.getItem('pipeline_usuario') ? 
@@ -1489,7 +1068,7 @@ class UICore {
         }
 
         try {
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+            const idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || 'es';
             const esJeroglifico = this._esJeroglifico(idiomaActivo);
             const nombreIdioma = this._getNombreIdioma(idiomaActivo);
             const nivelActual = this._obtenerNivelUsuario();
@@ -1624,6 +1203,286 @@ class UICore {
     }
 
     // ============================================================
+    // REGISTRAR EVENTOS DEL BALANCEADOR
+    // ============================================================
+
+    _registrarEventosBalanceador() {
+        if (this._balanceadorEventosRegistrados || !this._balanceador) return;
+        
+        console.log('🔗 Registrando eventos del balanceador...');
+        
+        try {
+            if (typeof this._balanceador.onCambioModelo === 'function') {
+                this._balanceador.onCambioModelo((modelo) => {
+                    console.log(`⚖️ Balanceador: Modelo cambiado a ${modelo}`);
+                    this._actualizarIndicadorBalanceador();
+                    this.mostrarToast(`🔄 Modelo activo: ${modelo}`, 'info');
+                });
+            }
+            
+            if (typeof this._balanceador.onEstadoActualizado === 'function') {
+                this._balanceador.onEstadoActualizado(() => {
+                    this._actualizarIndicadorBalanceador();
+                });
+            }
+            
+            this._balanceadorEventosRegistrados = true;
+            console.log('✅ Eventos del balanceador registrados');
+        } catch (e) {
+            console.warn('⚠️ Error registrando eventos del balanceador:', e.message);
+            this._balanceadorEventosRegistrados = true;
+        }
+    }
+
+    // ============================================================
+    // TOAST EDUCATIVO
+    // ============================================================
+
+    _inicializarToastEducativo() {
+        if (window.toastEducativo) {
+            console.log('📚 Toast Educativo Proactivo activado');
+            window.addEventListener('reiniciarToasts', () => {
+                if (window.toastEducativo) {
+                    window.toastEducativo.reiniciar();
+                    this.mostrarToast('📚 Consejos educativos reiniciados', 'info');
+                }
+            });
+            console.log('💡 Para reiniciar los toasters educativos: window.dispatchEvent(new Event("reiniciarToasts"))');
+        } else {
+            console.warn('⚠️ Toast Educativo no disponible');
+        }
+    }
+
+    // ============================================================
+    // ACTUALIZAR ESPACIO STATS
+    // ============================================================
+
+    async _actualizarEspacioStats() {
+        try {
+            if (!window.gestorFavoritos) {
+                console.warn('⚠️ gestorFavoritos no disponible para actualizar stats');
+                return;
+            }
+            const stats = await window.gestorFavoritos.contarFavoritos();
+            const meta = document.getElementById('dashEspacioMeta');
+            const progress = document.getElementById('dashEspacioProgress');
+            if (meta) {
+                meta.textContent = `${stats.frases} frases · ${stats.palabras} palabras`;
+            }
+            if (progress) {
+                const total = stats.frases + stats.palabras;
+                const pct = Math.min(100, Math.round((total / 100) * 100));
+                progress.style.width = pct + '%';
+            }
+        } catch (e) {
+            console.warn('⚠️ Error actualizando stats de Mi Espacio:', e);
+        }
+    }
+
+    // ============================================================
+    // DIÁLOGOS
+    // ============================================================
+
+    async alert(message, title) {
+        if (!this._dialogs) {
+            console.warn('⚠️ _dialogs es null, creando...');
+            this._dialogs = new UIDialogs();
+            try {
+                this._dialogs._crearDialogPersonalizado();
+            } catch (e) {
+                console.warn('⚠️ Error creando diálogo de emergencia:', e);
+                alert(message);
+                return;
+            }
+        }
+        return this._dialogs.alert(message, title);
+    }
+
+    async confirm(message, title) {
+        if (!this._dialogs) {
+            console.warn('⚠️ _dialogs es null, creando...');
+            this._dialogs = new UIDialogs();
+            try {
+                this._dialogs._crearDialogPersonalizado();
+            } catch (e) {
+                console.warn('⚠️ Error creando diálogo de emergencia:', e);
+                return confirm(message);
+            }
+        }
+        return this._dialogs.confirm(message, title);
+    }
+
+    async prompt(message, defaultValue, placeholder, title) {
+        if (!this._dialogs) {
+            console.warn('⚠️ _dialogs es null, creando...');
+            this._dialogs = new UIDialogs();
+            try {
+                this._dialogs._crearDialogPersonalizado();
+            } catch (e) {
+                console.warn('⚠️ Error creando diálogo de emergencia:', e);
+                return prompt(message, defaultValue);
+            }
+        }
+        return this._dialogs.prompt(message, defaultValue, placeholder, title);
+    }
+
+    mostrarToast(mensaje, tipo) {
+        if (this._toastActive) return;
+        this._toastActive = true;
+        
+        try {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            if (this.toastTimeout) {
+                clearTimeout(this.toastTimeout);
+                this.toastTimeout = null;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + (tipo || 'info');
+            toast.textContent = mensaje || '';
+            document.body.appendChild(toast);
+
+            this.toastTimeout = setTimeout(() => {
+                if (toast && toast.parentNode) toast.remove();
+                this._toastActive = false;
+                this.toastTimeout = null;
+            }, 3000);
+
+            toast.onclick = () => {
+                if (toast && toast.parentNode) toast.remove();
+                if (this.toastTimeout) {
+                    clearTimeout(this.toastTimeout);
+                    this.toastTimeout = null;
+                }
+                this._toastActive = false;
+            };
+        } catch (e) {
+            console.warn('⚠️ Error en toast:', e);
+            this._toastActive = false;
+        }
+    }
+
+    // ============================================================
+    // NAVEGACIÓN
+    // ============================================================
+
+    irAModulo(module) {
+        if (!this._navLock && module) {
+            this._navLock = true;
+            this._irAModulo(module);
+            setTimeout(() => { this._navLock = false; }, 300);
+        }
+    }
+
+    volverDashboard() {
+        if (!this._navLock) {
+            this._navLock = true;
+            this._irADashboard();
+            setTimeout(() => { this._navLock = false; }, 300);
+        }
+    }
+
+    _irAModulo(module) {
+        if (!module || module === 'dashboard') {
+            this._irADashboard();
+            return;
+        }
+        
+        console.log('🔀 Navegando a módulo:', module);
+        
+        if (module === 'neuro') {
+            console.log('ℹ️ Módulo "neuro" es solo una tarjeta, no un módulo navegable');
+            return;
+        }
+        
+        if (!this._moduleNames[module]) {
+            console.warn(`⚠️ Módulo desconocido: ${module}`);
+            if (module === 'tonos' && window.UITonos) {
+                console.log('🎵 Cargando módulo Tonos (fallback)...');
+                this._registrarModuloTonos();
+                this._irAModulo('tonos');
+                return;
+            }
+            this.mostrarToast(`⚠️ Módulo "${module}" no disponible`, 'error');
+            return;
+        }
+        
+        document.querySelectorAll('.view, .module-view').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        let moduleEl = document.getElementById(module + 'Module');
+        
+        if (!moduleEl) {
+            console.log(`📦 Creando módulo para: ${module}`);
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                moduleEl = document.createElement('div');
+                moduleEl.id = module + 'Module';
+                moduleEl.className = 'module-view';
+                moduleEl.innerHTML = `
+                    <div class="module-header">
+                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <h2>${this._getModuleName(module)}</h2>
+                            <span class="module-breadcrumb">Dashboard / ${this._getModuleName(module)}</span>
+                        </div>
+                    </div>
+                    <div class="module-content" id="${module}Content">
+                    </div>
+                `;
+                mainContent.appendChild(moduleEl);
+            }
+        }
+        
+        if (moduleEl) {
+            moduleEl.classList.add('active');
+            this.moduloActual = module;
+            this._actualizarBreadcrumb(module);
+            this._cargarContenidoModulo(module);
+        } else {
+            console.error('❌ No se pudo crear el módulo:', module);
+        }
+    }
+
+    _getModuleName(module) {
+        return this._moduleNames[module] || module;
+    }
+
+    _irADashboard() {
+        console.log('🔀 Navegando a Dashboard');
+        
+        document.querySelectorAll('.view, .module-view').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        const dashboard = document.getElementById('dashboardView');
+        if (dashboard) {
+            dashboard.classList.add('active');
+            this.moduloActual = 'dashboard';
+            this._actualizarBreadcrumb('dashboard');
+            setTimeout(() => this._cargarDashboardInicial(), 100);
+        }
+    }
+
+    _actualizarBreadcrumb(module) {
+        const breadcrumb = document.getElementById('breadcrumbModule');
+        if (breadcrumb) {
+            breadcrumb.textContent = this._getModuleName(module);
+            
+            document.querySelectorAll('.breadcrumb-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.module === module) {
+                    item.classList.add('active');
+                }
+            });
+        }
+    }
+
+    // ============================================================
     // CONFIGURAR EVENTOS DE IDIOMAS
     // ============================================================
 
@@ -1688,7 +1547,7 @@ class UICore {
                     await window.UIBiblioteca.cargar(this);
                 } catch (err) {}
             }
-            if (window.UITonos) {   // 🔥 NUEVO
+            if (window.UITonos) {
                 try {
                     await window.UITonos.cargar(this);
                 } catch (err) {}
@@ -1756,7 +1615,7 @@ class UICore {
                     await window.UIBiblioteca.cargar(this);
                 } catch (err) {}
             }
-            if (window.UITonos) {   // 🔥 NUEVO
+            if (window.UITonos) {
                 try {
                     await window.UITonos.cargar(this);
                 } catch (err) {}
@@ -1844,7 +1703,7 @@ class UICore {
                 } catch (err) {}
             }
             
-            if (window.UITonos) {   // 🔥 NUEVO
+            if (window.UITonos) {
                 try {
                     await window.UITonos.cargar(this);
                 } catch (err) {}
@@ -2969,6 +2828,13 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
     // MÉTODOS AUXILIARES
     // ============================================================
 
+    _esTonal(idioma) {
+        if (!idioma) return false;
+        const tonales = ['zh', 'chino', 'chinese', 'mandarin', 'mandarín', 'th', 'tailandés', 'thai', 'vi', 'vietnamita', 'vietnamese', 'cantones', 'cantonés'];
+        const idiomaLower = idioma.toLowerCase().trim();
+        return tonales.some(item => idiomaLower.includes(item) || item.includes(idiomaLower));
+    }
+
     _obtenerNivelUsuario() {
         try {
             const infoActivo = window.gestorIdiomas?.getInfoActivo?.();
@@ -3014,85 +2880,17 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         return nombres[idioma] || idioma;
     }
 
-    irAElipse() {
-        this.irAModulo('elipse');
-    }
-
-    irAOndasCruzadas() {
-        this.irAModulo('ondasCruzadas');
-    }
-
-    irAFonetica() {
-        this.irAModulo('fonetica');
-    }
-
-    irACaracteres() {
-        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
-        if (!this._esJeroglifico(idioma)) {
-            this.mostrarToast(`⚠️ El idioma "${idioma}" no es jeroglífico. Este módulo solo está disponible para idiomas asiáticos.`, 'warning');
-            return;
-        }
-        this.irAModulo('caracteres');
-    }
-
-    irAManual() {
-        this.irAModulo('manual');
-    }
-
-    irABiblioteca() {
-        this.irAModulo('biblioteca');
-    }
-
-    irATonos() {   // 🔥 NUEVO
-        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
-        const esTonal = window.UITonos?._esTonal?.(idioma) || false;
-        if (!esTonal) {
-            this.mostrarToast(`⚠️ El idioma "${idioma}" no es tonal. Este módulo está diseñado para idiomas tonales como Chino, Tailandés o Vietnamita.`, 'warning');
-            return;
-        }
-        this.irAModulo('tonos');
-    }
-
     _actualizarBotonFamiliaCaracteres() {
         const btn = document.getElementById('btnGenerarFamiliaCaracteres');
         if (btn) {
-            const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+            const idiomaActivo = gestorIdiomas?.getIdiomaActivo?.() || 'es';
             const esJeroglifico = this._esJeroglifico(idiomaActivo);
             btn.style.display = esJeroglifico ? 'inline-flex' : 'none';
         }
     }
 
-    _registrarModuloCompeticiones() {
-        console.log('🏆 Registrando módulo de competiciones...');
-        
-        if (!window.SistemaCompeticiones) {
-            console.warn('⚠️ SistemaCompeticiones no encontrado, intentando registrar más tarde...');
-            setTimeout(() => {
-                if (window.SistemaCompeticiones) {
-                    console.log('🏆 SistemaCompeticiones encontrado, registrando...');
-                    this._registrarModuloCompeticiones();
-                }
-            }, 1000);
-            return;
-        }
-        
-        this._moduleNames['competiciones'] = '🏆 Liga Neuro';
-        
-        try {
-            if (typeof window.SistemaCompeticiones.init === 'function') {
-                window.SistemaCompeticiones.init(this);
-                console.log('✅ SistemaCompeticiones inicializado correctamente');
-            } else {
-                console.warn('⚠️ SistemaCompeticiones no tiene método init()');
-            }
-        } catch (e) {
-            console.warn('⚠️ Error inicializando SistemaCompeticiones:', e.message);
-        }
-    }
-
     _registrarModuloCaracteres() {
         console.log('🀄 Registrando módulo de caracteres...');
-        
         if (!window.UICaracteres) {
             console.warn('⚠️ UICaracteres no encontrado, intentando registrar más tarde...');
             setTimeout(() => {
@@ -3103,9 +2901,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             }, 1000);
             return;
         }
-        
         this._moduleNames['caracteres'] = '🀄 Caracteres';
-        
         try {
             if (typeof window.UICaracteres.init === 'function') {
                 window.UICaracteres.init(this);
@@ -3120,7 +2916,6 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
 
     _registrarModuloFonetica() {
         console.log('🎤 Registrando módulo de Fonética...');
-        
         if (!window.UIFonetica) {
             console.warn('⚠️ UIFonética no encontrado, intentando registrar más tarde...');
             setTimeout(() => {
@@ -3131,9 +2926,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
             }, 1000);
             return;
         }
-        
         this._moduleNames['fonetica'] = '🎤 Fonética';
-        
         try {
             if (typeof window.UIFonetica.init === 'function') {
                 window.UIFonetica.init(this);
@@ -3320,7 +3113,8 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
 window.uiCore = new UICore();
 window.ui = window.uiCore;
 
-console.log('✅ UI Core v18.36 - COMPLETO CON MÓDULO TONOS REGISTRADO');
+console.log('✅ UI Core v18.37 - COMPLETO Y CORREGIDO');
+console.log('  📊 Módulo "stats" corregido - usa UIDashboard._cargarDashboardInicial');
 console.log('  🎵 Módulo "tonos" registrado correctamente');
 console.log('  📚 Módulo "biblioteca v2.0" registrado correctamente');
 console.log('  📖 Módulo "manual" registrado correctamente');

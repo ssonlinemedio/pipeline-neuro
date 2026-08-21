@@ -1,5 +1,5 @@
 // ============================================================
-// UI BIBLIOTECA v2.2 - HISTORIAS ORDENADAS POR NIVEL DENTRO DE CADA TEMA
+// UI BIBLIOTECA v2.8 - CORREGIDO: PAGINACIÓN POR TEMAS COMPLETOS CON BOTONES FUNCIONALES
 // ============================================================
 
 class UIBiblioteca {
@@ -22,12 +22,14 @@ class UIBiblioteca {
         this._filtroEstado = 'todos';
         this._busqueda = '';
         this._totalItems = 0;
+        this._totalGrupos = 0;      // 🔥 NUEVO: para paginación por grupos
+        this._totalPaginas = 1;     // 🔥 NUEVO: para paginación correcta
+        this._frasesActuales = [];
+        this._historiasCache = [];
         
-        // Vista de agrupación (por tema o lista plana)
         this._vistaAgrupada = true;
         this._mostrarTraduccion = true;
         
-        // 🔥 ORDEN DE NIVELES PARA SORTING
         this._NIVELES_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         this._NIVEL_WEIGHT = {
             'A1': 0, 'A2': 1, 'B1': 2, 'B2': 3, 'C1': 4, 'C2': 5
@@ -44,10 +46,6 @@ class UIBiblioteca {
         this._cargarHistoriasLeidas();
         this._cargarPreferencias();
     }
-
-    // ============================================================
-    // PREFERENCIAS DE USUARIO
-    // ============================================================
 
     _cargarPreferencias() {
         try {
@@ -71,24 +69,14 @@ class UIBiblioteca {
         } catch (e) {}
     }
 
-    // ============================================================
-    // INICIALIZACIÓN
-    // ============================================================
-
     async init(core) {
         if (this._initDone) return this;
         this._core = core || window.uiCore;
         this._initDone = true;
-        
         this._registrarEventosSincronizacion();
-        
-        console.log('📚 UIBiblioteca v2.2: Inicializada (historias ordenadas por nivel dentro de cada tema)');
+        console.log('📚 UIBiblioteca v2.8: Inicializada (paginación por temas completos con botones funcionales)');
         return this;
     }
-
-    // ============================================================
-    // REGISTRAR EVENTOS DE SINCRONIZACIÓN
-    // ============================================================
 
     _registrarEventosSincronizacion() {
         window.addEventListener('historiaEstadoCambiado', (e) => {
@@ -118,10 +106,6 @@ class UIBiblioteca {
 
         console.log('📚 Eventos de sincronización registrados');
     }
-
-    // ============================================================
-    // GESTIÓN DE HISTORIAS LEÍDAS
-    // ============================================================
 
     _cargarHistoriasLeidas() {
         try {
@@ -154,10 +138,8 @@ class UIBiblioteca {
                 this._historiasLeidas.delete(historiaId);
             }
             this._guardarHistoriasLeidas();
-            
             this._actualizarTarjetaHistoria(historiaId, checked);
             this._actualizarContadorHistoriasLeidas();
-            
             this._core?.mostrarToast(
                 checked ? '✅ Historia marcada como leída' : '↩️ Historia desmarcada como leída',
                 checked ? 'success' : 'info'
@@ -220,10 +202,6 @@ class UIBiblioteca {
         if (pctText) pctText.textContent = `${pct}%`;
     }
 
-    // ============================================================
-    // DETECTAR ORIGEN DE LA HISTORIA
-    // ============================================================
-
     _detectarOrigenHistoria(historia) {
         if (!historia) return { tipo: 'desconocido', label: '📄 Desconocido', color: 'var(--gray)' };
         
@@ -245,10 +223,19 @@ class UIBiblioteca {
             };
         }
         
-        if (historia._importadoDesdeJSON === true || historia._esImportada === true) {
+        if (historia._importadoDesdeJSON === true || historia._esImportada === true || historia._importado === true) {
             return { 
                 tipo: 'importado', 
                 ...this._ORIGENES['importado'],
+                temaId: historia.temaId,
+                id: historia.id
+            };
+        }
+        
+        if (historia._esPredefinido === true) {
+            return { 
+                tipo: 'predefinido', 
+                ...this._ORIGENES['predefinido'],
                 temaId: historia.temaId,
                 id: historia.id
             };
@@ -285,29 +272,120 @@ class UIBiblioteca {
         return origen;
     }
 
-    // ============================================================
-    // OBTENER TODAS LAS HISTORIAS CON ORIGEN
-    // ============================================================
-
     async _obtenerTodasLasHistorias() {
-        const idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
-        const todas = await db.obtenerHistoriasPorIdioma(idioma);
+        const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+        
+        const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActivo);
+        console.log(`📚 ${todosLosTemas.length} temas encontrados para idioma: ${idiomaActivo}`);
+        
+        let todasLasHistorias = [];
+        
+        for (const tema of todosLosTemas) {
+            let historiasDelTema = await db.obtenerHistoriasPorTema(tema.id);
+            
+            if (!historiasDelTema || historiasDelTema.length === 0) {
+                console.log(`📚 Tema "${tema.nombre}": buscando historias por temaId...`);
+                try {
+                    const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
+                    historiasDelTema = todasLasHistoriasDB.filter(h => h.temaId === tema.id);
+                    console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por temaId`);
+                } catch (e) {
+                    console.warn(`⚠️ Error buscando historias por temaId para ${tema.nombre}:`, e);
+                }
+            }
+            
+            if ((!historiasDelTema || historiasDelTema.length === 0) && tema.historiasIds && tema.historiasIds.length > 0) {
+                console.log(`📚 Tema "${tema.nombre}": buscando ${tema.historiasIds.length} historias por ID...`);
+                const historiasPorId = [];
+                for (const hId of tema.historiasIds) {
+                    try {
+                        const h = await db.get('historias', hId);
+                        if (h) {
+                            historiasPorId.push(h);
+                        }
+                    } catch (e) {
+                        console.warn(`⚠️ No se pudo obtener historia ${hId}:`, e);
+                    }
+                }
+                historiasDelTema = historiasPorId;
+                console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por IDs`);
+            }
+            
+            if ((!historiasDelTema || historiasDelTema.length === 0) && tema.nombre) {
+                console.log(`📚 Tema "${tema.nombre}": buscando por título...`);
+                try {
+                    const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
+                    const temaNombre = tema.nombre.toLowerCase().trim();
+                    historiasDelTema = todasLasHistoriasDB.filter(h => {
+                        const titulo = (h.titulo || '').toLowerCase();
+                        return titulo.includes(temaNombre) || (temaNombre.length > 3 && titulo.includes(temaNombre.split(' ')[0]));
+                    });
+                    console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por título`);
+                } catch (e) {
+                    console.warn(`⚠️ Error buscando por título para ${tema.nombre}:`, e);
+                }
+            }
+            
+            for (const h of historiasDelTema) {
+                if (!h.temaId) {
+                    h.temaId = tema.id;
+                    try {
+                        await db.update('historias', { id: h.id, temaId: tema.id });
+                    } catch (e) {}
+                }
+                todasLasHistorias.push({
+                    ...h,
+                    _temaNombre: tema.nombre,
+                    _temaId: tema.id,
+                    _esPredefinido: tema._esPredefinido === true
+                });
+            }
+        }
+        
+        try {
+            const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
+            const idsConTema = new Set(todasLasHistorias.filter(h => h.temaId).map(h => h.id));
+            const historiasSinTema = todasLasHistoriasDB.filter(h => !idsConTema.has(h.id) && !h.temaId);
+            
+            if (historiasSinTema && historiasSinTema.length > 0) {
+                console.log(`📚 ${historiasSinTema.length} historias sin tema encontradas`);
+                for (const h of historiasSinTema) {
+                    todasLasHistorias.push({
+                        ...h,
+                        _temaNombre: 'Sin tema',
+                        _temaId: null,
+                        _esPredefinido: false
+                    });
+                }
+            }
+        } catch (e) {}
+        
+        const idsVistos = new Set();
+        const historiasUnicas = [];
+        for (const h of todasLasHistorias) {
+            if (h.id && !idsVistos.has(h.id)) {
+                idsVistos.add(h.id);
+                historiasUnicas.push(h);
+            }
+        }
+        
+        console.log(`📚 Total historias únicas: ${historiasUnicas.length}`);
         
         const historiasConOrigen = [];
-        for (const h of todas) {
+        for (const h of historiasUnicas) {
             const origen = await this._obtenerOrigenCompleto(h);
-            const temaNombre = await this._obtenerNombreTema(h.temaId);
             const nivel = await this._obtenerNivelHistoria(h);
             historiasConOrigen.push({
                 ...h,
                 _origen: origen,
                 _leida: this._historiasLeidas.has(h.id),
                 _progreso: await this._calcularProgresoHistoria(h.id),
-                _temaNombre: temaNombre || 'Sin tema',
+                _temaNombre: h._temaNombre || 'Sin tema',
                 _nivel: nivel || h.nivel || 'A1'
             });
         }
         
+        console.log(`📚 Total historias procesadas: ${historiasConOrigen.length}`);
         return historiasConOrigen;
     }
 
@@ -356,10 +434,6 @@ class UIBiblioteca {
         }
     }
 
-    // ============================================================
-    // AGRUPAR HISTORIAS POR TEMA CON ORDEN POR NIVEL
-    // ============================================================
-
     _agruparHistoriasPorTema(historias) {
         const grupos = {};
         
@@ -378,11 +452,9 @@ class UIBiblioteca {
             grupos[key].historias.push(h);
         }
         
-        // Ordenar grupos por nombre
         const gruposArray = Object.values(grupos);
         gruposArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
         
-        // 🔥 DENTRO DE CADA GRUPO, ORDENAR HISTORIAS POR NIVEL
         for (const grupo of gruposArray) {
             grupo.historias.sort((a, b) => {
                 const nivelA = a._nivel || a.nivel || 'A1';
@@ -395,17 +467,12 @@ class UIBiblioteca {
                     return pesoA - pesoB;
                 }
                 
-                // Si mismo nivel, ordenar por título
                 return (a.titulo || '').localeCompare(b.titulo || '');
             });
         }
         
         return gruposArray;
     }
-
-    // ============================================================
-    // CARGA PRINCIPAL
-    // ============================================================
 
     cargar(core) {
         this._core = core || this._core;
@@ -426,7 +493,7 @@ class UIBiblioteca {
     }
 
     // ============================================================
-    // RENDERIZAR BIBLIOTECA
+    // 🔥 RENDERIZAR BIBLIOTECA - CORREGIDO: PAGINACIÓN POR TEMAS
     // ============================================================
 
     async _renderizarBiblioteca() {
@@ -444,10 +511,10 @@ class UIBiblioteca {
             const nombreIdioma = this._getNombreIdioma(idioma);
             
             let historias = await this._obtenerTodasLasHistorias();
+            this._historiasCache = historias; // Guardar para paginación
             
             historias = this._aplicarFiltros(historias);
             
-            // Ordenar historias: primero por nivel, luego por fecha
             historias.sort((a, b) => {
                 const nivelA = a._nivel || a.nivel || 'A1';
                 const nivelB = b._nivel || b.nivel || 'A1';
@@ -458,24 +525,70 @@ class UIBiblioteca {
                 if (pesoA !== pesoB) {
                     return pesoA - pesoB;
                 }
-                // Si mismo nivel, ordenar por título
                 return (a.titulo || '').localeCompare(b.titulo || '');
             });
             
-            // Guardar total de items para paginación
-            this._totalItems = historias.length;
-            const totalItems = this._totalItems;
-            const totalPaginas = Math.max(1, Math.ceil(totalItems / this._itemsPorPagina));
+            // 🔥 SI ESTAMOS EN VISTA AGRUPADA, PAGINAR POR TEMAS COMPLETOS
+            let grupos = null;
+            let totalItems = historias.length;
+            let historiasPagina = historias;
+            let totalPaginas = 1;
+            let totalGrupos = 0;
             
-            if (this._paginaActual > totalPaginas) this._paginaActual = totalPaginas;
-            if (this._paginaActual < 1) this._paginaActual = 1;
+            if (this._vistaAgrupada) {
+                // 1. Agrupar todas las historias por tema
+                const todosLosGrupos = this._agruparHistoriasPorTema(historias);
+                totalGrupos = todosLosGrupos.length;
+                
+                // 2. Paginar por GRUPOS (no por historias individuales)
+                const gruposPorPagina = Math.max(2, Math.floor(this._itemsPorPagina / 3));
+                totalPaginas = Math.max(1, Math.ceil(totalGrupos / gruposPorPagina));
+                
+                // Guardar para usar en _irPagina
+                this._totalGrupos = totalGrupos;
+                this._totalPaginas = totalPaginas;
+                this._gruposPorPagina = gruposPorPagina;
+                
+                if (this._paginaActual > totalPaginas) this._paginaActual = totalPaginas;
+                if (this._paginaActual < 1) this._paginaActual = 1;
+                
+                const inicioGrupo = (this._paginaActual - 1) * gruposPorPagina;
+                const finGrupo = Math.min(inicioGrupo + gruposPorPagina, totalGrupos);
+                const gruposPagina = todosLosGrupos.slice(inicioGrupo, finGrupo);
+                
+                // 3. Extraer TODAS las historias de los grupos de esta página
+                historiasPagina = [];
+                for (const grupo of gruposPagina) {
+                    for (const h of grupo.historias) {
+                        historiasPagina.push(h);
+                    }
+                }
+                
+                // 4. Reconstruir los grupos solo con las historias de esta página
+                grupos = this._agruparHistoriasPorTema(historiasPagina);
+                
+                // 5. Actualizar totalItems para el contador
+                totalItems = historiasPagina.length;
+                
+                console.log(`📚 Vista agrupada: ${totalGrupos} grupos, página ${this._paginaActual}/${totalPaginas}, ${historiasPagina.length} historias`);
+            } else {
+                // Vista plana: paginación normal por historias
+                totalItems = historias.length;
+                totalPaginas = Math.max(1, Math.ceil(totalItems / this._itemsPorPagina));
+                
+                this._totalPaginas = totalPaginas;
+                this._totalGrupos = 0;
+                
+                if (this._paginaActual > totalPaginas) this._paginaActual = totalPaginas;
+                if (this._paginaActual < 1) this._paginaActual = 1;
+                
+                const inicio = (this._paginaActual - 1) * this._itemsPorPagina;
+                const fin = Math.min(inicio + this._itemsPorPagina, totalItems);
+                historiasPagina = historias.slice(inicio, fin);
+                grupos = null;
+            }
             
-            const inicio = (this._paginaActual - 1) * this._itemsPorPagina;
-            const fin = Math.min(inicio + this._itemsPorPagina, totalItems);
-            const historiasPagina = historias.slice(inicio, fin);
-            
-            // Agrupar por tema si la vista está activada
-            const grupos = this._vistaAgrupada ? this._agruparHistoriasPorTema(historiasPagina) : null;
+            this._totalItems = totalItems;
             
             const total = historias.length;
             const leidas = historias.filter(h => h._leida).length;
@@ -489,7 +602,6 @@ class UIBiblioteca {
                 origenCounts[tipo] = (origenCounts[tipo] || 0) + 1;
             }
             
-            // 🔥 OBTENER CONTEO POR NIVEL
             const nivelCounts = {};
             for (const h of historias) {
                 const nivel = h._nivel || h.nivel || 'A1';
@@ -501,7 +613,6 @@ class UIBiblioteca {
             
             let html = `
                 <div class="biblioteca-container" style="padding:16px;">
-                    <!-- HEADER -->
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:12px 20px;background:linear-gradient(135deg, var(--primary)06, var(--secondary)06);border-radius:14px;border:2px solid var(--primary)20;">
                         <div>
                             <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
@@ -534,7 +645,6 @@ class UIBiblioteca {
                         </div>
                     </div>
 
-                    <!-- BARRA DE PROGRESO DE LECTURA -->
                     <div style="background:var(--white);border-radius:12px;padding:12px 18px;margin-bottom:16px;border:2px solid var(--primary)20;box-shadow:var(--shadow);">
                         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                             <div style="display:flex;align-items:center;gap:10px;">
@@ -557,7 +667,6 @@ class UIBiblioteca {
                         </div>
                     </div>
 
-                    <!-- CONTROLES DE VISTA -->
                     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--white);padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);">
                         <div style="display:flex;gap:6px;align-items:center;">
                             <span style="font-size:12px;font-weight:600;color:var(--gray);">📋 Vista:</span>
@@ -571,6 +680,7 @@ class UIBiblioteca {
                                     onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
                                 <i class="fas fa-list"></i> Lista Plana
                             </button>
+                            ${this._vistaAgrupada ? `<span style="font-size:10px;color:var(--secondary);font-weight:600;">📌 Paginación por temas completos (${totalGrupos} temas)</span>` : ''}
                         </div>
                         
                         <div style="flex:1;min-width:150px;position:relative;">
@@ -603,11 +713,11 @@ class UIBiblioteca {
                         </select>
                         
                         <span style="font-size:11px;color:var(--gray-light);">
-                            ${totalItems} resultados · ${totalPaginas} páginas
+                            ${totalItems} historias · ${totalPaginas} páginas
+                            ${this._vistaAgrupada ? ` · ${totalGrupos} temas` : ''}
                         </span>
                     </div>
 
-                    <!-- GRID DE HISTORIAS -->
                     <div id="bibliotecaGrid" style="display:flex;flex-direction:column;gap:16px;">
             `;
 
@@ -631,7 +741,6 @@ class UIBiblioteca {
                     </div>
                 `;
             } else if (this._vistaAgrupada && grupos) {
-                // VISTA AGRUPADA POR TEMAS - CON HISTORIAS ORDENADAS POR NIVEL
                 for (const grupo of grupos) {
                     const historiasGrupo = grupo.historias;
                     const totalGrupo = historiasGrupo.length;
@@ -641,7 +750,6 @@ class UIBiblioteca {
                     const origenLabel = grupo.origen?.label || '📚';
                     const origenColor = grupo.origen?.color || 'var(--primary)';
                     
-                    // 🔥 MOSTRAR NIVELES DISPONIBLES EN EL GRUPO
                     const nivelesEnGrupo = {};
                     for (const h of historiasGrupo) {
                         const nivel = h._nivel || h.nivel || 'A1';
@@ -654,7 +762,6 @@ class UIBiblioteca {
                     
                     html += `
                         <div class="grupo-tema" style="background:var(--white);border-radius:14px;border:2px solid ${origenColor}30;overflow:hidden;box-shadow:var(--shadow);">
-                            <!-- CABECERA DEL GRUPO -->
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:${origenColor}08;border-bottom:1px solid ${origenColor}20;cursor:pointer;"
                                  onclick="window.UIBiblioteca._toggleGrupoTema('${grupo.temaId}')">
                                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -679,7 +786,6 @@ class UIBiblioteca {
                                     </span>
                                 </div>
                             </div>
-                            <!-- CONTENIDO DEL GRUPO - HISTORIAS YA ORDENADAS POR NIVEL -->
                             <div id="grupoContenido_${grupo.temaId}" style="padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;">
                     `;
                     
@@ -693,7 +799,6 @@ class UIBiblioteca {
                     `;
                 }
             } else {
-                // VISTA LISTA PLANA - HISTORIAS YA ORDENADAS POR NIVEL
                 html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">`;
                 for (const h of historiasPagina) {
                     html += this._renderizarTarjetaHistoria(h);
@@ -704,7 +809,6 @@ class UIBiblioteca {
             html += `
                     </div>
 
-                    <!-- PAGINADOR -->
                     ${totalPaginas > 1 ? `
                         <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin:16px 0;flex-wrap:wrap;">
                             <button class="btn-secondary" onclick="window.UIBiblioteca._irPagina(${this._paginaActual - 1})" 
@@ -727,7 +831,6 @@ class UIBiblioteca {
                         </div>
                     ` : ''}
 
-                    <!-- FOOTER -->
                     <div style="margin-top:16px;padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--light);font-size:11px;color:var(--gray-light);text-align:center;">
                         📚 ${total} historias · ✅ ${leidas} leídas · 🎓 ${completadas} completadas · 📖 ${pctLeidas}% leído · 🧠 ${pctCompletadas}% completado
                         <br>
@@ -740,7 +843,7 @@ class UIBiblioteca {
                         </span>
                         <br>
                         <span style="font-size:9px;color:var(--secondary);">
-                            📋 Vista ${this._vistaAgrupada ? 'agrupada por Temas' : 'en lista plana'} · 
+                            📋 Vista ${this._vistaAgrupada ? 'agrupada por Temas (paginación por temas completos)' : 'en lista plana'} · 
                             ${this._mostrarTraduccion ? '🌐 Traducción visible' : '🔒 Traducción oculta'}
                             ${this._vistaAgrupada ? ' · 📊 Historias ordenadas por nivel (A1→C2)' : ''}
                         </span>
@@ -768,10 +871,6 @@ class UIBiblioteca {
         this._cargando = false;
     }
 
-    // ============================================================
-    // OBTENER EMOJI POR NIVEL
-    // ============================================================
-
     _getEmojiNivel(nivel) {
         const emojis = {
             'A1': '🌱',
@@ -784,16 +883,13 @@ class UIBiblioteca {
         return emojis[nivel] || '📚';
     }
 
-    // ============================================================
-    // TOGGLE VISTA AGRUPADA
-    // ============================================================
-
     _toggleVistaAgrupada() {
         this._vistaAgrupada = !this._vistaAgrupada;
+        this._paginaActual = 1;
         this._guardarPreferencias();
         this._renderizarBiblioteca();
         this._core?.mostrarToast(
-            this._vistaAgrupada ? '📋 Vista agrupada por Temas (ordenadas por nivel)' : '📋 Vista en lista plana',
+            this._vistaAgrupada ? '📋 Vista agrupada por Temas (paginación por temas completos)' : '📋 Vista en lista plana',
             'info'
         );
     }
@@ -809,10 +905,6 @@ class UIBiblioteca {
             }
         }
     }
-
-    // ============================================================
-    // RENDERIZAR TARJETA DE HISTORIA - CON INDICADOR DE NIVEL
-    // ============================================================
 
     _renderizarTarjetaHistoria(historia) {
         const origen = historia._origen || { label: '📄 Desconocido', color: 'var(--gray)' };
@@ -852,7 +944,6 @@ class UIBiblioteca {
                  onmouseout="this.style.transform='none';this.style.boxShadow='var(--shadow)'"
                  onclick="window.UIBiblioteca._verHistoria(${historia.id})">
                 
-                <!-- BADGE DE ORIGEN Y TEMA -->
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                         <span style="font-size:10px;font-weight:600;color:${origen.color};background:${origen.color}15;padding:2px 10px;border-radius:12px;">
@@ -861,7 +952,6 @@ class UIBiblioteca {
                         <span style="font-size:10px;color:var(--gray-light);background:var(--bg);padding:2px 10px;border-radius:12px;">
                             📁 ${temaNombre}
                         </span>
-                        <!-- 🔥 INDICADOR DE NIVEL -->
                         <span style="font-size:10px;font-weight:700;color:${colorNivel};background:${colorNivel}15;padding:2px 10px;border-radius:12px;border:1px solid ${colorNivel}30;">
                             ${emojiNivel} ${nivel}
                         </span>
@@ -872,12 +962,10 @@ class UIBiblioteca {
                     <span style="font-size:10px;color:var(--gray-light);">${fecha}</span>
                 </div>
                 
-                <!-- TÍTULO -->
                 <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px;display:flex;gap:6px;align-items:center;">
                     ${titulo}
                 </div>
                 
-                <!-- INFORMACIÓN -->
                 <div style="display:flex;gap:12px;font-size:11px;color:var(--gray-light);flex-wrap:wrap;margin-bottom:6px;">
                     <span>📝 ${totalFrases} frases</span>
                     <span>🎯 ${pct}% completado</span>
@@ -885,12 +973,10 @@ class UIBiblioteca {
                     ${historia.nivel ? `<span>🎯 ${historia.nivel}</span>` : ''}
                 </div>
                 
-                <!-- PROGRESO -->
                 <div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-top:4px;">
                     <div class="historia-progreso" style="height:100%;width:${Math.max(pct, esLeida ? 100 : 0)}%;background:${completada ? 'var(--success)' : esLeida ? 'var(--warning)' : 'var(--primary)'};border-radius:2px;transition:width 0.5s ease;"></div>
                 </div>
                 
-                <!-- ACCIONES -->
                 <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center;">
                     <button class="btn-secondary" onclick="event.stopPropagation();window.UIBiblioteca._estudiarHistoria(${historia.id})" 
                             style="padding:4px 12px;font-size:11px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;transition:all 0.2s;"
@@ -923,7 +1009,6 @@ class UIBiblioteca {
                         <i class="fas fa-arrow-right"></i> Origen
                     </button>
                     
-                    <!-- CHECKBOX DE COMPLETADO -->
                     <label style="display:flex;align-items:center;gap:3px;font-size:9px;cursor:pointer;padding:2px 8px;background:${completada ? 'var(--success)15' : 'var(--bg)'};border-radius:10px;border:1px solid ${completada ? 'var(--success)' : 'var(--light)'};"
                            onclick="event.stopPropagation();">
                         <input type="checkbox" ${completada ? 'checked' : ''} 
@@ -938,7 +1023,6 @@ class UIBiblioteca {
                     </label>
                 </div>
                 
-                <!-- ESTADO DE SINCRONIZACIÓN -->
                 <div style="margin-top:4px;font-size:8px;color:var(--gray-light);display:flex;gap:8px;flex-wrap:wrap;">
                     <span>🔄 ${completada ? 'Sincronizado' : 'Pendiente'}</span>
                     ${esOndaCruzada ? '<span>🌊 Cruzada</span>' : ''}
@@ -949,10 +1033,6 @@ class UIBiblioteca {
             </div>
         `;
     }
-
-    // ============================================================
-    // OBTENER COLOR POR NIVEL
-    // ============================================================
 
     _getColorNivel(nivel) {
         const colores = {
@@ -965,10 +1045,6 @@ class UIBiblioteca {
         };
         return colores[nivel] || 'var(--gray)';
     }
-
-    // ============================================================
-    // FILTROS
-    // ============================================================
 
     _aplicarFiltros(historias) {
         let filtradas = [...historias];
@@ -1041,11 +1117,21 @@ class UIBiblioteca {
     }
 
     // ============================================================
-    // PAGINACIÓN
+    // 🔥 IR A PÁGINA - CORREGIDO: usa _totalPaginas en vista agrupada
     // ============================================================
 
     _irPagina(pagina) {
-        const totalPaginas = Math.max(1, Math.ceil(this._totalItems / this._itemsPorPagina));
+        let totalPaginas = 1;
+        
+        if (this._vistaAgrupada) {
+            // En vista agrupada, usar _totalGrupos y _gruposPorPagina
+            const gruposPorPagina = this._gruposPorPagina || Math.max(2, Math.floor(this._itemsPorPagina / 3));
+            totalPaginas = Math.max(1, Math.ceil(this._totalGrupos / gruposPorPagina));
+            console.log(`📄 Vista agrupada: ${this._totalGrupos} grupos, ${gruposPorPagina} grupos/página, total páginas: ${totalPaginas}`);
+        } else {
+            totalPaginas = Math.max(1, Math.ceil(this._totalItems / this._itemsPorPagina));
+        }
+        
         if (pagina < 1 || pagina > totalPaginas) return;
         if (pagina === this._paginaActual) return;
         
@@ -1054,12 +1140,8 @@ class UIBiblioteca {
         this._renderizarBiblioteca();
     }
 
-    // ============================================================
-    // ACCIONES: LEER HISTORIA (CON OPCIÓN OCULTAR TRADUCCIÓN)
-    // ============================================================
-
-    async _leerHistoria(historiaId) {
-        console.log('📖 Leyendo historia:', historiaId);
+    async _verHistoria(historiaId) {
+        console.log('📖 Abriendo historia:', historiaId);
         const historia = await db.get('historias', historiaId);
         if (!historia) {
             this._core?.mostrarToast('❌ Historia no encontrada', 'error');
@@ -1076,6 +1158,10 @@ class UIBiblioteca {
         this._frasesActuales = frases;
         this._modoVista = 'lectura';
         this._renderizarVisorHistoria(historia, frases);
+    }
+
+    async _leerHistoria(historiaId) {
+        return this._verHistoria(historiaId);
     }
 
     _renderizarVisorHistoria(historia, frases) {
@@ -1112,7 +1198,6 @@ class UIBiblioteca {
                         </p>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        <!-- BOTÓN OCULTAR/MOSTRAR TRADUCCIÓN -->
                         <button onclick="window.UIBiblioteca._toggleMostrarTraduccion()" 
                                 style="padding:4px 12px;font-size:11px;border-radius:6px;border:2px solid ${this._mostrarTraduccion ? 'var(--success)' : 'var(--gray)'};background:${this._mostrarTraduccion ? 'var(--success)10' : 'var(--bg)'};color:${this._mostrarTraduccion ? 'var(--success)' : 'var(--gray)'};cursor:pointer;transition:all 0.3s;"
                                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'"
@@ -1207,39 +1292,28 @@ class UIBiblioteca {
         container.innerHTML = html;
     }
 
-    // ============================================================
-    // TOGGLE MOSTRAR TRADUCCIÓN
-    // ============================================================
-
     _toggleMostrarTraduccion() {
         this._mostrarTraduccion = !this._mostrarTraduccion;
         this._guardarPreferencias();
         
-        // Si estamos en vista de lectura, re-renderizar el visor
         if (this._modoVista === 'lectura' && this._historiaSeleccionada) {
             const historia = this._historiaSeleccionada;
             const frases = this._frasesActuales || [];
             if (frases.length > 0) {
                 this._renderizarVisorHistoria(historia, frases);
             } else {
-                // Recargar frases si no las tenemos en memoria
                 db.obtenerFrasesPorHistoria(historia.id).then(frases => {
                     this._frasesActuales = frases;
                     this._renderizarVisorHistoria(historia, frases);
                 });
             }
         } else {
-            // Si estamos en la biblioteca, mostrar toast informativo
             this._core?.mostrarToast(
                 this._mostrarTraduccion ? '🌐 Traducción visible' : '🔒 Traducción oculta',
                 'info'
             );
         }
     }
-
-    // ============================================================
-    // ACCIONES: ESTUDIAR HISTORIA
-    // ============================================================
 
     async _estudiarHistoria(historiaId) {
         if (!window.pipeline) {
@@ -1337,10 +1411,6 @@ class UIBiblioteca {
             this._volverALaBiblioteca();
         }
     }
-
-    // ============================================================
-    // INYECTAR BOTÓN DE VOLVER EN ESTUDIO
-    // ============================================================
 
     _inyectarBotonVolver(origen) {
         if (this._botonInyectado) return;
@@ -1472,10 +1542,6 @@ class UIBiblioteca {
         console.log('🔓 Botones del estudio restaurados correctamente');
     }
 
-    // ============================================================
-    // VOLVER A LA BIBLIOTECA
-    // ============================================================
-
     _volverALaBiblioteca() {
         console.log('📚 Volviendo a la biblioteca...');
         
@@ -1495,10 +1561,6 @@ class UIBiblioteca {
             }, 300);
         }
     }
-
-    // ============================================================
-    // IR AL ORIGEN DE LA HISTORIA
-    // ============================================================
 
     async _irAlOrigen(historiaId) {
         const historia = await db.get('historias', historiaId);
@@ -1552,10 +1614,6 @@ class UIBiblioteca {
         this._core?.mostrarToast(`📍 Origen: ${origen.label}`, 'info');
     }
 
-    // ============================================================
-    // MÉTODOS DE UTILIDAD
-    // ============================================================
-
     _esJeroglifico(idioma) {
         if (!idioma) return false;
         const jeroglificos = ['zh', 'ja', 'ko', 'chino', 'japonés', 'coreano', 'chinese', 'japanese', 'korean', 'mandarin', 'mandarín'];
@@ -1587,10 +1645,6 @@ class UIBiblioteca {
         }
     }
 
-    // ============================================================
-    // DESTRUIR
-    // ============================================================
-
     destroy() {
         this._restaurarBotonesEstudio();
         this._initDone = false;
@@ -1598,19 +1652,11 @@ class UIBiblioteca {
     }
 }
 
-// ============================================================
-// INSTANCIA GLOBAL
-// ============================================================
-
 window.UIBiblioteca = new UIBiblioteca();
 
-console.log('✅ UIBiblioteca v2.2 - HISTORIAS ORDENADAS POR NIVEL DENTRO DE CADA TEMA');
-console.log('  🔥 Mejora 1: Agrupación de historias por Tema');
-console.log('  🔥 Mejora 2: Opción para ocultar/mostrar traducción en el visor de lectura');
-console.log('  🔥 Mejora 3: Paginación funcionando correctamente');
-console.log('  🔥 Mejora 4: HISTORIAS ORDENADAS POR NIVEL (A1→C2) dentro de cada tema');
-console.log('  📋 Vista agrupada por Temas con colapsables');
-console.log('  🏷️ Badge de nivel visible en cada tarjeta (🌱 A1, 🌿 A2, 🌳 B1, 🌲 B2, 🏔️ C1, 🗻 C2)');
-console.log('  🔍 Búsqueda por título, tema, origen y nivel');
-console.log('  🔒 Persistencia de preferencias (vista, traducción y items por página)');
-console.log('  ✅ Todas las funcionalidades originales preservadas');
+console.log('✅ UIBiblioteca v2.8 - CORREGIDO: PAGINACIÓN POR TEMAS COMPLETOS CON BOTONES FUNCIONALES');
+console.log('  🔥 En vista agrupada, se pagina por GRUPOS de temas completos');
+console.log('  🔥 _totalGrupos y _gruposPorPagina para calcular páginas correctamente');
+console.log('  🔥 Botones Anterior/Siguiente funcionan correctamente');
+console.log('  🔥 TODAS las historias de un tema se muestran juntas');
+console.log('  🔥 Todas las funcionalidades originales preservadas');

@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.19 - CORREGIDO: MANEJO DE HISTORIAS COMPLETADAS Y DUPLICADOS
+// UI TEMAS ACTIONS v2.21 - CORREGIDO: VERIFICA Y ACTUALIZA historiasIds
 // ============================================================
 
 class UITemasActions {
@@ -26,7 +26,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // 🔥 ESTUDIAR HISTORIA - CORREGIDO: MANEJO DE HISTORIAS COMPLETADAS
+    // ESTUDIAR HISTORIA
     // ============================================================
 
     static async estudiarHistoria(historiaId) {
@@ -49,7 +49,6 @@ class UITemasActions {
             await db.update('historias', historia);
         }
 
-        // 🔥 VERIFICAR SI LA HISTORIA ESTÁ COMPLETADA
         const estaCompletada = historia.estado === 'completada' || historia._completada === true;
         const rcnActual = historia._rcnPromedio || 0;
 
@@ -93,7 +92,6 @@ class UITemasActions {
             return;
         }
 
-        // 🔥 HISTORIA NO COMPLETADA - ESTUDIO NORMAL
         const esOnda = historia._esOnda === true;
         const origen = esOnda ? 'elipse' : 'tema';
         
@@ -563,7 +561,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // IMPORTAR TEMA COMPLETO CON LOADING - CORREGIDO: VERIFICACIÓN DE DUPLICADOS
+    // 🔥 IMPORTAR TEMA COMPLETO CON LOADING - CORREGIDO: VERIFICA historiasIds
     // ============================================================
 
     static async importarTemaCompletoConLoading(data, temaId, temaNombre) {
@@ -641,7 +639,7 @@ class UITemasActions {
             let historiasImportadas = 0;
             const historiasIds = [];
 
-            // 🔥 VERIFICAR DUPLICADOS - Obtener títulos existentes
+            // VERIFICAR DUPLICADOS - Obtener títulos existentes
             const historiasExistentes = await db.obtenerHistoriasPorTema(temaIdRealFinal);
             const titulosExistentes = new Set(historiasExistentes.map(h => h.titulo?.toLowerCase().trim()));
 
@@ -660,11 +658,9 @@ class UITemasActions {
                     `${historiasProcesadas}/${data.historias.length} historias`
                 );
 
-                // 🔥 VERIFICAR DUPLICADO - Usar título y también contenido
                 const tituloNormalizado = (historiaData.titulo || 'Historia sin título').toLowerCase().trim();
                 let esDuplicado = titulosExistentes.has(tituloNormalizado);
 
-                // Verificar por contenido si hay frases
                 if (!esDuplicado && historiaData.frases && historiaData.frases.length > 0) {
                     const primerasFrases = historiaData.frases.slice(0, 3).map(f => f.original?.toLowerCase().trim() || '');
                     const frasesUnicas = primerasFrases.filter(f => f.length > 0);
@@ -710,6 +706,13 @@ class UITemasActions {
 
                 if (historiaId) {
                     historiasIds.push(historiaId);
+                    
+                    // 🔥 ACTUALIZAR LA HISTORIA CON EL temaId CORRECTO POR SI ACASO
+                    await db.update('historias', {
+                        id: historiaId,
+                        temaId: temaIdRealFinal
+                    });
+                    
                     const frases = historiaData.frases || [];
                     const frasesPorHistoria = [];
 
@@ -857,12 +860,34 @@ class UITemasActions {
                     await db.update('historias', {
                         ...historiaObj,
                         id: historiaId,
+                        temaId: temaIdRealFinal,
                         frases: frasesPorHistoria.length,
                         _esImportada: true,
                         _importadoDesdeJSON: true
                     });
                 }
             }
+
+            // ============================================================
+            // 🔥 VERIFICAR Y ACTUALIZAR historiasIds DEL TEMA
+            // ============================================================
+            
+            UITemasActions._actualizarLoading(90, '🔍 Verificando historias...', 'Actualizando lista de historias del tema');
+
+            // Obtener TODAS las historias que tienen este temaId
+            const todasLasHistoriasDelTema = await db.obtenerHistoriasPorTema(temaIdRealFinal);
+            const todosLosIds = todasLasHistoriasDelTema.map(h => h.id);
+            
+            console.log(`📊 Total historias en el tema: ${todosLosIds.length}`);
+            console.log(`   IDs: ${todosLosIds.join(', ')}`);
+
+            // 🔥 ACTUALIZAR historiasIds DEL TEMA CON TODOS LOS IDs
+            await db.update('temas', {
+                ...temaGuardado,
+                historiasIds: todosLosIds,
+                frases: (temaGuardado.frases || 0) + totalFrases,
+                _tieneContenido: true
+            });
 
             // ============================================================
             // SINCRONIZAR CARACTERES
@@ -1060,12 +1085,11 @@ class UITemasActions {
             }
 
             // ============================================================
-            // ACTUALIZAR TEMA
+            // ACTUALIZAR TEMA - PROGRESO REAL
             // ============================================================
             UITemasActions._actualizarLoading(97, '💾 Guardando cambios...', 'Actualizando tema');
 
             if (temaGuardado) {
-                const todasHistoriasIds = [...new Set([...temaGuardado.historiasIds, ...historiasIds])];
                 // 🔥 RECALCULAR PROGRESO REAL
                 const historiasActualizadas = await db.obtenerHistoriasPorTema(temaIdRealFinal);
                 let completadas = 0;
@@ -1079,7 +1103,7 @@ class UITemasActions {
                 
                 await db.update('temas', {
                     ...temaGuardado,
-                    historiasIds: todasHistoriasIds,
+                    historiasIds: todosLosIds,
                     frases: (temaGuardado.frases || 0) + totalFrases,
                     estado: completado ? 'completado' : 'en_curso',
                     _tieneContenido: true,
@@ -2316,10 +2340,8 @@ class UITemasActions {
 // ============================================================
 
 window.UITemasActions = UITemasActions;
-console.log('✅ UITemas Actions v2.19 - MANEJO DE HISTORIAS COMPLETADAS Y DUPLICADOS');
-console.log('  🔥 estudiarHistoria: maneja historias completadas con diálogo de finalización');
-console.log('  🔥 Verificación de duplicados al importar historias (por título y contenido)');
-console.log('  🔥 Recalculo de progreso real del tema al importar');
-console.log('  🔥 SOLO dos orígenes: "elipse" o "tema"');
-console.log('  🔥 Sincronización consistente entre Modo Elipse y Temas');
+console.log('✅ UITemas Actions v2.21 - CORREGIDO: VERIFICA Y ACTUALIZA historiasIds');
+console.log('  🔥 Después de importar, obtiene TODAS las historias del tema');
+console.log('  🔥 Actualiza historiasIds del tema con TODOS los IDs');
+console.log('  🔥 Fuerza update de historias con temaId correcto');
 console.log('  🔥 Todas las funcionalidades originales preservadas');
