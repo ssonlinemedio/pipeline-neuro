@@ -1,14 +1,13 @@
 // ============================================================
-// TUTOR NEURO V8.1 - MAESTRÍA ABSOLUTA CON DOBLE HERENCIA
+// TUTOR NEURO V8.5 - REFRESCO AUTOMÁTICO OBLIGATORIO + FORZAR ANÁLISIS AL ENTRAR
 // TUTOR ESPACIAL PARA IDIOMAS JEROGLÍFICOS (CHINO, JAPONÉS, COREANO)
 // HEREDADO DE VIGIA + CENTINELA PARA PODER DE GUÍA TOTAL
-// INTERFAZ SUPER FASHION, POTENTE Y COMPLETA
 // ============================================================
 
 class TutorNeuro extends Vigia {
     constructor() {
         super();
-        this._nombre = '🧠 Tutor de Aprendizaje NeuroAdaptativo V8.1';
+        this._nombre = '🧠 Tutor de Aprendizaje NeuroAdaptativo V8.5';
         this._icono = '🧠';
         this._tutorInitDone = false;
         this._ultimaIntervencion = 0;
@@ -38,7 +37,7 @@ class TutorNeuro extends Vigia {
         this._modoActual = this._MODOS.FLEXIBLE;
         
         // ============================================================
-        // CONFIGURACIÓN - V8.1 CON MODO ESPACIAL CORREGIDO
+        // CONFIGURACIÓN - V8.5 CON REFRESCO AUTOMÁTICO OBLIGATORIO
         // ============================================================
         this._configuracion = {
             intervencionAuto: true,
@@ -78,9 +77,6 @@ class TutorNeuro extends Vigia {
                     mostrarJustificacion: false,
                     bloqueoNavegacion: false
                 },
-                // ============================================================
-                // 🔥 MODO ESPACIAL - CORREGIDO V8.1
-                // ============================================================
                 espacial: {
                     permitirIgnorar: true,
                     permitirPosponer: true,
@@ -110,9 +106,6 @@ class TutorNeuro extends Vigia {
                 generarCada: 10,
                 priorizarDebilidades: true
             },
-            // ============================================================
-            // CONFIGURACIÓN ESPACIAL PARA JEROGLÍFICOS - V8.1
-            // ============================================================
             espacial: {
                 activo: false,
                 idiomaJeroglifico: false,
@@ -206,9 +199,6 @@ class TutorNeuro extends Vigia {
                     diasMasProductivos: []
                 }
             },
-            // ============================================================
-            // MAPA ESPACIAL PARA JEROGLÍFICOS - V8.1
-            // ============================================================
             espacial: {
                 caracteresAprendidos: [],
                 radicalesConocidos: [],
@@ -225,7 +215,7 @@ class TutorNeuro extends Vigia {
         };
         
         // ============================================================
-        // CONTEXTO ENRIQUECIDO DEL USUARIO - V8.1 CON ESPACIAL
+        // CONTEXTO ENRIQUECIDO DEL USUARIO - V8.5 CON ESPACIAL
         // ============================================================
         this._contextoUsuario = {
             nivel: 'A1',
@@ -374,7 +364,7 @@ class TutorNeuro extends Vigia {
         };
         
         // ============================================================
-        // REGLAS DE INTERVENCIÓN - V8.1 CON REGLAS ESPACIALES
+        // REGLAS DE INTERVENCIÓN - V8.5 CON REGLAS ESPACIALES
         // ============================================================
         this._reglasIntervencion = {};
         this._cacheUltimoAnalisis = {};
@@ -390,7 +380,7 @@ class TutorNeuro extends Vigia {
         this._tiempoCacheTemas = 60000;
         
         // ============================================================
-        // SISTEMA DE LOGROS - V8.1 CON LOGROS ESPACIALES
+        // SISTEMA DE LOGROS - V8.5 CON LOGROS ESPACIALES
         // ============================================================
         this._LOGROS = {
             'primer_estudio': { nombre: '🌟 Primer Estudio', desc: 'Completa tu primera sesión de estudio', puntos: 10 },
@@ -424,9 +414,6 @@ class TutorNeuro extends Vigia {
             'consistencia_oro': { nombre: '🏅 Consistencia de Oro', desc: 'Estudia 7 días seguidos con al menos 30 min', puntos: 60 },
             'maestro_de_elipse': { nombre: '🌌 Maestro de Elipse', desc: 'Genera 10 ondas en Modo Elipse', puntos: 50 },
             'lector_avido': { nombre: '📚 Lector Ávido', desc: 'Lee 25 historias en la Biblioteca', puntos: 35 },
-            // ============================================================
-            // LOGROS ESPACIALES - V8.1
-            // ============================================================
             'primer_caracter': { nombre: '🀄 Primer Carácter', desc: 'Estudia tu primer carácter en el modo espacial', puntos: 15 },
             '10_caracteres_espacial': { nombre: '📚 10 Caracteres Espaciales', desc: 'Estudia 10 caracteres en el modo espacial', puntos: 30 },
             '50_caracteres_espacial': { nombre: '📖 50 Caracteres Espaciales', desc: 'Estudia 50 caracteres en el modo espacial', puntos: 60 },
@@ -530,6 +517,7 @@ class TutorNeuro extends Vigia {
         this._cargarConfiguracionPersistida();
         this._inicializarMicroObjetivos();
         this._inicializarModoEspacial();
+        this._cargarEstadoDesdeLocalStorage();
         
         // REFERENCIA A CENTINELA (DOBLE HERENCIA)
         this._centinela = window.centinela || null;
@@ -537,15 +525,117 @@ class TutorNeuro extends Vigia {
             console.log('🔗 TutorNeuro: Vinculado con Centinela para neuro-monitoreo');
         }
         
-        console.log('🧠 Tutor Neuro V8.1: Constructor ejecutado (MAESTRÍA ABSOLUTA - TUTOR ESPACIAL CORREGIDO)');
+        // ============================================================
+        // REFRESCO AUTOMÁTICO - V8.5 OBLIGATORIO
+        // ============================================================
+        this._intervaloRefresco = null;
+        this._refrescoActivo = false;
+        this._ultimoRefresco = 0;
+        this._intervaloRefrescoMs = 5000; // 5 segundos (más rápido)
+        this._refrescando = false;
+        this._refrescosPendientes = 0;
+        
+        // ============================================================
+        // FORZAR ANÁLISIS AL ENTRAR - FLAG
+        // ============================================================
+        this._forzarAnalisisPendiente = true;
+        this._analisisInicialEjecutado = false;
+        
+        // ============================================================
+        // EVENTOS PARA REFRESCO AUTOMÁTICO - TODOS LOS POSIBLES
+        // ============================================================
+        this._eventosRefresco = [
+            'respuestaEstudio',
+            'temaCompletado',
+            'elipseOndaGenerada',
+            'elipseOndaCompletada',
+            'ondasCruzadasGenerada',
+            'bibliotecaActualizada',
+            'bibliotecaHistoriaLeida',
+            'idiomaCambiado',
+            'nivelIdiomaCambiado',
+            'cambioFase',
+            'sesionFinalizada',
+            'caracterEstudiado',
+            'radicalAprendido',
+            'moduloCambiado',
+            'favoritoActualizado',
+            'tutorModoCambiado',
+            'learningPathGenerado',
+            'learningPathPasoCompletado',
+            'learningPathCompletado',
+            'dashboardCargado',
+            'usuarioActualizado',
+            'progresoActualizado',
+            'statsActualizadas',
+            'tutorNeuroInicializado',
+            'appInitCompleta'
+        ];
+        
+        // ============================================================
+        // MÉTRICAS DE REFRESCO
+        // ============================================================
+        this._metricasRefresco = {
+            totalRefrescos: 0,
+            ultimoRefresco: null,
+            promedioMs: 0,
+            tiempoTotalMs: 0,
+            refrescosPorEvento: {}
+        };
+        
+        console.log('🧠 Tutor Neuro V8.5: Constructor ejecutado (REFRESCO AUTOMÁTICO OBLIGATORIO + FORZAR ANÁLISIS AL ENTRAR)');
     }
 
     // ============================================================
-    // INICIALIZAR MODO ESPACIAL - V8.1 CORREGIDO
+    // CARGAR ESTADO DESDE LOCALSTORAGE
+    // ============================================================
+    _cargarEstadoDesdeLocalStorage() {
+        try {
+            const estado = localStorage.getItem('tutorNeuro_estado_persistente');
+            if (estado) {
+                const data = JSON.parse(estado);
+                if (data._forzarAnalisisPendiente !== undefined) {
+                    this._forzarAnalisisPendiente = data._forzarAnalisisPendiente;
+                }
+                if (data._analisisInicialEjecutado !== undefined) {
+                    this._analisisInicialEjecutado = data._analisisInicialEjecutado;
+                }
+                if (data._mapaAprendizaje) {
+                    this._mapaAprendizaje = { ...this._mapaAprendizaje, ...data._mapaAprendizaje };
+                }
+                if (data._contextoUsuario) {
+                    this._contextoUsuario = { ...this._contextoUsuario, ...data._contextoUsuario };
+                }
+                console.log('📌 Estado persistente cargado desde localStorage');
+            }
+        } catch (e) {
+            console.warn('⚠️ Error cargando estado desde localStorage:', e);
+        }
+    }
+
+    // ============================================================
+    // GUARDAR ESTADO EN LOCALSTORAGE
+    // ============================================================
+    _guardarEstadoEnLocalStorage() {
+        try {
+            const data = {
+                _forzarAnalisisPendiente: this._forzarAnalisisPendiente,
+                _analisisInicialEjecutado: this._analisisInicialEjecutado,
+                _mapaAprendizaje: this._mapaAprendizaje,
+                _contextoUsuario: this._contextoUsuario,
+                _ultimaActualizacion: Date.now()
+            };
+            localStorage.setItem('tutorNeuro_estado_persistente', JSON.stringify(data));
+        } catch (e) {
+            console.warn('⚠️ Error guardando estado en localStorage:', e);
+        }
+    }
+
+    // ============================================================
+    // INICIALIZAR MODO ESPACIAL - V8.5 CORREGIDO
     // ============================================================
     _inicializarModoEspacial() {
         try {
-            // 🔥 ASEGURAR QUE modoConfig.espacial EXISTE
             if (!this._configuracion.modoConfig.espacial) {
                 this._configuracion.modoConfig.espacial = {
                     permitirIgnorar: true,
@@ -561,7 +651,6 @@ class TutorNeuro extends Vigia {
                 console.log('🔥 modoConfig.espacial creado automáticamente');
             }
             
-            // 🔥 ASEGURAR QUE this._configuracion.espacial EXISTE
             if (!this._configuracion.espacial) {
                 this._configuracion.espacial = {
                     activo: false,
@@ -611,7 +700,6 @@ class TutorNeuro extends Vigia {
                 this._configuracion.modoConfig.espacial.modoJeroglifico = false;
             }
             
-            // Cargar progreso espacial guardado
             const espacialGuardado = localStorage.getItem('pipeline_espacial_progreso');
             if (espacialGuardado) {
                 try {
@@ -624,7 +712,6 @@ class TutorNeuro extends Vigia {
             }
         } catch (e) {
             console.warn('⚠️ Error inicializando modo espacial:', e);
-            // Asegurar que el modo espacial no cause errores
             if (!this._configuracion.espacial) {
                 this._configuracion.espacial = { activo: false, idiomaJeroglifico: false };
             }
@@ -645,7 +732,7 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // INICIALIZAR MICRO-OBJETIVOS - V8.1 CORREGIDO
+    // INICIALIZAR MICRO-OBJETIVOS - V8.5 CORREGIDO
     // ============================================================
     _inicializarMicroObjetivos() {
         const objetivosGuardados = localStorage.getItem('pipeline_micro_objetivos');
@@ -663,7 +750,6 @@ class TutorNeuro extends Vigia {
     }
 
     _generarMicroObjetivosIniciales() {
-        // 🔥 USAR this._configuracion.espacial?.activo para determinar si es jeroglífico
         const esJeroglifico = this._configuracion.espacial?.activo || this._esJeroglifico(this._obtenerIdiomaActual());
         const micros = [
             { id: 'micro_1', titulo: 'Completa 5 frases', descripcion: 'Estudia y completa 5 frases en el módulo de estudio', completado: false, recompensa: 5, tipo: 'frases', meta: 5, modulo: 'study' },
@@ -671,7 +757,6 @@ class TutorNeuro extends Vigia {
             { id: 'micro_3', titulo: 'Estudia 10 minutos', descripcion: 'Dedica 10 minutos continuos al estudio', completado: false, recompensa: 3, tipo: 'tiempo', meta: 600, modulo: 'study' }
         ];
         
-        // Si es jeroglífico, añadir micro-objetivos espaciales
         if (esJeroglifico) {
             micros.push(
                 { id: 'micro_4', titulo: 'Estudia un carácter', descripcion: 'Aprende un nuevo carácter en el modo espacial', completado: false, recompensa: 8, tipo: 'caracter', meta: 1, modulo: 'caracteres' },
@@ -687,7 +772,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // CARGAR CONFIGURACIÓN PERSISTIDA
     // ============================================================
-
     _cargarConfiguracionPersistida() {
         try {
             const modoGuardado = localStorage.getItem('pipeline_tutor_modo');
@@ -702,7 +786,6 @@ class TutorNeuro extends Vigia {
                 this._intervaloMinimoIntervencion = this._configuracion.tiempoEntreIntervenciones * 1000;
             }
             
-            // Cargar configuración espacial
             const espacialConfig = JSON.parse(localStorage.getItem('pipeline_espacial_config') || 'null');
             if (espacialConfig) {
                 this._configuracion.espacial = { ...this._configuracion.espacial, ...espacialConfig };
@@ -715,7 +798,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // INICIALIZACIÓN SEGURA CON REINTENTOS
     // ============================================================
-
     _inicializarSeguro() {
         this._intentarInicializar();
         
@@ -753,13 +835,11 @@ class TutorNeuro extends Vigia {
             this._tutorInitDone = true;
             this._core = window.uiCore || null;
             
-            // Vincular con Centinela
             if (window.centinela) {
                 this._centinela = window.centinela;
                 console.log('🔗 TutorNeuro: Vinculado con Centinela exitosamente');
             }
             
-            // Verificar si es idioma jeroglífico y activar modo espacial
             const idioma = this._obtenerIdiomaActual();
             const esJeroglifico = this._esJeroglifico(idioma);
             if (esJeroglifico) {
@@ -768,26 +848,322 @@ class TutorNeuro extends Vigia {
                 console.log('🌌 Modo Espacial ACTIVADO para:', idioma);
             }
             
-            console.log('🧠 Tutor Neuro V8.1: Inicializado correctamente (MAESTRÍA ABSOLUTA - TUTOR ESPACIAL CORREGIDO)');
+            console.log('🧠 Tutor Neuro V8.5: Inicializado correctamente (REFRESCO AUTOMÁTICO OBLIGATORIO)');
             console.log(`   📊 ${this._intervencionesPendientes.length} intervenciones pendientes`);
             console.log(`   📌 Modo: ${this._modoActual}`);
             console.log(`   🔥 Guía proactiva: ${this._configuracion.guiaProactiva.activa ? '✅ ACTIVADA' : '❌ DESACTIVADA'}`);
             console.log(`   🎯 Micro-objetivos: ${this._mapaAprendizaje.microObjetivos.filter(m => !m.completado).length} pendientes`);
             console.log(`   🧠 Neuro-monitoreo: ${this._centinela ? '✅ ACTIVO' : '❌ NO DISPONIBLE'}`);
             console.log(`   🌌 Modo Espacial: ${this._configuracion.espacial.activo ? '✅ ACTIVO' : '❌ INACTIVO'}`);
+            console.log(`   🔄 Refresco automático: cada ${this._intervaloRefrescoMs / 1000} segundos (OBLIGATORIO)`);
+            console.log(`   🔄 Forzar análisis al entrar: ${this._forzarAnalisisPendiente ? '✅ PENDIENTE' : '❌ NO PENDIENTE'}`);
+            
+            // ============================================================
+            // INICIAR REFRESCO AUTOMÁTICO OBLIGATORIAMENTE
+            // ============================================================
+            this._iniciarRefrescoAutomatico();
+            
+            // ============================================================
+            // FORZAR ANÁLISIS AL ENTRAR (SIMULA CLICK EN "Forzar Análisis")
+            // ============================================================
+            if (this._forzarAnalisisPendiente && !this._analisisInicialEjecutado) {
+                console.log('🧠 [FORZAR ANÁLISIS] Ejecutando análisis inicial automático (simula click en "Forzar Análisis")...');
+                setTimeout(async () => {
+                    try {
+                        await this.forzarAnalisis();
+                        this._forzarAnalisisPendiente = false;
+                        this._analisisInicialEjecutado = true;
+                        this._guardarEstadoEnLocalStorage();
+                        console.log('✅ [FORZAR ANÁLISIS] Análisis inicial completado automáticamente');
+                    } catch (e) {
+                        console.warn('⚠️ [FORZAR ANÁLISIS] Error en análisis inicial:', e);
+                        // Reintentar después de 3 segundos
+                        setTimeout(async () => {
+                            try {
+                                await this.forzarAnalisis();
+                                this._forzarAnalisisPendiente = false;
+                                this._analisisInicialEjecutado = true;
+                                this._guardarEstadoEnLocalStorage();
+                                console.log('✅ [FORZAR ANÁLISIS] Análisis inicial completado (reintento)');
+                            } catch (e2) {
+                                console.warn('⚠️ [FORZAR ANÁLISIS] Error en reintento:', e2);
+                            }
+                        }, 3000);
+                    }
+                }, 1500);
+            }
+            
+            // ============================================================
+            // REFRESCAR INMEDIATAMENTE DESPUÉS DE INICIALIZAR
+            // ============================================================
+            setTimeout(() => {
+                console.log('🔄 Refresco inicial automático...');
+                this._refrescarDashboardAutomatico();
+            }, 500);
+            
+            // Refrescar de nuevo después de 2 segundos
+            setTimeout(() => {
+                console.log('🔄 Refresco de seguridad después de inicialización...');
+                this._refrescarDashboardAutomatico();
+            }, 2000);
+            
+            // Refrescar de nuevo después de 5 segundos para datos perezosos
+            setTimeout(() => {
+                console.log('🔄 Refresco de seguridad (datos perezosos)...');
+                this._refrescarDashboardAutomatico();
+            }, 5000);
             
             window.dispatchEvent(new CustomEvent('tutorNeuroInicializado', {
-                detail: { initDone: true, modo: this._modoActual, version: '8.1', espacial: this._configuracion.espacial.activo }
+                detail: { initDone: true, modo: this._modoActual, version: '8.5', espacial: this._configuracion.espacial.activo }
             }));
+            
         } catch (error) {
             console.warn('⚠️ TutorNeuro: Error en inicialización:', error.message);
         }
     }
 
     // ============================================================
-    // INICIALIZAR REGLAS DE INTERVENCIÓN - V8.1 CON REGLAS ESPACIALES
+    // INICIAR REFRESCO AUTOMÁTICO - OBLIGATORIO
     // ============================================================
+    _iniciarRefrescoAutomatico() {
+        // Siempre reiniciar el refresco automático
+        if (this._intervaloRefresco) {
+            clearInterval(this._intervaloRefresco);
+            this._intervaloRefresco = null;
+        }
+        
+        this._refrescoActivo = true;
+        
+        // Registrar eventos de refresco (si no están registrados)
+        this._registrarEventosRefresco();
+        
+        // Iniciar intervalo de refresco
+        this._intervaloRefresco = setInterval(() => {
+            this._refrescarDashboardAutomatico();
+        }, this._intervaloRefrescoMs);
+        
+        console.log(`🔄 Refresco automático OBLIGATORIO iniciado (cada ${this._intervaloRefrescoMs / 1000}s)`);
+    }
 
+    // ============================================================
+    // REGISTRAR EVENTOS DE REFRESCO - TODOS
+    // ============================================================
+    _registrarEventosRefresco() {
+        for (const evento of this._eventosRefresco) {
+            // Remover listeners previos para evitar duplicados
+            window.removeEventListener(evento, this._handleEventoRefresco);
+            // Agregar nuevo listener
+            window.addEventListener(evento, this._handleEventoRefresco.bind(this));
+        }
+        console.log(`📡 ${this._eventosRefresco.length} eventos de refresco registrados`);
+    }
+
+    // ============================================================
+    // MANEJADOR DE EVENTOS DE REFRESCO
+    // ============================================================
+    _handleEventoRefresco(event) {
+        const eventoNombre = event.type;
+        console.log(`🔄 [${eventoNombre}] Refrescando dashboard automáticamente...`);
+        
+        // Registrar métrica por evento
+        if (!this._metricasRefresco.refrescosPorEvento[eventoNombre]) {
+            this._metricasRefresco.refrescosPorEvento[eventoNombre] = 0;
+        }
+        this._metricasRefresco.refrescosPorEvento[eventoNombre]++;
+        
+        // Refrescar inmediatamente
+        this._refrescarDashboardAutomatico();
+    }
+
+    // ============================================================
+    // REFRESCAR DASHBOARD AUTOMÁTICO - CORREGIDO
+    // ============================================================
+    async _refrescarDashboardAutomatico() {
+        if (!this._tutorInitDone) {
+            console.log('⏳ Tutor no inicializado, omitiendo refresco');
+            return;
+        }
+        
+        if (this._refrescando) {
+            this._refrescosPendientes++;
+            console.log(`⏳ Refresco en curso, encolando (${this._refrescosPendientes} pendientes)`);
+            return;
+        }
+        
+        const inicio = Date.now();
+        this._refrescando = true;
+        
+        try {
+            // Verificar si el contenedor del dashboard existe en el DOM
+            const container = document.getElementById('tutorFullContainer');
+            if (!container) {
+                console.log('📭 Contenedor del tutor no visible, omitiendo refresco');
+                this._refrescando = false;
+                return;
+            }
+            
+            // Siempre actualizar contexto, sin importar el módulo actual
+            await this._actualizarContextoUsuario();
+            await this._actualizarEstadisticasAvanzadas();
+            await this._actualizarProgresoEspacial();
+            
+            // Re-renderizar dashboard SIEMPRE
+            this._mostrarDashboardTutorCompleto();
+            
+            // Actualizar badge
+            this._actualizarBadgeTutor();
+            
+            // Actualizar indicador de actividad
+            if (this._core && typeof this._core.actualizarIndicadores === 'function') {
+                this._core.actualizarIndicadores();
+            }
+            
+            // Forzar actualización del dashboard principal también
+            if (window.UIDashboard && typeof window.UIDashboard._cargarDashboardInicial === 'function') {
+                try {
+                    window.UIDashboard._cargarDashboardInicial();
+                } catch (e) {
+                    console.warn('⚠️ Error actualizando dashboard principal:', e);
+                }
+            }
+            
+            // Guardar estado en localStorage
+            this._guardarEstadoEnLocalStorage();
+            
+            // Métricas
+            const duracion = Date.now() - inicio;
+            this._metricasRefresco.totalRefrescos++;
+            this._metricasRefresco.ultimoRefresco = new Date().toISOString();
+            this._metricasRefresco.tiempoTotalMs += duracion;
+            this._metricasRefresco.promedioMs = Math.round(this._metricasRefresco.tiempoTotalMs / this._metricasRefresco.totalRefrescos);
+            
+            // Procesar refrescos pendientes
+            if (this._refrescosPendientes > 0) {
+                const pendientes = this._refrescosPendientes;
+                this._refrescosPendientes = 0;
+                console.log(`🔄 Procesando ${pendientes} refrescos pendientes...`);
+                // No llamar recursivamente para evitar bucles
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Error en refresco automático:', error.message);
+        } finally {
+            this._refrescando = false;
+            this._ultimoRefresco = Date.now();
+        }
+    }
+
+    // ============================================================
+    // FORZAR REFRESCO MANUALMENTE (MÉTODO PÚBLICO)
+    // ============================================================
+    async forzarRefresco() {
+        console.log('🔄 Forzando refresco manual del dashboard...');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('🔄 Refrescando dashboard...', 'info');
+        }
+        
+        // Forzar actualización completa
+        await this._actualizarContextoUsuario();
+        await this._actualizarEstadisticasAvanzadas();
+        await this._actualizarProgresoEspacial();
+        this._mostrarDashboardTutorCompleto();
+        this._actualizarBadgeTutor();
+        this._guardarEstadoEnLocalStorage();
+        
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('✅ Dashboard actualizado', 'success');
+        }
+        
+        console.log('✅ Refresco manual completado');
+    }
+
+    // ============================================================
+    // FORZAR ANÁLISIS (SIMULA CLICK EN "Forzar Análisis")
+    // ============================================================
+    async forzarAnalisis() {
+        console.log('🧠 [FORZAR ANÁLISIS] Ejecutando análisis completo (simula click en "Forzar Análisis")...');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('🧠 Forzando análisis profundo...', 'info');
+        }
+        
+        try {
+            await this._actualizarContextoUsuario();
+            await this._construirMapaAprendizaje();
+            await this._actualizarEstadisticasAvanzadas();
+            await this._actualizarProgresoEspacial();
+            this._mostrarDashboardTutorCompleto();
+            this._guardarEstadoEnLocalStorage();
+            
+            // Forzar actualización del dashboard principal
+            if (window.UIDashboard && typeof window.UIDashboard._cargarDashboardInicial === 'function') {
+                try {
+                    window.UIDashboard._cargarDashboardInicial();
+                } catch (e) {
+                    console.warn('⚠️ Error actualizando dashboard principal:', e);
+                }
+            }
+            
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('✅ Análisis completado', 'success');
+            }
+            
+            console.log('✅ [FORZAR ANÁLISIS] Análisis completado');
+        } catch (error) {
+            console.error('❌ Error en análisis:', error);
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('❌ Error en el análisis', 'error');
+            }
+            throw error;
+        }
+    }
+
+    // ============================================================
+    // OBTENER MÉTRICAS DE REFRESCO (MÉTODO PÚBLICO)
+    // ============================================================
+    getMetricasRefresco() {
+        return { ...this._metricasRefresco };
+    }
+
+    // ============================================================
+    // AJUSTAR INTERVALO DE REFRESCO (MÉTODO PÚBLICO)
+    // ============================================================
+    setIntervaloRefresco(ms) {
+        if (ms < 3000) {
+            console.warn('⚠️ Intervalo mínimo recomendado: 3000ms');
+            ms = 3000;
+        }
+        this._intervaloRefrescoMs = ms;
+        
+        if (this._intervaloRefresco) {
+            clearInterval(this._intervaloRefresco);
+            this._intervaloRefresco = setInterval(() => {
+                this._refrescarDashboardAutomatico();
+            }, this._intervaloRefrescoMs);
+        }
+        
+        console.log(`🔄 Intervalo de refresco ajustado a ${ms / 1000}s`);
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast(`🔄 Refresco automático: ${ms / 1000}s`, 'info');
+        }
+    }
+
+    // ============================================================
+    // OBTENER INTERVENCIONES PENDIENTES (MÉTODO PÚBLICO)
+    // ============================================================
+    getIntervencionesPendientes() {
+        return this._intervencionesPendientes || [];
+    }
+
+    // ============================================================
+    // OBTENER SIGUIENTE TEMA (MÉTODO PÚBLICO)
+    // ============================================================
+    getSiguienteTema() {
+        return this._contextoUsuario?.temas?.siguienteTema || null;
+    }
+
+    // ============================================================
+    // INICIALIZAR REGLAS DE INTERVENCIÓN - V8.5
+    // ============================================================
     _inicializarReglas() {
         this._reglasIntervencion = {
             'fallos_consecutivos': {
@@ -1075,9 +1451,6 @@ class TutorNeuro extends Vigia {
                     return base;
                 }
             },
-            // ============================================================
-            // REGLAS ESPACIALES - V8.1
-            // ============================================================
             'recomendar_radicales': {
                 id: 'recomendar_radicales',
                 nombre: 'Recomendación de Radicales',
@@ -1150,21 +1523,17 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // GENERAR RECOMENDACIÓN DE MÓDULO - V8.1 CON ESPACIAL
+    // GENERAR RECOMENDACIÓN DE MÓDULO - V8.5
     // ============================================================
-
     _generarRecomendacionModulo(contexto) {
-        let mensaje = '🧠 **Tutor Neuro: Recomendación Personalizada V8.1**\n\n';
+        let mensaje = '🧠 **Tutor Neuro: Recomendación Personalizada V8.5**\n\n';
         let puntuaciones = {};
         
         const esJeroglifico = this._esJeroglifico(contexto.idioma);
         const esTonal = this._esTonal(contexto.idioma);
 
-        // ============================================================
-        // RECOMENDACIONES ESPACIALES (JEROGLÍFICOS)
-        // ============================================================
+        // Recomendaciones espaciales
         if (esJeroglifico && this._configuracion.espacial.activo) {
-            // Radicales
             const radicalesAprendidos = this._mapaAprendizaje.espacial.radicalesConocidos?.length || 0;
             if (radicalesAprendidos < 10) {
                 const restantes = 10 - radicalesAprendidos;
@@ -1177,7 +1546,6 @@ class TutorNeuro extends Vigia {
                 };
             }
 
-            // Caracteres
             const caracteresEstudiados = contexto.caracteres?.caracteresEstudiados || 0;
             if (caracteresEstudiados < 20) {
                 const restantes = 20 - caracteresEstudiados;
@@ -1190,7 +1558,6 @@ class TutorNeuro extends Vigia {
                 };
             }
 
-            // Escritura
             const trazosPracticados = this._mapaAprendizaje.espacial.trazosPracticados?.length || 0;
             if (trazosPracticados < 20) {
                 puntuaciones.escritura = {
@@ -1202,7 +1569,6 @@ class TutorNeuro extends Vigia {
                 };
             }
 
-            // Composición
             const composiciones = this._mapaAprendizaje.espacial.composicionesEstudiadas?.length || 0;
             if (composiciones < 10) {
                 puntuaciones.composicion = {
@@ -1214,7 +1580,6 @@ class TutorNeuro extends Vigia {
                 };
             }
 
-            // Mnemotecnia
             const historias = this._mapaAprendizaje.espacial.historiasMnemotecnicas?.length || 0;
             if (historias < 5) {
                 puntuaciones.mnemotecnia = {
@@ -1227,9 +1592,7 @@ class TutorNeuro extends Vigia {
             }
         }
 
-        // ============================================================
-        // RECOMENDACIONES ESTÁNDAR
-        // ============================================================
+        // Recomendaciones estándar
         if (contexto.temas.enProgreso > 0) {
             const pct = Math.round(contexto.temas.progresoPromedio || 0);
             puntuaciones.estudiar_tema = {
@@ -1303,7 +1666,6 @@ class TutorNeuro extends Vigia {
             };
         }
 
-        // BIBLIOTECA
         if (contexto.biblioteca.totalHistorias > 0) {
             const pct = Math.round((contexto.biblioteca.leidas / contexto.biblioteca.totalHistorias) * 100);
             const sinLeer = contexto.biblioteca.totalHistorias - contexto.biblioteca.leidas;
@@ -1349,7 +1711,6 @@ class TutorNeuro extends Vigia {
             };
         }
 
-        // Micro-objetivos
         const microPendientes = this._mapaAprendizaje.microObjetivos.filter(m => !m.completado);
         if (microPendientes.length > 0 && this._configuracion.microObjetivos.activo) {
             const micro = microPendientes[0];
@@ -1362,9 +1723,6 @@ class TutorNeuro extends Vigia {
             };
         }
 
-        // ============================================================
-        // SELECCIONAR MEJOR RECOMENDACIÓN
-        // ============================================================
         let mejorPuntuacion = 0;
         let mejorOpcion = null;
 
@@ -1375,7 +1733,6 @@ class TutorNeuro extends Vigia {
             }
         }
 
-        // Si no hay recomendaciones, mostrar mensaje por defecto
         if (!mejorOpcion) {
             mensaje += '📚 **Sigue tu ritmo de aprendizaje.**\n\n';
             mensaje += '💡 El Tutor está aquí para ayudarte cuando lo necesites.\n';
@@ -1396,9 +1753,6 @@ class TutorNeuro extends Vigia {
             return mensaje;
         }
 
-        // ============================================================
-        // CONSTRUIR MENSAJE DE RECOMENDACIÓN
-        // ============================================================
         const emojis = {
             'estudiar_tema': '📚',
             'iniciar_tema': '📂',
@@ -1467,7 +1821,6 @@ class TutorNeuro extends Vigia {
 
         mensaje += `💡 **Consejo del Tutor:**\n${consejos[mejorOpcion.key] || 'Sigue tu ritmo de aprendizaje.'}`;
 
-        // Añadir información espacial si está activo
         if (esJeroglifico && this._configuracion.espacial.activo) {
             const radicales = this._mapaAprendizaje.espacial.radicalesConocidos?.length || 0;
             const caracteres = this._mapaAprendizaje.espacial.caracteresAprendidos?.length || 0;
@@ -1491,7 +1844,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // MÉTODOS DE CONFIGURACIÓN DE MODOS
     // ============================================================
-
     _getModoColor(modo) {
         const colores = { 
             'guiado': '#6C5CE7', 
@@ -1525,7 +1877,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // SET MODO CON SINCRONIZACIÓN CON UIConfig
     // ============================================================
-
     setModo(modo) {
         const modosValidos = Object.values(this._MODOS);
         if (!modosValidos.includes(modo)) {
@@ -1541,7 +1892,6 @@ class TutorNeuro extends Vigia {
         this._configuracion.intervencionAuto = modo !== this._MODOS.LIBRE && modo !== this._MODOS.ESPACIAL;
         this._configuracion.nivelInvasividad = modo === this._MODOS.GUIADO ? 'alto' : 'bajo';
         
-        // Activar modo espacial si está disponible y es jeroglífico
         if (modo === this._MODOS.ESPACIAL) {
             const idioma = this._obtenerIdiomaActual();
             if (this._esJeroglifico(idioma)) {
@@ -1553,7 +1903,9 @@ class TutorNeuro extends Vigia {
                 this._modoActual = this._MODOS.FLEXIBLE;
                 this._configuracion.modo = this._MODOS.FLEXIBLE;
                 const core = this._core || window.uiCore;
-                core?.mostrarToast('⚠️ El modo espacial solo está disponible para idiomas jeroglíficos (Chino, Japonés, Coreano)', 'warning');
+                if (core && typeof core.mostrarToast === 'function') {
+                    core.mostrarToast('⚠️ El modo espacial solo está disponible para idiomas jeroglíficos (Chino, Japonés, Coreano)', 'warning');
+                }
                 return this.getModoInfo();
             }
         } else {
@@ -1577,6 +1929,8 @@ class TutorNeuro extends Vigia {
         }
         
         this._actualizarBadgeTutor();
+        // Refrescar inmediatamente después de cambiar modo
+        this._refrescarDashboardAutomatico();
         
         window.dispatchEvent(new CustomEvent('tutorModoCambiado', {
             detail: { 
@@ -1593,14 +1947,16 @@ class TutorNeuro extends Vigia {
         
         const core = this._core || window.uiCore;
         const info = this.getModoInfo();
-        core?.mostrarToast(`🔄 Modo cambiado a ${info.nombre}`, 'info');
-        
-        if (modo === this._MODOS.GUIADO) {
-            core?.mostrarToast('🚀 Modo Guiado: Solo puedes estudiar lo que el Tutor recomienda.', 'warning');
+        if (core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast(`🔄 Modo cambiado a ${info.nombre}`, 'info');
         }
         
-        if (modo === this._MODOS.ESPACIAL) {
-            core?.mostrarToast('🌌 Modo Espacial: Aprendizaje de caracteres con métodos visuales y mnemotécnicos.', 'info');
+        if (modo === this._MODOS.GUIADO && core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast('🚀 Modo Guiado: Solo puedes estudiar lo que el Tutor recomienda.', 'warning');
+        }
+        
+        if (modo === this._MODOS.ESPACIAL && core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast('🌌 Modo Espacial: Aprendizaje de caracteres con métodos visuales y mnemotécnicos.', 'info');
         }
         
         if (window.UIDashboard) {
@@ -1676,7 +2032,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // INICIAR MODO GUIADO CON BLOQUEOS REALES
     // ============================================================
-
     _iniciarModoGuiado() {
         console.log('🚀 Modo Guiado: Activando bloqueos de navegación...');
         
@@ -1700,12 +2055,17 @@ class TutorNeuro extends Vigia {
             const paso = this._getPasoRecomendado();
             if (paso && !paso.completado) {
                 const core = this._core || window.uiCore;
-                core?.mostrarToast(`📌 Modo Guiado: Estudia "${paso.titulo}"`, 'info');
-                core?.irAModulo('study');
+                if (core && typeof core.mostrarToast === 'function') {
+                    core.mostrarToast(`📌 Modo Guiado: Estudia "${paso.titulo}"`, 'info');
+                }
+                if (core && typeof core.irAModulo === 'function') {
+                    core.irAModulo('study');
+                }
             }
         }, 1000);
         
         this._actualizarBadgeTutor();
+        this._refrescarDashboardAutomatico();
         
         const intervencionGuiado = {
             id: 'modo_guiado_activado_' + Date.now(),
@@ -1729,7 +2089,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // RESTAURAR NAVEGACIÓN
     // ============================================================
-
     _restaurarNavegacion() {
         console.log('🔓 Restaurando navegación...');
         this._navegacionBloqueada = false;
@@ -1747,13 +2106,14 @@ class TutorNeuro extends Vigia {
         this._actualizarBadgeTutor();
         
         const core = this._core || window.uiCore;
-        core?.mostrarToast('🔓 Navegación restaurada', 'info');
+        if (core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast('🔓 Navegación restaurada', 'info');
+        }
     }
 
     // ============================================================
     // SOBRESCRIBIR NAVEGACIÓN
     // ============================================================
-
     _overrideNavegacion() {
         if (this._modoActual !== this._MODOS.GUIADO) return;
         if (!window.uiCore) return;
@@ -1772,7 +2132,9 @@ class TutorNeuro extends Vigia {
                 self._mostrarNotificacionBloqueo('navegar_a_modulo', modulo);
                 const paso = self._getPasoRecomendado();
                 if (paso && !paso.completado) {
-                    self._core?.mostrarToast(`📌 Debes estudiar: "${paso.titulo}"`, 'warning');
+                    if (self._core && typeof self._core.mostrarToast === 'function') {
+                        self._core.mostrarToast(`📌 Debes estudiar: "${paso.titulo}"`, 'warning');
+                    }
                     self._originalIrAModulo.call(this, 'study');
                 }
             }
@@ -1796,9 +2158,11 @@ class TutorNeuro extends Vigia {
             if (temaRecomendado && temaRecomendado !== temaId) {
                 self._mostrarNotificacionBloqueo('estudiar_tema_manual');
                 const core = self._core || window.uiCore;
-                if (pasoActual) {
-                    core?.mostrarToast(`📌 Modo Guiado: Debes estudiar "${pasoActual.titulo}"`, 'warning');
-                    core?.irAModulo('study');
+                if (pasoActual && core && typeof core.mostrarToast === 'function') {
+                    core.mostrarToast(`📌 Modo Guiado: Debes estudiar "${pasoActual.titulo}"`, 'warning');
+                }
+                if (core && typeof core.irAModulo === 'function') {
+                    core.irAModulo('study');
                 }
                 return;
             }
@@ -1824,7 +2188,9 @@ class TutorNeuro extends Vigia {
             if (modo !== modoRecomendado) {
                 self._mostrarNotificacionBloqueo('cambiar_modo_estudio');
                 const core = self._core || window.uiCore;
-                core?.mostrarToast(`📌 Modo Guiado: Usa el modo "${modoRecomendado}"`, 'warning');
+                if (core && typeof core.mostrarToast === 'function') {
+                    core.mostrarToast(`📌 Modo Guiado: Usa el modo "${modoRecomendado}"`, 'warning');
+                }
                 return;
             }
             
@@ -1907,7 +2273,9 @@ class TutorNeuro extends Vigia {
         const mensaje = mensajes[accion] || `🚫 Modo Guiado: La acción "${accion}" no está permitida.`;
         
         const core = this._core || window.uiCore;
-        core?.mostrarToast(mensaje, 'warning');
+        if (core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast(mensaje, 'warning');
+        }
         
         this._agregarIntervencion({
             id: 'bloqueo_' + Date.now(),
@@ -1927,9 +2295,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // INICIALIZACIÓN PRINCIPAL - V8.1 CORREGIDO
+    // INICIALIZACIÓN PRINCIPAL - V8.5 CORREGIDO
     // ============================================================
-
     async initTutor() {
         if (this._tutorInitDone) return this;
         if (this._INICIALIZANDO_TUTOR) {
@@ -1938,9 +2305,8 @@ class TutorNeuro extends Vigia {
         }
         
         this._INICIALIZANDO_TUTOR = true;
-        console.log('🧠 Iniciando Tutor de Aprendizaje NeuroAdaptativo V8.1 (CORREGIDO)...');
+        console.log('🧠 Iniciando Tutor de Aprendizaje NeuroAdaptativo V8.5 (CORREGIDO)...');
         
-        // 🔥 ASEGURAR QUE modoConfig.espacial EXISTE ANTES DE CUALQUIER COSA
         if (!this._configuracion.modoConfig.espacial) {
             this._configuracion.modoConfig.espacial = {
                 permitirIgnorar: true,
@@ -1956,7 +2322,6 @@ class TutorNeuro extends Vigia {
             console.log('🔥 modoConfig.espacial creado en initTutor');
         }
         
-        // 🔥 ASEGURAR QUE this._configuracion.espacial EXISTE
         if (!this._configuracion.espacial) {
             this._configuracion.espacial = {
                 activo: false,
@@ -2036,17 +2401,46 @@ class TutorNeuro extends Vigia {
                 
                 setTimeout(() => this._mostrarBienvenida(), 5000);
                 
-                // 🔥 RENDERIZAR EL DASHBOARD DE ÉLITE V8.1
+                // Iniciar refresco automático OBLIGATORIO
+                this._iniciarRefrescoAutomatico();
+                
+                // FORZAR ANÁLISIS AL ENTRAR (SIMULA CLICK EN "Forzar Análisis")
+                if (this._forzarAnalisisPendiente && !this._analisisInicialEjecutado) {
+                    console.log('🧠 [FORZAR ANÁLISIS] Ejecutando análisis inicial automático (simula click en "Forzar Análisis")...');
+                    setTimeout(async () => {
+                        try {
+                            await this.forzarAnalisis();
+                            this._forzarAnalisisPendiente = false;
+                            this._analisisInicialEjecutado = true;
+                            this._guardarEstadoEnLocalStorage();
+                            console.log('✅ [FORZAR ANÁLISIS] Análisis inicial completado automáticamente');
+                        } catch (e) {
+                            console.warn('⚠️ [FORZAR ANÁLISIS] Error en análisis inicial:', e);
+                        }
+                    }, 2000);
+                }
+                
+                // Refrescar inmediatamente después de la inicialización
                 setTimeout(() => {
-                    this._mostrarDashboardTutorCompleto();
+                    console.log('🔄 Refresco inicial después de initTutor...');
+                    this._refrescarDashboardAutomatico();
                 }, 1000);
                 
+                // Refrescar de nuevo después de 3 segundos para datos perezosos
+                setTimeout(() => {
+                    console.log('🔄 Refresco de seguridad después de initTutor...');
+                    this._refrescarDashboardAutomatico();
+                }, 3000);
+                
                 this._INICIALIZANDO_TUTOR = false;
-                console.log('✅ Tutor de Aprendizaje NeuroAdaptativo V8.1 inicializado correctamente');
+                console.log('✅ Tutor de Aprendizaje NeuroAdaptativo V8.5 inicializado correctamente');
                 console.log('   🧠 Neuro-monitoreo: ' + (this._centinela ? '✅ ACTIVO' : '❌ NO DISPONIBLE'));
                 console.log('   🎯 Micro-objetivos: ' + this._mapaAprendizaje.microObjetivos.filter(m => !m.completado).length + ' pendientes');
                 console.log('   📚 Biblioteca integrada: ' + this._contextoUsuario.biblioteca.totalHistorias + ' historias disponibles');
                 console.log('   🌌 Modo Espacial: ' + (this._configuracion.espacial.activo ? '✅ ACTIVO' : '❌ INACTIVO'));
+                console.log('   🔄 Refresco automático OBLIGATORIO: cada ' + this._intervaloRefrescoMs / 1000 + ' segundos');
+                console.log('   🔄 Refresco por eventos: ' + this._eventosRefresco.length + ' eventos registrados');
+                console.log('   🔄 [FORZAR ANÁLISIS] Análisis automático al entrar: ' + (this._analisisInicialEjecutado ? '✅ EJECUTADO' : '❌ PENDIENTE'));
                 
             } catch (error) {
                 console.error('❌ Error inicializando Tutor Neuro:', error);
@@ -2060,7 +2454,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // ACTUALIZAR PROGRESO ESPACIAL
     // ============================================================
-
     async _actualizarProgresoEspacial() {
         try {
             const idioma = this._obtenerIdiomaActual();
@@ -2070,17 +2463,14 @@ class TutorNeuro extends Vigia {
                 return;
             }
             
-            // Obtener caracteres estudiados
             const caracteresData = this._contextoUsuario.caracteres || {};
             const caracteresEstudiados = caracteresData.caracteresEstudiados || 0;
             const caracteresDominados = caracteresData.caracteresDominados || 0;
             
-            // Actualizar mapa espacial
             this._mapaAprendizaje.espacial.caracteresAprendidos = this._mapaAprendizaje.espacial.caracteresAprendidos || [];
             this._mapaAprendizaje.espacial.caracteresDominados = caracteresDominados;
             this._mapaAprendizaje.espacial.caracteresEnProgreso = caracteresEstudiados - caracteresDominados;
             
-            // Guardar progreso
             localStorage.setItem('pipeline_espacial_progreso', JSON.stringify(this._mapaAprendizaje.espacial));
             
             console.log(`🌌 Progreso espacial: ${caracteresDominados} caracteres dominados, ${this._mapaAprendizaje.espacial.radicalesConocidos?.length || 0} radicales`);
@@ -2091,9 +2481,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // RECOMENDAR ESPACIAL - V8.1
+    // RECOMENDAR ESPACIAL - V8.5
     // ============================================================
-
     async _recomendarEspacial() {
         if (!this._configuracion.espacial.activo) return;
         if (this._modoActual === this._MODOS.LIBRE) return;
@@ -2106,7 +2495,6 @@ class TutorNeuro extends Vigia {
         const radicalesConocidos = this._mapaAprendizaje.espacial.radicalesConocidos?.length || 0;
         const caracteresAprendidos = this._mapaAprendizaje.espacial.caracteresAprendidos?.length || 0;
         
-        // Verificar si ya hay una recomendación espacial reciente
         const ultimaRecomendacion = this._historialIntervenciones
             .filter(i => i.reglaId === 'recomendar_radicales' || 
                         i.reglaId === 'recomendar_composicion' ||
@@ -2181,7 +2569,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // SINCRONIZAR CON LEARNING PATH
     // ============================================================
-
     async _sincronizarConLearningPath() {
         try {
             if (!window.LearningPath) {
@@ -2254,11 +2641,10 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // ACTUALIZAR CONTEXTO DEL USUARIO - V8.1 CON ESPACIAL
+    // ACTUALIZAR CONTEXTO DEL USUARIO - V8.5
     // ============================================================
-
     async _actualizarContextoUsuario() {
-        console.log('🧠 Actualizando contexto del usuario (análisis profundo V8.1)...');
+        console.log('🧠 Actualizando contexto del usuario (análisis profundo V8.5)...');
         
         try {
             const usuario = await db.getUsuario();
@@ -2267,7 +2653,6 @@ class TutorNeuro extends Vigia {
             const progreso = await db.obtenerTodoProgreso();
             const idiomaActual = this._obtenerIdiomaActual();
             
-            // DATOS BÁSICOS
             const fechas = progreso.map(p => new Date(p.ultimoRepaso).toDateString());
             const uniqueFechas = [...new Set(fechas)].sort();
             let racha = 0;
@@ -2277,9 +2662,6 @@ class TutorNeuro extends Vigia {
                 if (diff === racha) { racha++; } else { break; }
             }
             
-            // ============================================================
-            // OBTENER ESTADO DE CENTINELA DE FORMA SEGURA
-            // ============================================================
             let neuroData = { fatiga: 0, eficiencia: 0, concentracion: 0.7 };
             if (this._centinela) {
                 try {
@@ -2321,7 +2703,6 @@ class TutorNeuro extends Vigia {
                 sesionesHoy: this._calcularSesionesHoy()
             };
             
-            // ANÁLISIS DE TEMAS
             const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActual);
             let temasCompletados = 0, temasEnProgreso = 0, temasSinIniciar = 0, progresoPromedio = 0, temasEstancados = [], temasPorNivel = {};
             
@@ -2376,7 +2757,6 @@ class TutorNeuro extends Vigia {
                 temasRecomendadosPrioridad: temasPendientes.slice(0, 3)
             };
             
-            // ANÁLISIS DE ELIPSE
             let elipseData = { activa: false, totalOndas: 0, ondasCompletadas: 0, ondasPendientes: 0, ondasEnCurso: 0, siguienteOnda: null, progreso: 0, ultimaOndaGenerada: null, fechaUltimaOnda: null, ondasPorNivel: {}, palabrasNuevasTotales: 0, palabrasConsolidadas: 0, ondasRecomendadas: [], necesitaNuevaOnda: false };
             
             if (window.modoElipse) {
@@ -2406,7 +2786,6 @@ class TutorNeuro extends Vigia {
             }
             this._contextoUsuario.elipse = elipseData;
             
-            // ANÁLISIS DE ONDAS CRUZADAS
             let ondasCruzadasData = { grafoSize: 0, ondasTotales: 0, interferencias: 0, temasConectados: [], conexionesFuertes: 0, conexionesDebiles: 0, ultimaOndaCruzada: null, fechaUltimaOndaCruzada: null, ondasCruzadasPendientes: 0, recomendarOndaCruzada: false };
             
             if (window.modoOndasCruzadas) {
@@ -2441,7 +2820,6 @@ class TutorNeuro extends Vigia {
             }
             this._contextoUsuario.ondasCruzadas = ondasCruzadasData;
             
-            // ANÁLISIS DE CARACTERES - V8.1 CON ESPACIAL
             let caracteresData = { 
                 totalCaracteres: 0, 
                 caracteresEstudiados: 0, 
@@ -2463,26 +2841,20 @@ class TutorNeuro extends Vigia {
             const esJeroglifico = this._esJeroglifico(idiomaActual);
             if (esJeroglifico && this._configuracion.espacial.activo) {
                 try {
-                    // Obtener radicales aprendidos
                     const radicalesData = this._mapaAprendizaje.espacial.radicalesConocidos || [];
                     caracteresData.radicalesAprendidos = radicalesData;
                     
-                    // Obtener trazos practicados
                     const trazosData = this._mapaAprendizaje.espacial.trazosPracticados || [];
                     caracteresData.trazosPracticados = trazosData.length;
                     
-                    // Obtener composiciones
                     const composicionesData = this._mapaAprendizaje.espacial.composicionesEstudiadas || [];
                     caracteresData.composiciones = composicionesData;
                     
-                    // Obtener historias mnemotécnicas
                     const historiasData = this._mapaAprendizaje.espacial.historiasMnemotecnicas || [];
                     caracteresData.historiasMnemotecnicas = historiasData;
                     
-                    // Nivel de radicales
                     caracteresData.nivelRadical = this._mapaAprendizaje.espacial.nivelRadical || 'básico';
                     
-                    // Caracteres del idioma
                     if (window.UICaracteres) {
                         try {
                             const familias = await db.obtenerFamiliasCaracteres(idiomaActual);
@@ -2518,40 +2890,110 @@ class TutorNeuro extends Vigia {
             }
             this._contextoUsuario.caracteres = caracteresData;
             
-            // ANÁLISIS DE TONOS
-            let tonosData = { totalHistorias: 0, historiasLeidas: 0, historiasGuardadas: 0, historiasCompletadas: 0, caracterActual: null, tieneHistoriasPendientes: false, tonosPracticados: [], progresoTonos: 0, necesitaPracticarTonos: false, ultimaHistoriaTonal: null };
+            // ============================================================
+            // TONOS - CORREGIDO: Verificar existencia de window.UITonos y sus métodos
+            // ============================================================
+            let tonosData = { 
+                totalHistorias: 0, 
+                historiasLeidas: 0, 
+                historiasGuardadas: 0, 
+                historiasCompletadas: 0, 
+                caracterActual: null, 
+                tieneHistoriasPendientes: false, 
+                tonosPracticados: [], 
+                progresoTonos: 0, 
+                necesitaPracticarTonos: false, 
+                ultimaHistoriaTonal: null 
+            };
             
             const esTonal = this._esTonal(idiomaActual);
             if (esTonal && window.UITonos) {
                 try {
-                    await window.UITonos._cargarEstadoPorIdioma(idiomaActual);
-                    const totalHistorias = Object.values(window.UITonos._historiasPorCaracter || {}).reduce((acc, arr) => acc + arr.length, 0);
-                    const leidas = window.UITonos._historiasLeidas?.size || 0;
-                    const guardadas = Object.values(window.UITonos._historiasGuardadas || {}).filter(v => v).length;
-                    const completadas = Object.values(window.UITonos._historiasPorCaracter || {}).reduce((acc, arr) => acc + arr.filter(h => h.completada).length, 0);
-                    const tonosPracticados = new Set();
-                    for (const key in window.UITonos._historiasPorCaracter || {}) {
-                        for (const h of window.UITonos._historiasPorCaracter[key]) {
-                            if (h.tono) tonosPracticados.add(h.tono);
+                    // Verificar que el método existe antes de llamarlo
+                    if (typeof window.UITonos._cargarEstadoPorIdioma === 'function') {
+                        await window.UITonos._cargarEstadoPorIdioma(idiomaActual);
+                    } else {
+                        console.warn('⚠️ window.UITonos._cargarEstadoPorIdioma no es una función, usando datos disponibles');
+                        // Intentar usar datos existentes de localStorage
+                        try {
+                            const tonosStorage = localStorage.getItem('pipeline_tonos_estado');
+                            if (tonosStorage) {
+                                const tonosDataStorage = JSON.parse(tonosStorage);
+                                if (tonosDataStorage && tonosDataStorage[idiomaActual]) {
+                                    const data = tonosDataStorage[idiomaActual];
+                                    tonosData.totalHistorias = data.totalHistorias || 0;
+                                    tonosData.historiasLeidas = data.historiasLeidas || 0;
+                                    tonosData.historiasGuardadas = data.historiasGuardadas || 0;
+                                    tonosData.historiasCompletadas = data.historiasCompletadas || 0;
+                                    tonosData.caracterActual = data.caracterActual || null;
+                                    tonosData.tonosPracticados = data.tonosPracticados || [];
+                                    tonosData.progresoTonos = data.progresoTonos || 0;
+                                    tonosData.necesitaPracticarTonos = data.necesitaPracticarTonos || false;
+                                    console.log('📌 Datos de tonos cargados desde localStorage');
+                                }
+                            }
+                        } catch (storageError) {
+                            console.warn('⚠️ Error cargando datos de tonos desde localStorage:', storageError);
                         }
                     }
-                    tonosData = {
-                        totalHistorias: totalHistorias,
-                        historiasLeidas: leidas,
-                        historiasGuardadas: guardadas,
-                        historiasCompletadas: completadas,
-                        caracterActual: window.UITonos._caracterActual,
-                        tieneHistoriasPendientes: totalHistorias > leidas,
-                        tonosPracticados: Array.from(tonosPracticados),
-                        progresoTonos: totalHistorias > 0 ? Math.round((leidas / totalHistorias) * 100) : 0,
-                        necesitaPracticarTonos: totalHistorias < 3 && leidas < 3,
-                        ultimaHistoriaTonal: null
-                    };
-                } catch (e) { console.warn('⚠️ Error analizando tonos:', e); }
+                    
+                    // Si _historiasPorCaracter existe, usarlo para obtener datos adicionales
+                    if (window.UITonos._historiasPorCaracter) {
+                        const totalHistorias = Object.values(window.UITonos._historiasPorCaracter || {}).reduce((acc, arr) => acc + arr.length, 0);
+                        if (totalHistorias > 0) {
+                            const leidas = window.UITonos._historiasLeidas?.size || 0;
+                            const guardadas = Object.values(window.UITonos._historiasGuardadas || {}).filter(v => v).length;
+                            const completadas = Object.values(window.UITonos._historiasPorCaracter || {}).reduce((acc, arr) => acc + arr.filter(h => h.completada).length, 0);
+                            const tonosPracticados = new Set();
+                            for (const key in window.UITonos._historiasPorCaracter || {}) {
+                                for (const h of window.UITonos._historiasPorCaracter[key]) {
+                                    if (h.tono) tonosPracticados.add(h.tono);
+                                }
+                            }
+                            tonosData = {
+                                totalHistorias: totalHistorias || tonosData.totalHistorias,
+                                historiasLeidas: leidas || tonosData.historiasLeidas,
+                                historiasGuardadas: guardadas || tonosData.historiasGuardadas,
+                                historiasCompletadas: completadas || tonosData.historiasCompletadas,
+                                caracterActual: window.UITonos._caracterActual || tonosData.caracterActual,
+                                tieneHistoriasPendientes: (totalHistorias || 0) > (leidas || 0),
+                                tonosPracticados: Array.from(tonosPracticados).length > 0 ? Array.from(tonosPracticados) : tonosData.tonosPracticados,
+                                progresoTonos: (totalHistorias || 0) > 0 ? Math.round(((leidas || 0) / (totalHistorias || 1)) * 100) : tonosData.progresoTonos,
+                                necesitaPracticarTonos: (totalHistorias || 0) < 3 && (leidas || 0) < 3,
+                                ultimaHistoriaTonal: tonosData.ultimaHistoriaTonal || null
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Error analizando tonos:', e);
+                    // Mantener los datos predeterminados
+                }
+            } else if (esTonal && !window.UITonos) {
+                console.warn('⚠️ window.UITonos no está disponible, pero el idioma es tonal');
+                // Intentar cargar desde localStorage
+                try {
+                    const tonosStorage = localStorage.getItem('pipeline_tonos_estado');
+                    if (tonosStorage) {
+                        const tonosDataStorage = JSON.parse(tonosStorage);
+                        if (tonosDataStorage && tonosDataStorage[idiomaActual]) {
+                            const data = tonosDataStorage[idiomaActual];
+                            tonosData.totalHistorias = data.totalHistorias || 0;
+                            tonosData.historiasLeidas = data.historiasLeidas || 0;
+                            tonosData.historiasGuardadas = data.historiasGuardadas || 0;
+                            tonosData.historiasCompletadas = data.historiasCompletadas || 0;
+                            tonosData.caracterActual = data.caracterActual || null;
+                            tonosData.tonosPracticados = data.tonosPracticados || [];
+                            tonosData.progresoTonos = data.progresoTonos || 0;
+                            tonosData.necesitaPracticarTonos = data.necesitaPracticarTonos || false;
+                            console.log('📌 Datos de tonos cargados desde localStorage (UITonos no disponible)');
+                        }
+                    }
+                } catch (storageError) {
+                    console.warn('⚠️ Error cargando datos de tonos desde localStorage:', storageError);
+                }
             }
             this._contextoUsuario.tonos = tonosData;
             
-            // ANÁLISIS DE PIPELINE
             const frases = pipeline?.frases || [];
             const frasesCompletadas = frases.filter(f => { const prog = f.progreso || {}; return prog.estado === 'completada' || (prog.rcn || 0) >= 4; }).length;
             const frasesEnCurso = frases.filter(f => { const prog = f.progreso || {}; return prog.rcn > 0 && prog.rcn < 4; }).length;
@@ -2578,7 +3020,6 @@ class TutorNeuro extends Vigia {
                 frasesFuertes: frasesFuertes.slice(0, 5)
             };
             
-            // ANÁLISIS DE BIBLIOTECA
             let bibliotecaData = { 
                 totalHistorias: 0, 
                 leidas: 0, 
@@ -2640,7 +3081,6 @@ class TutorNeuro extends Vigia {
             }
             this._contextoUsuario.biblioteca = bibliotecaData;
             
-            // ANÁLISIS DE PROGRESO
             const progresoGlobal = this._contextoUsuario.temas.progresoPromedio || 0;
             const elipseProgreso = this._contextoUsuario.elipse.progreso || 0;
             const pipelineProgreso = this._contextoUsuario.pipeline.progreso || 0;
@@ -2704,7 +3144,6 @@ class TutorNeuro extends Vigia {
                 tiempoEstimadoSiguienteHito: 0
             };
             
-            // ESTADO COGNITIVO
             const fatiga = neuroData.fatiga || 0;
             const motivacion = Math.min(1, 0.5 + (this._contextoUsuario.racha / 30) * 0.3 + (this._contextoUsuario.temas.completados / 10) * 0.2);
             const concentracion = neuroData.concentracion || Math.max(0.3, 1 - fatiga * 0.7);
@@ -2724,7 +3163,10 @@ class TutorNeuro extends Vigia {
             await this._verificarNuevasRecomendacionesBiblioteca();
             await this._actualizarProgresoEspacial();
             
-            console.log('✅ Contexto del usuario actualizado (análisis profundo V8.1)');
+            // Guardar estado en localStorage después de actualizar contexto
+            this._guardarEstadoEnLocalStorage();
+            
+            console.log('✅ Contexto del usuario actualizado (análisis profundo V8.5)');
             console.log(`   📊 Progreso general: ${progresoGlobal}%`);
             console.log(`   🎯 Recomendación: ${recomendacionPrincipal}`);
             console.log(`   📌 Urgencia: ${urgencia}`);
@@ -2738,9 +3180,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // VERIFICAR LOGROS - V8.1 CORREGIDO
+    // VERIFICAR LOGROS - V8.5 CORREGIDO
     // ============================================================
-
     async _verificarLogros() {
         const logrosDesbloqueados = this._mapaAprendizaje.logrosDesbloqueados || [];
         const nuevosLogros = [];
@@ -2819,9 +3260,6 @@ class TutorNeuro extends Vigia {
                     break;
                 case 'maestro_de_elipse': desbloqueado = this._contextoUsuario.elipse.totalOndas >= 10; break;
                 case 'lector_avido': desbloqueado = this._contextoUsuario.biblioteca.leidas >= 25; break;
-                // ============================================================
-                // LOGROS ESPACIALES - V8.1
-                // ============================================================
                 case 'primer_caracter': 
                     desbloqueado = this._contextoUsuario.caracteres.caracteresEstudiados >= 1; 
                     break;
@@ -2883,9 +3321,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // VERIFICAR NUEVAS RECOMENDACIONES DE BIBLIOTECA - V8.1
+    // VERIFICAR NUEVAS RECOMENDACIONES DE BIBLIOTECA - V8.5
     // ============================================================
-
     async _verificarNuevasRecomendacionesBiblioteca() {
         try {
             const biblioteca = this._contextoUsuario.biblioteca;
@@ -2928,7 +3365,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // MÉTODOS AUXILIARES PARA CONTEXTO
     // ============================================================
-
     _calcularTiempoEstudioHoy() {
         try {
             const hoy = new Date().toDateString();
@@ -2981,9 +3417,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // ACTUALIZAR MICRO-OBJETIVOS - V8.1 CON ESPACIAL
+    // ACTUALIZAR MICRO-OBJETIVOS - V8.5
     // ============================================================
-
     async _actualizarMicroObjetivos() {
         if (!this._configuracion.microObjetivos.activo) return;
         
@@ -2993,7 +3428,6 @@ class TutorNeuro extends Vigia {
             const pendientes = microObjetivos.filter(m => !m.completado);
             const esJeroglifico = this._esJeroglifico(this._obtenerIdiomaActual());
             
-            // Verificar micro-objetivos completados
             for (const micro of microObjetivos) {
                 if (micro.completado) continue;
                 let completado = false;
@@ -3049,7 +3483,6 @@ class TutorNeuro extends Vigia {
                 }
             }
             
-            // Generar nuevos micro-objetivos si todos están completados
             if (pendientes.length === 0 && microObjetivos.length > 0) {
                 await this._generarNuevosMicroObjetivos();
             }
@@ -3066,7 +3499,6 @@ class TutorNeuro extends Vigia {
         const conteo = this._mapaAprendizaje.microObjetivos.length + 1;
         const esJeroglifico = this._esJeroglifico(this._obtenerIdiomaActual());
         
-        // Generar micro-objetivos basados en el contexto actual
         if (this._contextoUsuario.temas.sinIniciar > 0) {
             nuevos.push({
                 id: 'micro_' + conteo,
@@ -3119,7 +3551,6 @@ class TutorNeuro extends Vigia {
             });
         }
         
-        // Micro-objetivos espaciales
         if (esJeroglifico && this._configuracion.espacial.activo) {
             if (this._contextoUsuario.caracteres.caracteresEstudiados < 5) {
                 nuevos.push({
@@ -3148,7 +3579,6 @@ class TutorNeuro extends Vigia {
             }
         }
         
-        // Si no hay objetivos específicos, crear uno genérico
         if (nuevos.length === 0) {
             nuevos.push({
                 id: 'micro_' + conteo,
@@ -3205,7 +3635,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // GUARDAR PROGRESO DEL TUTOR
     // ============================================================
-
     async _guardarProgresoTutor() {
         try {
             const data = {
@@ -3221,13 +3650,13 @@ class TutorNeuro extends Vigia {
             };
             localStorage.setItem('pipeline_tutor_progreso', JSON.stringify(data));
             localStorage.setItem('pipeline_espacial_progreso', JSON.stringify(this._mapaAprendizaje.espacial));
+            this._guardarEstadoEnLocalStorage();
         } catch (e) { console.warn('⚠️ Error guardando progreso del tutor:', e); }
     }
 
     // ============================================================
     // CONSTRUIR MAPA DE APRENDIZAJE
     // ============================================================
-
     async _construirMapaAprendizaje() {
         console.log('🗺️ Construyendo mapa neuroadaptativo de aprendizaje...');
         
@@ -3276,9 +3705,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // ACTUALIZAR ESTADÍSTICAS AVANZADAS - V8.1
+    // ACTUALIZAR ESTADÍSTICAS AVANZADAS - V8.5
     // ============================================================
-
     async _actualizarEstadisticasAvanzadas() {
         try {
             const stats = this._mapaAprendizaje.estadisticasAvanzadas;
@@ -3391,7 +3819,7 @@ class TutorNeuro extends Vigia {
             
             this._mapaAprendizaje.estadisticasAvanzadas = stats;
             
-            console.log('✅ Estadísticas avanzadas actualizadas (V8.1)');
+            console.log('✅ Estadísticas avanzadas actualizadas (V8.5)');
             console.log(`   📊 Retención: ${stats.retencionPromedio}`);
             console.log(`   📈 Consistencia: ${Math.round(stats.consistenciaDiaria)}%`);
             console.log(`   ⚡ Eficiencia: ${stats.eficienciaGlobal}%`);
@@ -3403,11 +3831,10 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // REGISTRAR EVENTOS - V8.1
+    // REGISTRAR EVENTOS - V8.5
     // ============================================================
-
     _registrarEventos() {
-        console.log('🔗 Registrando eventos del Tutor Neuro V8.1...');
+        console.log('🔗 Registrando eventos del Tutor Neuro V8.5...');
         
         window.addEventListener('respuestaEstudio', (e) => this._onRespuestaEstudio(e.detail));
         window.addEventListener('cambioFase', (e) => this._onCambioFase(e.detail));
@@ -3416,23 +3843,34 @@ class TutorNeuro extends Vigia {
         window.addEventListener('moduloCambiado', (e) => this._onModuloCambiado(e.detail));
         
         window.addEventListener('learningPathGenerado', (e) => { 
-            setTimeout(() => this._sincronizarConLearningPath(), 500);
+            setTimeout(() => {
+                this._sincronizarConLearningPath();
+                this._refrescarDashboardAutomatico();
+            }, 500);
         });
         window.addEventListener('learningPathPasoCompletado', (e) => {
             this._actualizarContextoUsuario();
             this._recomendarSiguienteTema(true);
+            this._refrescarDashboardAutomatico();
             if (this._modoActual === this._MODOS.GUIADO) {
                 setTimeout(() => {
                     const siguientePaso = this._getPasoRecomendado();
                     if (siguientePaso && !siguientePaso.completado) {
-                        this._core?.mostrarToast(`📌 Siguiente paso: "${siguientePaso.titulo}"`, 'info');
-                        this._core?.irAModulo('study');
+                        if (this._core && typeof this._core.mostrarToast === 'function') {
+                            this._core.mostrarToast(`📌 Siguiente paso: "${siguientePaso.titulo}"`, 'info');
+                        }
+                        if (this._core && typeof this._core.irAModulo === 'function') {
+                            this._core.irAModulo('study');
+                        }
                     }
                 }, 2000);
             }
         });
         window.addEventListener('learningPathCompletado', (e) => {
-            this._core?.mostrarToast('🎉 ¡Has completado tu ruta de aprendizaje!', 'success');
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('🎉 ¡Has completado tu ruta de aprendizaje!', 'success');
+            }
+            this._refrescarDashboardAutomatico();
             if (this._modoActual !== this._MODOS.LIBRE) {
                 this._agregarIntervencion({
                     id: 'ruta_completada_' + Date.now(),
@@ -3455,26 +3893,50 @@ class TutorNeuro extends Vigia {
             }
         });
         
-        window.addEventListener('elipseOndaGenerada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
-        window.addEventListener('elipseOndaCompletada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
-        window.addEventListener('ondasCruzadasGenerada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
-        window.addEventListener('temaCompletado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
-        window.addEventListener('bibliotecaActualizada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
-        window.addEventListener('bibliotecaHistoriaLeida', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); }, 1000); });
+        window.addEventListener('elipseOndaGenerada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('elipseOndaCompletada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('ondasCruzadasGenerada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('temaCompletado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('bibliotecaActualizada', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('bibliotecaHistoriaLeida', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('idiomaCambiado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('nivelIdiomaCambiado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarSiguienteTema(true); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('favoritoActualizado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._refrescarDashboardAutomatico(); }, 1000); });
         
-        window.addEventListener('microObjetivoCompletado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarMicroObjetivo(); }, 1000); });
+        window.addEventListener('microObjetivoCompletado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._recomendarMicroObjetivo(); this._refrescarDashboardAutomatico(); }, 1000); });
         
-        // Eventos espaciales
-        window.addEventListener('caracterEstudiado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._actualizarProgresoEspacial(); }, 1000); });
-        window.addEventListener('radicalAprendido', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._actualizarProgresoEspacial(); }, 1000); });
+        window.addEventListener('caracterEstudiado', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._actualizarProgresoEspacial(); this._refrescarDashboardAutomatico(); }, 1000); });
+        window.addEventListener('radicalAprendido', () => { setTimeout(() => { this._actualizarContextoUsuario(); this._actualizarProgresoEspacial(); this._refrescarDashboardAutomatico(); }, 1000); });
         
-        console.log('✅ Eventos del Tutor Neuro V8.1 registrados');
+        // Evento de app init completa para refrescar
+        window.addEventListener('appInitCompleta', () => {
+            console.log('🔄 App init completa, refrescando tutor...');
+            setTimeout(() => {
+                this._refrescarDashboardAutomatico();
+                // Si no se ha ejecutado el análisis inicial, ejecutarlo ahora
+                if (this._forzarAnalisisPendiente && !this._analisisInicialEjecutado) {
+                    console.log('🧠 [FORZAR ANÁLISIS] Ejecutando análisis desde appInitCompleta...');
+                    setTimeout(async () => {
+                        try {
+                            await this.forzarAnalisis();
+                            this._forzarAnalisisPendiente = false;
+                            this._analisisInicialEjecutado = true;
+                            this._guardarEstadoEnLocalStorage();
+                            console.log('✅ [FORZAR ANÁLISIS] Análisis completado desde appInitCompleta');
+                        } catch (e) {
+                            console.warn('⚠️ [FORZAR ANÁLISIS] Error en análisis desde appInitCompleta:', e);
+                        }
+                    }, 500);
+                }
+            }, 500);
+        });
+        
+        console.log('✅ Eventos del Tutor Neuro V8.5 registrados');
     }
 
     // ============================================================
     // EVENTOS DEL TUTOR
     // ============================================================
-
     _onRespuestaEstudio(detalle) {
         if (!this._configuracion.intervencionAuto || !detalle) return;
         this._ultimaActividad = Date.now();
@@ -3482,11 +3944,13 @@ class TutorNeuro extends Vigia {
         this._historialRespuestas.push({ ...detalle, timestamp: Date.now() });
         if (this._historialRespuestas.length > 50) this._historialRespuestas = this._historialRespuestas.slice(-50);
         this._analizarRespuesta(detalle);
+        // Refrescar automáticamente después de una respuesta
+        setTimeout(() => this._refrescarDashboardAutomatico(), 500);
     }
 
-    _onCambioFase(detalle) { this._contextoUsuario.faseActual = detalle?.fase || 1; }
+    _onCambioFase(detalle) { this._contextoUsuario.faseActual = detalle?.fase || 1; this._refrescarDashboardAutomatico(); }
 
-    _onSesionFinalizada(detalle) { this._sesionActiva = false; this._actualizarContextoUsuario(); }
+    _onSesionFinalizada(detalle) { this._sesionActiva = false; this._actualizarContextoUsuario(); this._refrescarDashboardAutomatico(); }
 
     _onErrorEstudio(detalle) {
         if (!this._erroresRegistrados) this._erroresRegistrados = [];
@@ -3498,8 +3962,7 @@ class TutorNeuro extends Vigia {
         this._actualizarContextoUsuario();
         if (detalle?.modulo === 'study') { this._sesionActiva = true; this._inicioSesion = Date.now(); this._contadorIntervencionesSesion = 0; }
         if (detalle?.modulo === 'caracteres' && this._configuracion.espacial.activo) {
-            // Actualizar progreso espacial al entrar al módulo de caracteres
-            setTimeout(() => this._actualizarProgresoEspacial(), 500);
+            setTimeout(() => { this._actualizarProgresoEspacial(); this._refrescarDashboardAutomatico(); }, 500);
         }
         if (detalle?.modulo) {
             if (!this._contextoUsuario.modulosVisitados[detalle.modulo]) this._contextoUsuario.modulosVisitados[detalle.modulo] = 0;
@@ -3511,13 +3974,13 @@ class TutorNeuro extends Vigia {
             if (modulosRequeridos.every(m => visitados.includes(m))) {
                 this._verificarLogros();
             }
+            this._refrescarDashboardAutomatico();
         }
     }
 
     // ============================================================
     // ANÁLISIS DE RESPUESTAS
     // ============================================================
-
     async _analizarRespuesta(detalle) {
         if (this._analizando) { this._analisisPendiente = true; return; }
 
@@ -3539,6 +4002,10 @@ class TutorNeuro extends Vigia {
                     await this._recomendarSiguienteModulo();
                 }
             }
+            
+            // Refrescar después del análisis
+            setTimeout(() => this._refrescarDashboardAutomatico(), 300);
+            
         } catch (error) { console.warn('⚠️ Error en análisis de respuesta:', error); }
         finally {
             this._analizando = false;
@@ -3682,7 +4149,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // RECOMENDAR SIGUIENTE MÓDULO
     // ============================================================
-
     async _recomendarSiguienteModulo() {
         if (this._modoActual === this._MODOS.LIBRE) {
             console.log('📴 Modo Libre: No se recomiendan módulos automáticamente');
@@ -3722,7 +4188,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // CREAR OPCIONES POR MODO
     // ============================================================
-
     _crearOpcionesPorModo(opcionesGuiado, opcionesFlexible) {
         if (this._modoActual === this._MODOS.GUIADO || this._modoActual === this._MODOS.ESPACIAL) return opcionesGuiado;
         const opciones = [...opcionesFlexible];
@@ -3734,7 +4199,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // GESTIÓN DE INTERVENCIONES
     // ============================================================
-
     _agregarIntervencion(intervencion) {
         if (this._modoActual === this._MODOS.LIBRE || !this._configuracion.intervencionAuto) return;
         if (this._contadorIntervencionesSesion >= this._configuracion.maxIntervencionesPorSesion) return;
@@ -3793,7 +4257,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // NOTIFICACIONES
     // ============================================================
-
     _mostrarNotificacionSuave(intervencion) {
         if (!intervencion) return;
         const toast = document.createElement('div');
@@ -3868,7 +4331,7 @@ class TutorNeuro extends Vigia {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span style="font-size:24px;">🧠</span>
-                    <span style="font-weight:700;font-size:16px;color:var(--dark);">Tutor Neuro V8.1</span>
+                    <span style="font-weight:700;font-size:16px;color:var(--dark);">Tutor Neuro V8.5</span>
                     <span style="font-size:10px;background:${modoInfo.bg};color:white;padding:1px 8px;border-radius:8px;">${modoInfo.icono}</span>
                 </div>
                 <button id="cerrarTutorPanel" style="background:none;border:none;font-size:20px;color:var(--gray);cursor:pointer;">&times;</button>
@@ -3919,13 +4382,13 @@ class TutorNeuro extends Vigia {
             if (this._modoActual === this._MODOS.GUIADO || this._modoActual === this._MODOS.ESPACIAL) {
                 const bloqueo = this._modoActual === this._MODOS.GUIADO ? '🔒 Modo Guiado' : '🌌 Modo Espacial';
                 const mensajeConBloqueo = `${intervencion.mensaje || 'Recomendación del Tutor'}\n\n${bloqueo}: No puedes ignorar esta recomendación.`;
-                window.uiCore.confirm(`${mensajeConBloqueo}\n\n${opcionesTexto}`, `${bloqueo} V8.1`).then(respuesta => {
+                window.uiCore.confirm(`${mensajeConBloqueo}\n\n${opcionesTexto}`, `${bloqueo} V8.5`).then(respuesta => {
                     const idx = opciones.findIndex(o => o.label === respuesta);
                     if (idx !== -1) this._ejecutarAccion(opciones[idx].accion, intervencion);
                     else this._ejecutarAccion(opciones[0].accion, intervencion);
                 });
             } else {
-                window.uiCore.confirm(`${intervencion.mensaje || 'Recomendación del Tutor'}\n\n${opcionesTexto}`, '🧠 Tutor Neuro V8.1').then(respuesta => {
+                window.uiCore.confirm(`${intervencion.mensaje || 'Recomendación del Tutor'}\n\n${opcionesTexto}`, '🧠 Tutor Neuro V8.5').then(respuesta => {
                     const idx = opciones.findIndex(o => o.label === respuesta);
                     if (idx !== -1) this._ejecutarAccion(opciones[idx].accion, intervencion);
                 });
@@ -3936,9 +4399,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // EJECUTAR ACCIONES - V8.1 CON ACCIONES ESPACIALES
+    // EJECUTAR ACCIONES - V8.5
     // ============================================================
-
     async _ejecutarAccion(accion, intervencion) {
         console.log(`🧠 Tutor: Ejecutando acción "${accion}"`);
         const core = window.uiCore || window.ui;
@@ -3975,8 +4437,8 @@ class TutorNeuro extends Vigia {
                     }
                 } else core?.irAModulo('study');
                 break;
-            case 'activar_modo_inverso': if (modoInverso) { modoInverso.toggle(); core?.mostrarToast('🔄 Modo Inverso activado', 'info'); } break;
-            case 'activar_modo_expres': if (window.UIEspacio && window.UIEspacio._modoExpres) await window.UIEspacio._modoExpres(); else core?.mostrarToast('⚡ Modo Exprés activado', 'info'); break;
+            case 'activar_modo_inverso': if (modoInverso) { modoInverso.toggle(); if (core && typeof core.mostrarToast === 'function') core.mostrarToast('🔄 Modo Inverso activado', 'info'); } break;
+            case 'activar_modo_expres': if (window.UIEspacio && window.UIEspacio._modoExpres) await window.UIEspacio._modoExpres(); else if (core && typeof core.mostrarToast === 'function') core.mostrarToast('⚡ Modo Exprés activado', 'info'); break;
             case 'cambiar_modo_estudio':
                 if (window.UIStudy && window.UIStudy.cambiarModoEstudio) {
                     const modos = ['flashcard', 'escritura', 'multiple', 'escucha'];
@@ -3984,10 +4446,12 @@ class TutorNeuro extends Vigia {
                     const idx = modos.indexOf(modoActual);
                     const siguiente = modos[(idx + 1) % modos.length];
                     window.UIStudy.cambiarModoEstudio(siguiente);
-                    core?.mostrarToast(`🔄 Modo cambiado a ${siguiente}`, 'info');
+                    if (core && typeof core.mostrarToast === 'function') {
+                        core.mostrarToast(`🔄 Modo cambiado a ${siguiente}`, 'info');
+                    }
                 }
                 break;
-            case 'sugerir_descanso': core?.mostrarToast('☕ Tómate un descanso de 5 minutos. ¡Tu cerebro lo agradecerá!', 'success'); break;
+            case 'sugerir_descanso': if (core && typeof core.mostrarToast === 'function') core.mostrarToast('☕ Tómate un descanso de 5 minutos. ¡Tu cerebro lo agradecerá!', 'success'); break;
             case 'añadir_a_lista':
                 if (intervencion?.contexto?.palabra) {
                     const palabra = intervencion.contexto.palabra;
@@ -3995,7 +4459,9 @@ class TutorNeuro extends Vigia {
                         const lista = JSON.parse(localStorage.getItem('pipeline_lista_repaso') || '[]');
                         if (!lista.includes(palabra)) { lista.push(palabra); localStorage.setItem('pipeline_lista_repaso', JSON.stringify(lista)); }
                     } catch (e) {}
-                    core?.mostrarToast(`📝 "${palabra}" añadida a tu lista de repaso`, 'success');
+                    if (core && typeof core.mostrarToast === 'function') {
+                        core.mostrarToast(`📝 "${palabra}" añadida a tu lista de repaso`, 'success');
+                    }
                 }
                 break;
             case 'ver_estadisticas': core?.irAModulo('stats'); break;
@@ -4005,12 +4471,12 @@ class TutorNeuro extends Vigia {
             case 'estudiar_tema': await this._estudiarTemaRecomendado(); break;
             case 'ejecutar_paso_learning_path':
             case 'ejecutar_paso':
-                if (window.LearningPath) { await window.LearningPath.ejecutarPasoActual(); if (this._modoActual === this._MODOS.GUIADO) core?.irAModulo('study'); }
-                else core?.mostrarToast('❌ Learning Path no disponible', 'error');
+                if (window.LearningPath) { await window.LearningPath.ejecutarPasoActual(); if (this._modoActual === this._MODOS.GUIADO && core && typeof core.irAModulo === 'function') core.irAModulo('study'); }
+                else if (core && typeof core.mostrarToast === 'function') core.mostrarToast('❌ Learning Path no disponible', 'error');
                 break;
             case 'generar_nueva_ruta':
                 if (window.LearningPath) await window.LearningPath.regenerarRuta();
-                else core?.mostrarToast('❌ Learning Path no disponible', 'error');
+                else if (core && typeof core.mostrarToast === 'function') core.mostrarToast('❌ Learning Path no disponible', 'error');
                 break;
             case 'recomendar_cambio_estrategia': this._mostrarCambioEstrategia(); break;
             case 'aceptar_micro_objetivo':
@@ -4018,8 +4484,12 @@ class TutorNeuro extends Vigia {
                 if (pendientes.length > 0) {
                     const micro = pendientes[0];
                     const modulo = micro.modulo || 'study';
-                    core?.mostrarToast(`🎯 Aceptado: "${micro.titulo}" - ¡Ve a ${modulo}!`, 'success');
-                    core?.irAModulo(modulo);
+                    if (core && typeof core.mostrarToast === 'function') {
+                        core.mostrarToast(`🎯 Aceptado: "${micro.titulo}" - ¡Ve a ${modulo}!`, 'success');
+                    }
+                    if (core && typeof core.irAModulo === 'function') {
+                        core.irAModulo(modulo);
+                    }
                 }
                 break;
             case 'ver_micro_objetivos':
@@ -4037,11 +4507,13 @@ class TutorNeuro extends Vigia {
                     }
                 }, 500);
                 break;
-            case 'posponer': core?.mostrarToast('⏰ Recomendación pospuesta.', 'info'); break;
+            case 'posponer': if (core && typeof core.mostrarToast === 'function') core.mostrarToast('⏰ Recomendación pospuesta.', 'info'); break;
             case 'descartar': break;
             case 'ignorar':
                 if (this._modoActual === this._MODOS.GUIADO || this._modoActual === this._MODOS.ESPACIAL) {
-                    core?.mostrarToast(`🚫 ${this._modoActual === this._MODOS.GUIADO ? 'Modo Guiado' : 'Modo Espacial'}: No puedes ignorar las recomendaciones.`, 'warning');
+                    if (core && typeof core.mostrarToast === 'function') {
+                        core.mostrarToast(`🚫 ${this._modoActual === this._MODOS.GUIADO ? 'Modo Guiado' : 'Modo Espacial'}: No puedes ignorar las recomendaciones.`, 'warning');
+                    }
                 }
                 break;
             default: console.warn(`⚠️ Acción desconocida: ${accion}`);
@@ -4049,9 +4521,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // MOSTRAR MICRO-OBJETIVOS - V8.1
+    // MOSTRAR MICRO-OBJETIVOS - V8.5
     // ============================================================
-
     _mostrarMicroObjetivos() {
         const micros = this._mapaAprendizaje.microObjetivos;
         const completados = micros.filter(m => m.completado);
@@ -4074,13 +4545,16 @@ class TutorNeuro extends Vigia {
             }
         }
         
-        this._core?.alert(mensaje, '🎯 Micro-objetivos del Tutor V8.1');
+        if (this._core && typeof this._core.alert === 'function') {
+            this._core.alert(mensaje, '🎯 Micro-objetivos del Tutor V8.5');
+        } else {
+            alert(mensaje);
+        }
     }
 
     // ============================================================
-    // MOSTRAR LOGROS - V8.1
+    // MOSTRAR LOGROS - V8.5
     // ============================================================
-
     _mostrarLogros() {
         const logros = this._mapaAprendizaje.logrosDesbloqueados || [];
         const totalLogros = Object.keys(this._LOGROS).length;
@@ -4107,13 +4581,16 @@ class TutorNeuro extends Vigia {
                 if (pendientes.length > 5) mensaje += `  ... y ${pendientes.length - 5} más`;
             }
         }
-        this._core?.alert(mensaje, '🏆 Logros del Tutor Neuro V8.1');
+        if (this._core && typeof this._core.alert === 'function') {
+            this._core.alert(mensaje, '🏆 Logros del Tutor Neuro V8.5');
+        } else {
+            alert(mensaje);
+        }
     }
 
     // ============================================================
-    // MOSTRAR CAMBIO DE ESTRATEGIA - V8.1
+    // MOSTRAR CAMBIO DE ESTRATEGIA - V8.5
     // ============================================================
-
     _mostrarCambioEstrategia() {
         const esJeroglifico = this._esJeroglifico(this._obtenerIdiomaActual());
         let mensaje = '🧠 **CAMBIO DE ESTRATEGIA RECOMENDADO**\n\n' +
@@ -4132,13 +4609,16 @@ class TutorNeuro extends Vigia {
         }
         
         mensaje += '\n💡 Elige la que mejor se adapte a tu momento actual.';
-        this._core?.alert(mensaje, '🧠 Cambio de Estrategia V8.1');
+        if (this._core && typeof this._core.alert === 'function') {
+            this._core.alert(mensaje, '🧠 Cambio de Estrategia V8.5');
+        } else {
+            alert(mensaje);
+        }
     }
 
     // ============================================================
-    // MOSTRAR RUTA COMPLETA CON PAGINACIÓN Y BUSCADOR
+    // MOSTRAR RUTA COMPLETA - V8.5
     // ============================================================
-
     async _mostrarRutaCompleta() {
         let ruta = [];
         let progreso = { completados: 0, total: 0, porcentaje: 0 };
@@ -4148,7 +4628,9 @@ class TutorNeuro extends Vigia {
         }
         if (ruta.length === 0) ruta = this._mapaAprendizaje.rutaActual;
         if (ruta.length === 0) {
-            this._core?.mostrarToast('📭 No hay temas en tu ruta de aprendizaje.', 'warning');
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('📭 No hay temas en tu ruta de aprendizaje.', 'warning');
+            }
             return;
         }
 
@@ -4271,7 +4753,7 @@ class TutorNeuro extends Vigia {
                             <span style="font-size:32px;">🧠</span>
                             <div>
                                 <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
-                                    Ruta de Aprendizaje V8.1
+                                    Ruta de Aprendizaje V8.5
                                     <span style="font-size:13px;font-weight:400;color:var(--gray-light);">(${total} pasos)</span>
                                 </h2>
                                 <p style="font-size:13px;color:var(--gray);margin:2px 0 0;">
@@ -4459,9 +4941,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // ACTUALIZAR BADGE DEL TUTOR - V8.1
+    // ACTUALIZAR BADGE DEL TUTOR - V8.5
     // ============================================================
-
     _actualizarBadgeTutor() {
         let badge = document.getElementById('tutorBadge');
         if (!badge) {
@@ -4491,16 +4972,19 @@ class TutorNeuro extends Vigia {
                 const microPendientes = this._mapaAprendizaje.microObjetivos.filter(m => !m.completado).length;
                 const logrosCount = this._mapaAprendizaje.logrosDesbloqueados?.length || 0;
                 const caracteresCount = this._mapaAprendizaje.espacial.caracteresAprendidos?.length || 0;
+                const refrescoInfo = this._metricasRefresco.totalRefrescos > 0 ? `🔄${this._metricasRefresco.totalRefrescos}` : '';
                 
-                let badgeText = '🧠 V8';
+                let badgeText = '🧠 V8.5';
                 if (esGuiado) badgeText += ' 🔒';
                 if (esEspacial) badgeText += ' 🌌';
                 if (pendientes.length > 0) badgeText += ` (${pendientes.length})`;
                 if (microPendientes > 0) badgeText += ` 🎯${microPendientes}`;
                 if (logrosCount > 0) badgeText += ` 🏆${logrosCount}`;
                 if (caracteresCount > 0 && esEspacial) badgeText += ` 🀄${caracteresCount}`;
+                if (refrescoInfo) badgeText += ` ${refrescoInfo}`;
                 
                 badge.innerHTML = badgeText;
+                badge.title = `Refrescos automáticos: ${this._metricasRefresco.totalRefrescos} · Último: ${this._metricasRefresco.ultimoRefresco || 'N/A'}`;
                 
                 if (pendientes.length > 0) {
                     badge.classList.add('has-intervencion');
@@ -4518,9 +5002,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // RECOMENDAR SIGUIENTE TEMA - V8.1
+    // RECOMENDAR SIGUIENTE TEMA - V8.5
     // ============================================================
-
     _recomendarSiguienteTema(forzar = false) {
         if (this._modoActual === this._MODOS.LIBRE && !forzar) {
             console.log('📴 Modo Libre: No se recomienda automáticamente');
@@ -4624,18 +5107,32 @@ class TutorNeuro extends Vigia {
             if (pasoActual) {
                 const core = window.uiCore || window.ui;
                 const nombrePaso = pasoActual.titulo || pasoActual.nombre || pasoActual.tema || 'Paso actual';
-                core?.mostrarToast(`📖 Ejecutando: "${nombrePaso}"`, 'info');
+                if (core && typeof core.mostrarToast === 'function') {
+                    core.mostrarToast(`📖 Ejecutando: "${nombrePaso}"`, 'info');
+                }
                 window.LearningPath.ejecutarPasoActual();
                 return;
             }
         }
         const ruta = this._mapaAprendizaje.rutaActual;
         const siguiente = ruta.find(t => !t.completado);
-        if (!siguiente) { this._core?.mostrarToast('❌ No hay temas recomendados', 'error'); return; }
+        if (!siguiente) { 
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('❌ No hay temas recomendados', 'error');
+            }
+            return; 
+        }
         const core = window.uiCore || window.ui;
         const nombreTema = siguiente.titulo || siguiente.nombre || siguiente.tema || 'Tema';
-        core?.mostrarToast(`📖 Estudiando "${nombreTema}"...`, 'info');
-        if (this._modoActual === this._MODOS.GUIADO) { this._navegacionBloqueada = true; core?.mostrarToast('🚀 Modo Guiado: El tutor te guiará.', 'info'); }
+        if (core && typeof core.mostrarToast === 'function') {
+            core.mostrarToast(`📖 Estudiando "${nombreTema}"...`, 'info');
+        }
+        if (this._modoActual === this._MODOS.GUIADO) { 
+            this._navegacionBloqueada = true; 
+            if (core && typeof core.mostrarToast === 'function') {
+                core.mostrarToast('🚀 Modo Guiado: El tutor te guiará.', 'info');
+            }
+        }
         if (window.pipeline && window.pipeline.estudiarTema) {
             window.pipeline.estudiarTema(siguiente.id);
         } else if (core) {
@@ -4645,9 +5142,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // BIENVENIDA - V8.1
+    // BIENVENIDA - V8.5
     // ============================================================
-
     _mostrarBienvenida() {
         const nombre = this._contextoUsuario.nombre || 'usuario';
         const infoModo = this.getModoInfo();
@@ -4661,7 +5157,7 @@ class TutorNeuro extends Vigia {
         const caracteres = this._mapaAprendizaje.espacial.caracteresAprendidos?.length || 0;
         const esEspacial = this._modoActual === this._MODOS.ESPACIAL;
         
-        let mensaje = `🧠 ¡Hola ${nombre}! Soy tu Tutor de Aprendizaje NeuroAdaptativo V8.1.\n\n`;
+        let mensaje = `🧠 ¡Hola ${nombre}! Soy tu Tutor de Aprendizaje NeuroAdaptativo V8.5.\n\n`;
         mensaje += `📌 **Modo actual:** ${infoModo.nombre}\n   ${infoModo.descripcion}\n\n`;
         mensaje += `📊 Progreso general: ${this._mapaAprendizaje.progresoGeneral || 0}%\n`;
         mensaje += `📚 Temas disponibles: ${ruta.length}\n`;
@@ -4672,6 +5168,7 @@ class TutorNeuro extends Vigia {
             mensaje += `🀄 Caracteres: ${caracteres} aprendidos\n`;
             mensaje += `🌀 Radicales: ${this._mapaAprendizaje.espacial.radicalesConocidos?.length || 0} conocidos\n`;
         }
+        mensaje += `🔄 Refresco automático: cada ${this._intervaloRefrescoMs / 1000}s (OBLIGATORIO)\n`;
         mensaje += `\n`;
         if (siguiente && this._modoActual !== this._MODOS.LIBRE) {
             const nombreTema = siguiente.titulo || siguiente.nombre || siguiente.tema || 'Tema';
@@ -4714,16 +5211,15 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // INICIAR CICLO DE ANÁLISIS - V8.1
+    // INICIAR CICLO DE ANÁLISIS - V8.5
     // ============================================================
-
     _iniciarCicloAnalisis() {
         const ejecutarAnalisis = async () => {
             if (this._sesionActiva && !this._analizando) await this._analizarEstadoGeneral();
             setTimeout(ejecutarAnalisis, this._intervaloAnalisis);
         };
         setTimeout(ejecutarAnalisis, 30000);
-        console.log('🔄 Ciclo de análisis del Tutor Neuro V8.1 iniciado (cada 30s)');
+        console.log('🔄 Ciclo de análisis del Tutor Neuro V8.5 iniciado (cada 30s)');
     }
 
     async _analizarEstadoGeneral() {
@@ -4802,6 +5298,9 @@ class TutorNeuro extends Vigia {
                 await this._recomendarEspacial();
             }
             
+            // Refrescar después del análisis general
+            setTimeout(() => this._refrescarDashboardAutomatico(), 500);
+            
         } catch (error) { console.warn('⚠️ Error en análisis de estado general:', error); }
         finally { this._analizando = false; }
     }
@@ -4822,7 +5321,6 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // MÉTODOS AUXILIARES
     // ============================================================
-
     _getColorPrioridad(prioridad) {
         const colores = { 'alta': '#FF7675', 'media': '#FDCB6E', 'baja': '#74B9FF' };
         return colores[prioridad] || '#6C5CE7';
@@ -4852,33 +5350,35 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // MÉTODOS PÚBLICOS - V8.1 (CORREGIDOS)
+    // MÉTODOS PÚBLICOS - V8.5 (CORREGIDOS)
     // ============================================================
-
-    /**
-     * FORZAR RECOMENDACIÓN - MÉTODO PÚBLICO
-     */
     async forzarRecomendacion() {
         console.log('🧠 [PUBLICO] Forzando nueva recomendación...');
-        this._core?.mostrarToast('🧠 Generando nueva recomendación...', 'info');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('🧠 Generando nueva recomendación...', 'info');
+        }
         
         try {
             await this._actualizarContextoUsuario();
             await this._recomendarSiguienteModulo();
             this._mostrarDashboardTutorCompleto();
-            this._core?.mostrarToast('✅ Nueva recomendación generada', 'success');
+            this._guardarEstadoEnLocalStorage();
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('✅ Nueva recomendación generada', 'success');
+            }
         } catch (error) {
             console.error('❌ Error generando recomendación:', error);
-            this._core?.mostrarToast('❌ Error al generar recomendación', 'error');
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('❌ Error al generar recomendación', 'error');
+            }
         }
     }
 
-    /**
-     * FORZAR ANÁLISIS - MÉTODO PÚBLICO
-     */
     async forzarAnalisis() {
-        console.log('🧠 [PUBLICO] Forzando análisis completo...');
-        this._core?.mostrarToast('🧠 Forzando análisis profundo...', 'info');
+        console.log('🧠 [PUBLICO] Forzando análisis completo (simula click en "Forzar Análisis")...');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('🧠 Forzando análisis profundo...', 'info');
+        }
         
         try {
             await this._actualizarContextoUsuario();
@@ -4886,49 +5386,69 @@ class TutorNeuro extends Vigia {
             await this._actualizarEstadisticasAvanzadas();
             await this._actualizarProgresoEspacial();
             this._mostrarDashboardTutorCompleto();
-            this._core?.mostrarToast('✅ Análisis completado', 'success');
+            this._guardarEstadoEnLocalStorage();
+            
+            // Forzar actualización del dashboard principal
+            if (window.UIDashboard && typeof window.UIDashboard._cargarDashboardInicial === 'function') {
+                try {
+                    window.UIDashboard._cargarDashboardInicial();
+                } catch (e) {
+                    console.warn('⚠️ Error actualizando dashboard principal:', e);
+                }
+            }
+            
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('✅ Análisis completado', 'success');
+            }
+            
+            console.log('✅ [PUBLICO] Análisis completado');
         } catch (error) {
             console.error('❌ Error en análisis:', error);
-            this._core?.mostrarToast('❌ Error en el análisis', 'error');
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('❌ Error en el análisis', 'error');
+            }
+            throw error;
         }
     }
 
-    /**
-     * EJECUTAR RECOMENDACIÓN - MÉTODO PÚBLICO
-     */
     async ejecutarRecomendacion() {
         const recomendacion = this._mapaAprendizaje.objetivoActual;
         if (!recomendacion) {
-            this._core?.mostrarToast('ℹ️ No hay recomendación activa', 'info');
+            if (this._core && typeof this._core.mostrarToast === 'function') {
+                this._core.mostrarToast('ℹ️ No hay recomendación activa', 'info');
+            }
             return;
         }
         const modulo = recomendacion.modulo || 'study';
-        this._core?.mostrarToast(`🚀 Ejecutando recomendación: ${modulo}`, 'success');
-        this._core?.irAModulo(modulo);
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast(`🚀 Ejecutando recomendación: ${modulo}`, 'success');
+        }
+        if (this._core && typeof this._core.irAModulo === 'function') {
+            this._core.irAModulo(modulo);
+        }
     }
 
-    /**
-     * POSPONER RECOMENDACIÓN - MÉTODO PÚBLICO
-     */
     posponerRecomendacion() {
-        this._core?.mostrarToast('⏰ Recomendación pospuesta', 'info');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('⏰ Recomendación pospuesta', 'info');
+        }
         this._mapaAprendizaje.objetivoActual = null;
         this._mostrarDashboardTutorCompleto();
+        this._guardarEstadoEnLocalStorage();
     }
 
-    /**
-     * IGNORAR RECOMENDACIÓN - MÉTODO PÚBLICO
-     */
     ignorarRecomendacion() {
-        this._core?.mostrarToast('❌ Recomendación ignorada', 'warning');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('❌ Recomendación ignorada', 'warning');
+        }
         this._mapaAprendizaje.objetivoActual = null;
         this._mostrarDashboardTutorCompleto();
+        this._guardarEstadoEnLocalStorage();
     }
 
     // ============================================================
-    // MÉTODOS DE RENDERIZADO DE TARJETAS - V8.1
+    // MÉTODOS DE RENDERIZADO DE TARJETAS - V8.5
     // ============================================================
-
     _renderTarjetaResumen(label, valor, color, pct) {
         const pctNum = typeof pct === 'number' ? Math.min(100, Math.max(0, pct)) : 50;
         return `
@@ -5025,7 +5545,7 @@ class TutorNeuro extends Vigia {
                             <span style="font-size:24px;">${emoji}</span>
                             <div>
                                 <div style="font-size:14px;font-weight:700;color:var(--dark);">
-                                    RECOMENDACIÓN ACTIVA DEL TUTOR V8.1
+                                    RECOMENDACIÓN ACTIVA DEL TUTOR V8.5
                                     <span style="font-size:10px;font-weight:400;color:${prioridad === 'alta' ? 'var(--danger)' : 'var(--warning)'};margin-left:8px;">
                                         ${prioridad === 'alta' ? '🔴 PRIORIDAD ALTA' : '🟡 PRIORIDAD MEDIA'}
                                     </span>
@@ -5068,6 +5588,11 @@ class TutorNeuro extends Vigia {
                                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
                             <i class="fas fa-route"></i> Ver Ruta
                         </button>
+                        <button class="btn-secondary" onclick="window.tutorNeuro.forzarRefresco()" 
+                                style="padding:6px 14px;font-size:12px;background:var(--primary)15;color:var(--primary);border:1px solid var(--primary);border-radius:6px;cursor:pointer;transition:all 0.3s;"
+                                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                            <i class="fas fa-sync"></i> Refrescar
+                        </button>
                     </div>
                 </div>
             </div>
@@ -5080,9 +5605,8 @@ class TutorNeuro extends Vigia {
     }
 
     // ============================================================
-    // DASHBOARD DE ÉLITE - V8.1
+    // DASHBOARD DE ÉLITE - V8.5 CON REFRESCO AUTOMÁTICO OBLIGATORIO
     // ============================================================
-
     _mostrarDashboardTutorCompleto() {
         const container = document.getElementById('tutorFullContainer');
         if (!container) {
@@ -5090,6 +5614,7 @@ class TutorNeuro extends Vigia {
             return;
         }
         
+        // Usar datos del contexto actual (ya actualizado)
         const contexto = this._contextoUsuario;
         const modoInfo = this.getModoInfo();
         const ruta = this._mapaAprendizaje.rutaActual;
@@ -5118,9 +5643,15 @@ class TutorNeuro extends Vigia {
         const pasosCompletados = ruta.filter(t => t.completado).length;
         const ultimasIntervenciones = this._historialIntervenciones.slice(-3).reverse();
         
+        // Métricas de refresco
+        const metricasRefresco = this.getMetricasRefresco();
+        const infoRefresco = metricasRefresco.totalRefrescos > 0 
+            ? `🔄 ${metricasRefresco.totalRefrescos} refrescos · ⏱️ ${metricasRefresco.promedioMs}ms` 
+            : '🔄 Esperando primer refresco...';
+        
         const html = `
             <div class="tutor-dashboard-elite" style="padding:16px;max-width:1200px;margin:0 auto;font-family:var(--font);">
-                <!-- CABECERA DE ÉLITE V8.1 -->
+                <!-- CABECERA DE ÉLITE V8.5 CON REFRESCO OBLIGATORIO -->
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:14px 24px;background:linear-gradient(135deg, var(--primary)08, var(--secondary)08);border-radius:16px;border:2px solid var(--primary)20;position:relative;overflow:hidden;">
                     <div style="position:absolute;top:-50%;right:-10%;width:300px;height:300px;background:radial-gradient(circle, var(--primary)10, transparent);border-radius:50%;"></div>
                     <div style="position:absolute;bottom:-30%;left:-5%;width:200px;height:200px;background:radial-gradient(circle, var(--secondary)10, transparent);border-radius:50%;"></div>
@@ -5129,7 +5660,7 @@ class TutorNeuro extends Vigia {
                             <span style="font-size:32px;">${esEspacial ? '🌌' : '🧠'}</span>
                             <div>
                                 <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
-                                    ${esEspacial ? '🌌 Tutor Espacial V8.1' : '🧠 Tutor NeuroAdaptativo V8.1'}
+                                    ${esEspacial ? '🌌 Tutor Espacial V8.5' : '🧠 Tutor NeuroAdaptativo V8.5'}
                                     <span style="font-size:14px;font-weight:400;color:var(--gray);margin-left:8px;">${esEspacial ? '🚀 Modo Jeroglífico' : 'Doble Herencia'}</span>
                                 </h2>
                                 <div style="display:flex;gap:12px;font-size:12px;color:var(--gray);flex-wrap:wrap;margin-top:2px;">
@@ -5140,6 +5671,8 @@ class TutorNeuro extends Vigia {
                                     ${esJeroglifico && !esEspacial ? `<span style="color:var(--secondary);">🀄 Jeroglífico</span>` : ''}
                                     <span style="color:${neuroFatiga > 0.6 ? 'var(--danger)' : 'var(--success)'};">${neuroFatiga > 0.6 ? '🔴 Fatigado' : '🟢 Activo'}</span>
                                     <span style="font-size:10px;color:var(--gray-light);">🔄 Sincronizado con Centinela</span>
+                                    <span style="font-size:10px;color:var(--primary);background:var(--primary)10;padding:0 8px;border-radius:4px;">${infoRefresco}</span>
+                                    <span style="font-size:9px;color:var(--success);background:var(--success)10;padding:0 6px;border-radius:3px;">🔄 REFRESCO AUTO</span>
                                 </div>
                             </div>
                         </div>
@@ -5165,10 +5698,22 @@ class TutorNeuro extends Vigia {
                                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
                             <i class="fas fa-cog"></i> Configurar
                         </button>
+                        <button class="btn-secondary" onclick="window.tutorNeuro.forzarRefresco()" 
+                                style="padding:8px 16px;font-size:12px;background:var(--primary)15;color:var(--primary);border:1px solid var(--primary);border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.2)'" 
+                                onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                            <i class="fas fa-sync"></i> Refrescar Ahora
+                        </button>
+                        <button class="btn-secondary" onclick="window.tutorNeuro.forzarAnalisis()" 
+                                style="padding:8px 16px;font-size:12px;background:var(--secondary)15;color:var(--secondary);border:1px solid var(--secondary);border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                                onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(0,206,201,0.2)'" 
+                                onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                            <i class="fas fa-brain"></i> Forzar Análisis
+                        </button>
                     </div>
                 </div>
 
-                <!-- RESUMEN EJECUTIVO V8.1 -->
+                <!-- RESUMEN EJECUTIVO V8.5 -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
                     ${this._renderTarjetaResumen('🎯 Progreso', `${progresoGeneral}%`, progresoGeneral >= 80 ? 'var(--success)' : progresoGeneral >= 40 ? 'var(--warning)' : 'var(--danger)', progresoGeneral)}
                     ${this._renderTarjetaResumen('📚 Temas', `${pctTemas}% (${temasCompletados}/${totalTemas})`, pctTemas >= 80 ? 'var(--success)' : pctTemas >= 40 ? 'var(--warning)' : 'var(--danger)', pctTemas)}
@@ -5178,6 +5723,7 @@ class TutorNeuro extends Vigia {
                     ${this._renderTarjetaResumen('🎯 Micros', `${microPendientes.length} pendientes`, microPendientes.length === 0 ? 'var(--success)' : 'var(--warning)', 100 - (microPendientes.length * 10))}
                     ${esEspacial ? this._renderTarjetaResumen('🀄 Caracteres', `${caracteresDominados}`, caracteresDominados >= 20 ? 'var(--success)' : caracteresDominados >= 10 ? 'var(--warning)' : 'var(--danger)', caracteresDominados * 5) : ''}
                     ${esEspacial ? this._renderTarjetaResumen('🌀 Radicales', `${radicalesConocidos}`, radicalesConocidos >= 10 ? 'var(--success)' : radicalesConocidos >= 5 ? 'var(--warning)' : 'var(--danger)', radicalesConocidos * 10) : ''}
+                    ${this._renderTarjetaResumen('🔄 Refrescos', `${metricasRefresco.totalRefrescos}`, metricasRefresco.totalRefrescos > 0 ? 'var(--primary)' : 'var(--gray-light)', Math.min(100, metricasRefresco.totalRefrescos * 5))}
                 </div>
 
                 <!-- RECOMENDACIÓN ACTIVA -->
@@ -5301,7 +5847,7 @@ class TutorNeuro extends Vigia {
                     </div>
                 </div>
 
-                <!-- PROGRESO POR MÓDULOS V8.1 -->
+                <!-- PROGRESO POR MÓDULOS V8.5 -->
                 <div style="background:var(--white);border-radius:14px;padding:16px 20px;margin-bottom:16px;border:2px solid var(--light);box-shadow:var(--shadow);">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                         <span style="font-size:20px;">📊</span>
@@ -5320,7 +5866,7 @@ class TutorNeuro extends Vigia {
                     </div>
                 </div>
 
-                <!-- MICRO-OBJETIVOS DESTACADOS V8.1 -->
+                <!-- MICRO-OBJETIVOS DESTACADOS V8.5 -->
                 ${microPendientes.length > 0 ? `
                     <div style="background:linear-gradient(135deg, var(--warning)08, var(--primary)08);border-radius:14px;padding:12px 18px;margin-bottom:16px;border:2px solid var(--warning)30;">
                         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -5356,7 +5902,7 @@ class TutorNeuro extends Vigia {
                     </div>
                 `}
 
-                <!-- ÚLTIMAS INTERVENCIONES V8.1 -->
+                <!-- ÚLTIMAS INTERVENCIONES V8.5 -->
                 <div style="background:var(--white);border-radius:14px;padding:16px 20px;border:2px solid var(--light);box-shadow:var(--shadow);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -5403,7 +5949,7 @@ class TutorNeuro extends Vigia {
                     `}
                 </div>
 
-                <!-- ACCIONES RÁPIDAS V8.1 -->
+                <!-- ACCIONES RÁPIDAS V8.5 -->
                 <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center;">
                     <button class="btn-secondary" onclick="window.tutorNeuro.forzarAnalisis()" 
                             style="padding:8px 20px;font-size:13px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
@@ -5435,6 +5981,12 @@ class TutorNeuro extends Vigia {
                             onmouseout="this.style.transform='none';this.style.boxShadow='none'">
                         <i class="fas fa-trophy"></i> Logros
                     </button>
+                    <button class="btn-secondary" onclick="window.tutorNeuro.forzarRefresco()" 
+                            style="padding:8px 20px;font-size:13px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
+                            onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.3)'" 
+                            onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <i class="fas fa-sync"></i> Refrescar Ahora
+                    </button>
                     ${esEspacial ? `
                         <button class="btn-secondary" onclick="window.uiCore.irAModulo('caracteres')" 
                                 style="padding:8px 20px;font-size:13px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:8px;cursor:pointer;transition:all 0.3s;"
@@ -5445,9 +5997,9 @@ class TutorNeuro extends Vigia {
                     ` : ''}
                 </div>
                 
-                <!-- FOOTER V8.1 -->
+                <!-- FOOTER V8.5 -->
                 <div style="margin-top:16px;text-align:center;font-size:10px;color:var(--gray-light);border-top:1px solid var(--light);padding-top:12px;">
-                    <span>🧠 Tutor Neuro V8.1 · ${esEspacial ? '🌌 Modo Espacial' : 'Doble Herencia (Vigia + Centinela)'}</span>
+                    <span>🧠 Tutor Neuro V8.5 · ${esEspacial ? '🌌 Modo Espacial' : 'Doble Herencia (Vigia + Centinela)'}</span>
                     <span style="margin:0 8px;">·</span>
                     <span>📊 ${this._historialIntervenciones.length} intervenciones totales</span>
                     <span style="margin:0 8px;">·</span>
@@ -5455,6 +6007,8 @@ class TutorNeuro extends Vigia {
                     <span style="margin:0 8px;">·</span>
                     <span>📚 ${historiasLeidas}/${totalHistorias} lecturas</span>
                     ${esEspacial ? `<span style="margin:0 8px;">·</span><span>🀄 ${caracteresDominados} caracteres</span>` : ''}
+                    <span style="margin:0 8px;">·</span>
+                    <span>🔄 ${metricasRefresco.totalRefrescos} refrescos automáticos</span>
                 </div>
             </div>
         `;
@@ -5465,14 +6019,17 @@ class TutorNeuro extends Vigia {
     // ============================================================
     // MÉTODOS PARA MOSTRAR ESTADÍSTICAS COMPLETAS
     // ============================================================
-
     async _mostrarEstadisticasCompletas() {
-        this._core?.mostrarToast('📊 Abriendo estadísticas completas V8.1...', 'info');
-        this._core?.irAModulo('stats');
+        if (this._core && typeof this._core.mostrarToast === 'function') {
+            this._core.mostrarToast('📊 Abriendo estadísticas completas V8.5...', 'info');
+        }
+        if (this._core && typeof this._core.irAModulo === 'function') {
+            this._core.irAModulo('stats');
+        }
     }
 
     async _mostrarHistorialCompleto() {
-        let mensaje = '📋 **HISTORIAL DE INTERVENCIONES V8.1**\n\n';
+        let mensaje = '📋 **HISTORIAL DE INTERVENCIONES V8.5**\n\n';
         const historial = this._historialIntervenciones.slice(-20).reverse();
         if (historial.length === 0) {
             mensaje += 'No hay intervenciones registradas aún.';
@@ -5486,38 +6043,43 @@ class TutorNeuro extends Vigia {
                 if (regla) mensaje += `   📌 ${regla.replace(/_/g, ' ')}\n`;
             }
         }
-        this._core?.alert(mensaje, '📋 Historial de Intervenciones V8.1');
+        if (this._core && typeof this._core.alert === 'function') {
+            this._core.alert(mensaje, '📋 Historial de Intervenciones V8.5');
+        } else {
+            alert(mensaje);
+        }
     }
 
     // ============================================================
     // DESTRUIR
     // ============================================================
-
     destroy() {
         if (this._healthCheckInterval) { clearInterval(this._healthCheckInterval); this._healthCheckInterval = null; }
+        if (this._intervaloRefresco) { clearInterval(this._intervaloRefresco); this._intervaloRefresco = null; }
         const panel = document.getElementById('tutorPanel');
         if (panel) panel.remove();
         this._restaurarNavegacion();
-        console.log('🧠 Tutor Neuro V8.1 destruido');
+        this._refrescoActivo = false;
+        this._guardarEstadoEnLocalStorage();
+        console.log('🧠 Tutor Neuro V8.5 destruido');
     }
 }
 
 // ============================================================
 // INSTANCIA GLOBAL
 // ============================================================
-
 window.tutorNeuro = new TutorNeuro();
 
 // INICIALIZACIÓN NO BLOQUEANTE CON DOBLE HERENCIA
 (function initTutorNeuroNoBloqueante() {
-    console.log('🧠 Tutor Neuro V8.1: Inicialización en segundo plano (NO BLOQUEANTE - TUTOR ESPACIAL CORREGIDO)');
+    console.log('🧠 Tutor Neuro V8.5: Inicialización en segundo plano (NO BLOQUEANTE - TUTOR ESPACIAL CORREGIDO - REFRESCO AUTOMÁTICO OBLIGATORIO)');
     const intentarIniciar = async function() {
         try {
             await new Promise(r => setTimeout(r, 2000));
             if (window.vigia && window.vigia._initDone) {
                 console.log('🧠 Tutor Neuro: Vigía listo, iniciando en segundo plano...');
                 await window.tutorNeuro.initTutor();
-                console.log('✅ Tutor Neuro V8.1 inicializado correctamente (MAESTRÍA ABSOLUTA - TUTOR ESPACIAL CORREGIDO)');
+                console.log('✅ Tutor Neuro V8.5 inicializado correctamente (MAESTRÍA ABSOLUTA - REFRESCO AUTOMÁTICO OBLIGATORIO)');
                 return true;
             } else {
                 console.log('⏳ Tutor Neuro: Vigía no listo, reintentando en 3s...');
@@ -5544,7 +6106,7 @@ window.tutorNeuro = new TutorNeuro();
     setTimeout(ejecutarReintento, 1000);
 })();
 
-console.log('✅ Tutor de Aprendizaje NeuroAdaptativo V8.1 - MAESTRÍA ABSOLUTA - TUTOR ESPACIAL CORREGIDO');
+console.log('✅ Tutor de Aprendizaje NeuroAdaptativo V8.5 - MAESTRÍA ABSOLUTA - REFRESCO AUTOMÁTICO OBLIGATORIO');
 console.log('  🚀 Guía proactiva al 120% para el alumno');
 console.log('  🔥 Contexto enriquecido con TODOS los módulos (incluyendo Biblioteca)');
 console.log('  🔥 Recomendación inteligente de módulo');
@@ -5577,3 +6139,20 @@ console.log('  ✅ CORREGIDO: this._configuracion.espacial existe');
 console.log('  ✅ CORREGIDO: _inicializarModoEspacial maneja todos los casos');
 console.log('  ✅ CORREGIDO: initTutor crea las estructuras faltantes');
 console.log('  🔥 MÉTODOS PÚBLICOS: forzarRecomendacion(), forzarAnalisis(), ejecutarRecomendacion()');
+console.log('  🔄 **NUEVO V8.5: REFRESCO AUTOMÁTICO OBLIGATORIO**');
+console.log('  🔄 **NUEVO: INTERVALO DE REFRESCO (5s por defecto - más rápido)**');
+console.log('  🔄 **NUEVO: REFRESCO INMEDIATO DESPUÉS DE INICIALIZACIÓN**');
+console.log('  🔄 **NUEVO: MANEJADOR DE EVENTOS CON BIND**');
+console.log('  🔄 **NUEVO: REFRESCOS PENDIENTES ENCOLA DOS**');
+console.log('  🔄 **NUEVO: MÉTRICAS POR EVENTO DE REFRESCO**');
+console.log('  🔄 **NUEVO: BADGE CON CONTADOR DE REFRESCOS**');
+console.log('  🔄 **NUEVO: ETIQUETA "REFRESCO AUTO" EN CABECERA**');
+console.log('  🔄 **NUEVO: REFRESCO EN EVENTO appInitCompleta**');
+console.log('  🔄 **NUEVO: REFRESCO DE SEGURIDAD (2s y 5s después de init)**');
+console.log('  🔄 **NUEVO: getIntervencionesPendientes() y getSiguienteTema() públicos**');
+console.log('  🔥 **NUEVO V8.5: FORZAR ANÁLISIS AL ENTRAR AUTOMÁTICAMENTE**');
+console.log('  🔥 **NUEVO: SIMULA EL CLICK EN "Forzar Análisis" AL ABRIR EL TUTOR**');
+console.log('  🔥 **NUEVO: PERSISTENCIA EN localStorage DE FORZAR ANÁLISIS**');
+console.log('  🔥 **NUEVO: BOTÓN "Forzar Análisis" EN EL DASHBOARD DE ÉLITE**');
+console.log('  🔥 **NUEVO: GUARDADO AUTOMÁTICO DE ESTADO EN localStorage**');
+console.log('  🔥 **NUEVO: RECUPERACIÓN DE ESTADO AL RECARGAR LA PÁGINA**');

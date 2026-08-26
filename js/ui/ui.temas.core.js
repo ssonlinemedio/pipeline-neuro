@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS CORE v4.11 - CON LISTENER DE ESTADO DE HISTORIAS Y VERIFICACIÓN DE TEMA
+// UI TEMAS CORE v4.13.1 - CON VERIFICACIÓN EN TIEMPO REAL Y CATCH CORREGIDO
 // ============================================================
 
 class UITemasCore {
@@ -164,13 +164,32 @@ class UITemasCore {
         
         this._VERSION_DEFECTO = 'v3.0';
         
-        // ============================================================
-        // LISTENER PARA SINCRONIZAR TEMAS COMPLETADOS Y REAPERTURA
-        // ============================================================
         this._configurarListenerSincronizacion();
-        
-        // 🔥 NUEVO: LISTENER PARA ESTADO DE HISTORIAS
         this._configurarListenerEstadoHistorias();
+        this._configurarListenerProgresoTema();
+    }
+
+    // ============================================================
+    // LISTENER PARA PROGRESO DE TEMA
+    // ============================================================
+
+    _configurarListenerProgresoTema() {
+        window.addEventListener('progresoTemaActualizado', async (e) => {
+            const detail = e.detail;
+            if (!detail) return;
+            
+            console.log(`📊 Progreso del tema actualizado: ${detail.temaNombre} -> ${detail.progreso}%`);
+            
+            if (detail.completado !== undefined) {
+                const idioma = gestorIdiomas.getIdiomaActivo() || 'es';
+                const key = `${idioma}_${detail.temaId}`;
+                this._temaCompletadoCache[key] = detail.completado;
+            }
+            
+            if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado === detail.temaId) {
+                await this._verTemaDetalle(detail.temaId);
+            }
+        });
     }
 
     // ============================================================
@@ -194,27 +213,7 @@ class UITemasCore {
             
             await this._actualizarDesbloqueos(detail.idioma);
             
-            if (this.modoVistaTemas === 'lista') {
-                await this._renderTemas();
-            } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
-                const temaDbId = detail.temaDbId || detail.temaId;
-                if (temaDbId === this.temaSeleccionado || detail.temaId === this.temaSeleccionado) {
-                    await this._verTemaDetalle(this.temaSeleccionado);
-                } else {
-                    await this._renderTemas();
-                }
-            }
-            
-            if (window.UIDashboard) {
-                window.UIDashboard._cargarDashboardInicial(this._core);
-            }
-            if (window.UIClipse) {
-                setTimeout(() => {
-                    try {
-                        window.UIClipse.cargar(this._core);
-                    } catch (e) {}
-                }, 300);
-            }
+            await this._forzarActualizacionCompleta(detail.temaDbId || detail.temaId);
         });
         
         window.addEventListener('historiaCompletada', async (e) => {
@@ -222,6 +221,10 @@ class UITemasCore {
             if (!detail) return;
             
             console.log(`🔄 Historia completada: ${detail.historiaTitulo} (${detail.temaId})`);
+            
+            if (detail.temaId) {
+                await this._verificarYActualizarEstadoTema(detail.temaId);
+            }
             
             if (this.modoVistaTemas === 'lista') {
                 await this._renderTemas();
@@ -241,12 +244,9 @@ class UITemasCore {
         
         window.addEventListener('elipseNuevaOndaGenerada', async (e) => {
             const temaId = e.detail?.temaId;
-            const historiaId = e.detail?.historiaId;
-            const titulo = e.detail?.titulo || 'Nueva Onda';
-            
             if (!temaId) return;
             
-            console.log(`🌌 Nueva onda generada/importada para tema ${temaId}: "${titulo}"`);
+            console.log(`🌌 Nueva onda generada/importada para tema ${temaId}`);
             
             try {
                 const tema = await db.obtenerTema(temaId);
@@ -255,68 +255,9 @@ class UITemasCore {
                     return;
                 }
                 
-                if (tema.estado === 'completado' || tema._completado === true) {
-                    console.log(`🔄 Reabriendo tema "${tema.nombre}" por nueva onda generada`);
-                    
-                    tema.estado = 'en_curso';
-                    tema._completado = false;
-                    delete tema._fechaCompletado;
-                    await db.update('temas', tema);
-                    
-                    const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
-                    const temaOriginalId = tema._temaOriginalId || tema.id;
-                    
-                    const key = `${idioma}_${temaOriginalId}`;
-                    this._temaCompletadoCache[key] = false;
-                    if (this._temasCompletadosPorIdioma[idioma]) {
-                        this._temasCompletadosPorIdioma[idioma][temaOriginalId] = false;
-                    }
-                    
-                    window.dispatchEvent(new CustomEvent('temaCompletado', {
-                        detail: { 
-                            idioma: idioma,
-                            temaId: temaOriginalId,
-                            temaDbId: tema.id,
-                            completado: false,
-                            tema: tema,
-                            origen: 'elipse',
-                            reabiertoPorNuevaOnda: true,
-                            nuevaHistoriaId: historiaId,
-                            nuevaHistoriaTitulo: titulo
-                        }
-                    }));
-                    
-                    if (this._core) {
-                        this._core.mostrarToast(`🔄 Tema "${tema.nombre}" reabierto (nueva onda: "${titulo}")`, 'info');
-                    }
-                    if (window.UIDashboard) {
-                        window.UIDashboard._cargarDashboardInicial(this._core);
-                    }
-                    if (window.UIClipse) {
-                        setTimeout(() => {
-                            try {
-                                window.UIClipse.cargar(this._core);
-                            } catch (err) {}
-                        }, 500);
-                    }
-                    
-                    setTimeout(() => {
-                        if (this.modoVistaTemas === 'lista') {
-                            this._renderTemas();
-                        } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado === temaId) {
-                            this._verTemaDetalle(temaId);
-                        }
-                    }, 300);
-                } else {
-                    console.log(`ℹ️ Tema "${tema.nombre}" ya está en curso, solo actualizando vista`);
-                    setTimeout(() => {
-                        if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado === temaId) {
-                            this._verTemaDetalle(temaId);
-                        } else {
-                            this._renderTemas();
-                        }
-                    }, 300);
-                }
+                await this._verificarYActualizarEstadoTema(temaId);
+                await this._forzarActualizacionCompleta(temaId);
+                
             } catch (error) {
                 console.error('❌ Error procesando nueva onda:', error);
             }
@@ -326,14 +267,13 @@ class UITemasCore {
     }
 
     // ============================================================
-    // 🔥 CONFIGURAR LISTENER PARA ESTADO DE HISTORIAS
+    // CONFIGURAR LISTENER PARA ESTADO DE HISTORIAS
     // ============================================================
 
     _configurarListenerEstadoHistorias() {
         window.addEventListener('historiaEstadoCambiado', async (e) => {
             console.log('🔄 UITemasCore: Estado de historia cambiado', e.detail);
             
-            // 🔥 VERIFICAR SI EL TEMA ESTÁ COMPLETADO
             if (e.detail?.tipo === 'historia' || e.detail?.tipo === 'onda_elipse' || e.detail?.tipo === 'onda_cruzada') {
                 const historiaId = e.detail.historiaId;
                 const historia = await db.get('historias', historiaId);
@@ -342,11 +282,14 @@ class UITemasCore {
                 }
             }
             
-            // Refrescar la vista actual
-            if (this.modoVistaTemas === 'lista') {
-                await this._renderTemas();
-            } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
-                await this._verTemaDetalle(this.temaSeleccionado);
+            if (e.detail?.temaId) {
+                await this._forzarActualizacionCompleta(e.detail.temaId);
+            } else if (this.temaSeleccionado) {
+                await this._forzarActualizacionCompleta(this.temaSeleccionado);
+            } else {
+                if (this.modoVistaTemas === 'lista') {
+                    await this._renderTemas();
+                }
             }
             
             if (window.UIDashboard) {
@@ -356,16 +299,55 @@ class UITemasCore {
     }
 
     // ============================================================
-    // 🔥 VERIFICAR Y ACTUALIZAR ESTADO DEL TEMA
+    // FORZAR ACTUALIZACIÓN COMPLETA
+    // ============================================================
+
+    async _forzarActualizacionCompleta(temaId) {
+        console.log(`🔥 Forzando actualización completa para tema ${temaId}`);
+        
+        try {
+            await this._verificarYActualizarEstadoTema(temaId);
+            
+            if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
+                await this._verTemaDetalle(this.temaSeleccionado);
+            } else {
+                await this._renderTemas();
+            }
+            
+            if (window.UIDashboard) {
+                window.UIDashboard._cargarDashboardInicial(this._core);
+            }
+            
+            if (window.UIClipse) {
+                try {
+                    window.UIClipse._renderizarPanel(temaId);
+                } catch (e) {}
+            }
+            
+            if (window.UIOndasCruzadas) {
+                try {
+                    await window.UIOndasCruzadas._cargarDatos();
+                    await window.UIOndasCruzadas._renderizarPanel();
+                } catch (e) {}
+            }
+            
+            console.log(`✅ Actualización completa finalizada`);
+        } catch (error) {
+            console.error(`❌ Error en _forzarActualizacionCompleta:`, error);
+        }
+    }
+
+    // ============================================================
+    // VERIFICAR Y ACTUALIZAR ESTADO DEL TEMA
     // ============================================================
 
     async _verificarYActualizarEstadoTema(temaId) {
         try {
             const tema = await db.obtenerTema(temaId);
-            if (!tema) return;
+            if (!tema) return null;
             
             const historias = await db.obtenerHistoriasPorTema(temaId);
-            if (historias.length === 0) return;
+            if (historias.length === 0) return null;
             
             let completadas = 0;
             for (const h of historias) {
@@ -377,7 +359,6 @@ class UITemasCore {
             const total = historias.length;
             const progreso = total > 0 ? Math.round((completadas / total) * 100) : 0;
             
-            // 🔥 ACTUALIZAR PROGRESO EN EL TEMA
             tema._progreso = progreso;
             tema._historiasCompletadas = completadas;
             tema._historiasTotales = total;
@@ -432,12 +413,10 @@ class UITemasCore {
                     }
                 }));
             } else {
-                // 🔥 SI EL PROGRESO CAMBIÓ PERO EL ESTADO NO, ACTUALIZAR PROGRESO
                 await db.update('temas', tema);
                 console.log(`📊 Progreso del tema "${tema.nombre}" actualizado: ${progreso}% (${completadas}/${total})`);
             }
             
-            // 🔥 DISPARAR EVENTO PARA ACTUALIZAR UI
             window.dispatchEvent(new CustomEvent('progresoTemaActualizado', {
                 detail: {
                     temaId: tema.id,
@@ -511,6 +490,14 @@ class UITemasCore {
                     <button class="btn-secondary" onclick="window.UITemas._forzarRefresco()" style="padding:10px 20px;background:var(--success);color:white;border:none;border-radius:8px;cursor:pointer;">
                         <i class="fas fa-sync"></i> Refrescar
                     </button>
+                    <button class="btn-secondary" onclick="window.UITemas._sincronizarTodosLosTemas()" 
+                            style="padding:10px 20px;background:var(--warning);color:var(--dark);border:none;border-radius:8px;cursor:pointer;">
+                        <i class="fas fa-sync-alt"></i> Sincronizar Todos
+                    </button>
+                    <button class="btn-secondary" onclick="window.UITemas._forzarActualizacionCompleta(window.UITemas.temaSeleccionado)" 
+                            style="padding:10px 20px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;">
+                        <i class="fas fa-bolt"></i> Forzar Sincronización
+                    </button>
                 </div>
             `;
             container.insertAdjacentHTML('beforebegin', actionsHTML);
@@ -519,6 +506,155 @@ class UITemasCore {
         this._renderTemas();
     }
 
+    // ============================================================
+    // SINCRONIZAR TODOS LOS TEMAS
+    // ============================================================
+
+    async _sincronizarTodosLosTemas() {
+        console.log('🔄 Sincronizando todos los temas...');
+        try {
+            const temas = await db.obtenerTemas();
+            let sincronizados = 0;
+            for (const tema of temas) {
+                try {
+                    await this._verificarYActualizarEstadoTema(tema.id);
+                    sincronizados++;
+                } catch (e) {
+                    console.warn(`⚠️ Error sincronizando tema ${tema.id}:`, e);
+                }
+            }
+            if (this._core) {
+                this._core.mostrarToast(`✅ ${sincronizados} temas sincronizados`, 'success');
+            }
+            await this._renderTemas();
+        } catch (error) {
+            console.error('❌ Error en _sincronizarTodosLosTemas:', error);
+            if (this._core) {
+                this._core.mostrarToast('❌ Error sincronizando temas', 'error');
+            }
+        }
+    }
+
+    // ============================================================
+    // MARCAR TEMA COMPLETADO CON CASCADA Y SINCRONIZACIÓN FORZADA
+    // ============================================================
+
+    async _marcarTemaCompletado(idioma, temaId, completado) {
+        const key = `${idioma}_${temaId}`;
+        console.log(`📌 Marcando tema ${temaId} (${idioma}) como ${completado ? 'completado' : 'no completado'}`);
+
+        try {
+            let temaEncontrado = null;
+            let temaIdReal = temaId;
+            let esTemaPredefinido = false;
+            let temaDbId = null;
+
+            const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
+            const idNum = parseInt(temaId);
+            if (!isNaN(idNum) && idNum > 0) {
+                temaEncontrado = todosLosTemas.find(t => t.id === idNum);
+                if (temaEncontrado) {
+                    temaIdReal = idNum;
+                    esTemaPredefinido = temaEncontrado._esPredefinido === true;
+                    temaDbId = temaEncontrado.id;
+                    console.log(`📂 Tema encontrado por ID: "${temaEncontrado.nombre}" (${esTemaPredefinido ? 'predefinido' : 'manual'})`);
+                }
+            }
+
+            if (!temaEncontrado) {
+                temaEncontrado = todosLosTemas.find(t => t._temaOriginalId === temaId);
+                if (temaEncontrado) {
+                    esTemaPredefinido = true;
+                    temaDbId = temaEncontrado.id;
+                    console.log(`📂 Tema encontrado por _temaOriginalId: "${temaEncontrado.nombre}"`);
+                }
+            }
+
+            if (!temaEncontrado) {
+                console.warn(`⚠️ Tema ${temaId} no encontrado en ${idioma}`);
+                return;
+            }
+
+            // 🔥 USAR GESTOR DE PROGRESO PARA SINCRONIZACIÓN COMPLETA
+            if (window.gestorProgresoHistorias) {
+                console.log(`🌊 Usando GestorProgresoHistorias para sincronización completa`);
+                await window.gestorProgresoHistorias._sincronizarTemaCompleto(temaDbId, completado);
+            } else {
+                // FALLBACK: sincronización manual
+                console.log(`⚠️ GestorProgresoHistorias no disponible, usando fallback`);
+                
+                temaEncontrado.estado = completado ? 'completado' : 'en_curso';
+                temaEncontrado._completado = completado;
+                if (completado) {
+                    temaEncontrado._fechaCompletado = Date.now();
+                } else {
+                    delete temaEncontrado._fechaCompletado;
+                }
+
+                if (completado) {
+                    console.log(`🌊 Marcando todas las historias del tema "${temaEncontrado.nombre}" como completadas...`);
+                    const historias = await db.obtenerHistoriasPorTema(temaDbId);
+                    for (const h of historias) {
+                        if (!(h.estado === 'completada' || h._completada === true)) {
+                            h.estado = 'completada';
+                            h._completada = true;
+                            h._fechaCompletado = Date.now();
+                            await db.update('historias', h);
+                        }
+                    }
+                }
+
+                await db.update('temas', temaEncontrado);
+                console.log(`📌 Tema "${temaEncontrado.nombre}" (${idioma}) marcado como ${completado ? 'completado' : 'en curso'}`);
+            }
+
+            // Actualizar cache
+            this._temaCompletadoCache[key] = completado;
+            if (!this._temasCompletadosPorIdioma[idioma]) {
+                this._temasCompletadosPorIdioma[idioma] = {};
+            }
+            this._temasCompletadosPorIdioma[idioma][temaId] = completado;
+
+            // Actualizar desbloqueos
+            await this._actualizarDesbloqueos(idioma);
+
+            // Disparar evento
+            window.dispatchEvent(new CustomEvent('temaCompletado', {
+                detail: {
+                    idioma,
+                    temaId: temaId,
+                    temaDbId: temaDbId,
+                    completado,
+                    tema: temaEncontrado,
+                    key: key,
+                    esPredefinido: esTemaPredefinido,
+                    origen: 'manual'
+                }
+            }));
+
+            // Mostrar toast
+            if (this._core) {
+                this._core.mostrarToast(
+                    completado ? `✅ "${temaEncontrado.nombre}" completado (${idioma})` : `↩️ "${temaEncontrado.nombre}" marcado como no completado (${idioma})`,
+                    completado ? 'success' : 'info'
+                );
+            }
+
+            // FORZAR ACTUALIZACIÓN COMPLETA
+            await this._forzarActualizacionCompleta(temaDbId);
+
+        } catch (error) {
+            console.error(`❌ Error en _marcarTemaCompletado:`, error);
+            if (this._core) {
+                this._core.mostrarToast(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+    }
+
+    // ============================================================
+    // MÉTODOS DE UTILIDAD
+    // ============================================================
+
     _getContainer() {
         if (!this._container) {
             this._container = document.getElementById('temasContent');
@@ -526,9 +662,33 @@ class UITemasCore {
         return this._container;
     }
 
-    // ============================================================
-    // OBTENER VERSIÓN DEL ESTÁNDAR
-    // ============================================================
+    _cargarPreferenciaOcultar() {
+        try {
+            const saved = localStorage.getItem('pipeline_ocultar_completados');
+            if (saved !== null) {
+                this._ocultarCompletados = saved === 'true';
+            }
+        } catch (e) {}
+    }
+
+    _guardarPreferenciaOcultar() {
+        try {
+            localStorage.setItem('pipeline_ocultar_completados',
+                this._ocultarCompletados ? 'true' : 'false');
+        } catch (e) {}
+    }
+
+    _alternarOcultarCompletados() {
+        this._ocultarCompletados = !this._ocultarCompletados;
+        this._guardarPreferenciaOcultar();
+        this._renderTemas();
+        if (this._core) {
+            this._core.mostrarToast(
+                this._ocultarCompletados ? '🔒 Temas completados ocultos' : '👁️ Mostrando todos los temas',
+                'info'
+            );
+        }
+    }
 
     _obtenerVersionEstandar(idioma) {
         if (window.gestorIdiomas && typeof window.gestorIdiomas.obtenerVersionActiva === 'function') {
@@ -576,41 +736,23 @@ class UITemasCore {
         return nombres[idioma] || idioma;
     }
 
-    // ============================================================
-    // MÉTODOS INTERNOS
-    // ============================================================
-
-    _cargarPreferenciaOcultar() {
-        try {
-            const saved = localStorage.getItem('pipeline_ocultar_completados');
-            if (saved !== null) {
-                this._ocultarCompletados = saved === 'true';
-            }
-        } catch (e) {}
+    _esJeroglifico(idioma) {
+        if (!idioma) return false;
+        const idiomaLower = idioma.toLowerCase().trim();
+        return this.IDIOMAS_JEROGLIFICOS.some(item =>
+            idiomaLower.includes(item) || item.includes(idiomaLower)
+        );
     }
 
-    _guardarPreferenciaOcultar() {
-        try {
-            localStorage.setItem('pipeline_ocultar_completados',
-                this._ocultarCompletados ? 'true' : 'false');
-        } catch (e) {}
+    _detectarTipoEstructura(caracter) {
+        if (!caracter) return 'desconocido';
+        if (/[明好林双从]/u.test(caracter)) return 'izquierda-derecha';
+        if (/[安花草苗]/u.test(caracter)) return 'arriba-abajo';
+        if (/[国园图园]/u.test(caracter)) return 'envolvente';
+        if (/[街微微]/u.test(caracter)) return 'izquierda-media-derecha';
+        if (/[草篮]/u.test(caracter)) return 'arriba-media-abajo';
+        return 'simple';
     }
-
-    _alternarOcultarCompletados() {
-        this._ocultarCompletados = !this._ocultarCompletados;
-        this._guardarPreferenciaOcultar();
-        this._renderTemas();
-        if (this._core) {
-            this._core.mostrarToast(
-                this._ocultarCompletados ? '🔒 Temas completados ocultos' : '👁️ Mostrando todos los temas',
-                'info'
-            );
-        }
-    }
-
-    // ============================================================
-    // CARGAR MAPA DE TEMAS PREDEFINIDOS POR IDIOMA
-    // ============================================================
 
     async _cargarMapaTemasPredefinidos() {
         try {
@@ -624,15 +766,10 @@ class UITemasCore {
                     this._temaPredefinidoIdMap[tema.idioma][tema._temaOriginalId] = tema.id;
                 }
             }
-            console.log('📂 Mapa de temas predefinidos por idioma cargado:', Object.keys(this._temaPredefinidoIdMap));
         } catch (e) {
             console.warn('⚠️ Error cargando mapa de temas predefinidos:', e);
         }
     }
-
-    // ============================================================
-    // OBTENER TEMA PREDEFINIDO POR IDIOMA
-    // ============================================================
 
     async _obtenerTemaPredefinidoPorIdioma(temaId, idioma) {
         try {
@@ -667,183 +804,14 @@ class UITemasCore {
         }
     }
 
-    // ============================================================
-    // VERIFICAR SI UN TEMA ESTÁ GUARDADO EN UN IDIOMA
-    // ============================================================
-
-    async _temaPredefinidoEstaGuardado(temaId, idioma) {
-        try {
-            const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
-            return todosLosTemas.some(t => 
-                t._temaOriginalId === temaId && 
-                t._esPredefinido === true &&
-                t.idioma === idioma
-            );
-        } catch (e) {
-            return false;
+    async _obtenerOCrearTemaPredefinidoPorIdioma(temaId, idioma) {
+        const temaExistente = await this._obtenerTemaPredefinidoPorIdioma(temaId, idioma);
+        if (temaExistente) {
+            return temaExistente;
         }
+
+        return await this._guardarTemaPredefinidoComoPlantilla(temaId, idioma);
     }
-
-    // ============================================================
-    // VERIFICAR SI UN TEMA ESTÁ COMPLETADO EN UN IDIOMA
-    // ============================================================
-
-    async _temaEstaCompletado(idioma, temaId) {
-        const key = `${idioma}_${temaId}`;
-        
-        if (this._temaCompletadoCache[key] !== undefined) {
-            return this._temaCompletadoCache[key];
-        }
-        
-        try {
-            const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
-            const temaEncontrado = todosLosTemas.find(t => 
-                t._temaOriginalId === temaId && 
-                t._esPredefinido === true &&
-                t.idioma === idioma
-            );
-
-            if (temaEncontrado) {
-                const estaCompletado = temaEncontrado.estado === 'completado' || temaEncontrado._completado === true;
-                this._temaCompletadoCache[key] = estaCompletado;
-                return estaCompletado;
-            }
-
-            this._temaCompletadoCache[key] = false;
-            return false;
-            
-        } catch (e) {
-            console.warn(`⚠️ Error en _temaEstaCompletado:`, e);
-            return false;
-        }
-    }
-
-    // ============================================================
-    // MARCAR UN TEMA COMO COMPLETADO
-    // ============================================================
-
-    async _marcarTemaCompletado(idioma, temaId, completado) {
-        const key = `${idioma}_${temaId}`;
-        
-        console.log(`📌 Marcando tema ${temaId} (${idioma}) como ${completado ? 'completado' : 'no completado'}`);
-        
-        let temaEncontrado = null;
-        let temaIdReal = temaId;
-        let esTemaPredefinido = false;
-        
-        try {
-            const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
-            
-            const idNum = parseInt(temaId);
-            if (!isNaN(idNum) && idNum > 0) {
-                temaEncontrado = todosLosTemas.find(t => t.id === idNum);
-                if (temaEncontrado) {
-                    temaIdReal = idNum;
-                    esTemaPredefinido = temaEncontrado._esPredefinido === true;
-                    console.log(`📂 Tema encontrado por ID: "${temaEncontrado.nombre}" (${esTemaPredefinido ? 'predefinido' : 'manual'})`);
-                }
-            }
-            
-            if (!temaEncontrado) {
-                temaEncontrado = todosLosTemas.find(t => t._temaOriginalId === temaId);
-                if (temaEncontrado) {
-                    esTemaPredefinido = true;
-                    console.log(`📂 Tema encontrado por _temaOriginalId: "${temaEncontrado.nombre}"`);
-                }
-            }
-            
-            if (!temaEncontrado) {
-                const esIdPredefinido = /^[a-c][1-2]_\d+$/.test(temaId) || /^[A-C][1-2]_\d+$/.test(temaId);
-                
-                if (esIdPredefinido) {
-                    console.log(`📄 Tema predefinido ${temaId} no encontrado en ${idioma}. Creando plantilla...`);
-                    const temaCreado = await this._guardarTemaPredefinidoComoPlantilla(temaId, idioma);
-                    if (temaCreado) {
-                        temaEncontrado = temaCreado;
-                        temaIdReal = temaCreado.id;
-                        esTemaPredefinido = true;
-                    } else {
-                        console.error(`❌ No se pudo crear el tema ${temaId} en ${idioma}.`);
-                        return;
-                    }
-                } else {
-                    console.warn(`⚠️ Tema con ID ${temaId} no encontrado en ${idioma}.`);
-                    return;
-                }
-            }
-        } catch (e) {
-            console.warn(`⚠️ Error buscando tema:`, e);
-            return;
-        }
-
-        if (!temaEncontrado) {
-            console.warn(`⚠️ Tema ${temaId} no encontrado en ${idioma}`);
-            return;
-        }
-
-        let temaNombre = temaEncontrado.nombre || 'Tema';
-        let temaDbId = temaEncontrado.id;
-        let temaOriginalId = temaEncontrado._temaOriginalId || temaId;
-        
-        temaEncontrado.estado = completado ? 'completado' : 'en_curso';
-        temaEncontrado._completado = completado;
-        if (completado) {
-            temaEncontrado._fechaCompletado = Date.now();
-        } else {
-            delete temaEncontrado._fechaCompletado;
-        }
-
-        try {
-            await db.update('temas', temaEncontrado);
-            console.log(`📌 Tema "${temaNombre}" (${idioma}) marcado como ${completado ? 'completado' : 'en curso'}`);
-        } catch (e) {
-            console.error(`❌ Error guardando estado:`, e);
-            return;
-        }
-
-        this._temaCompletadoCache[key] = completado;
-        if (!this._temasCompletadosPorIdioma[idioma]) {
-            this._temasCompletadosPorIdioma[idioma] = {};
-        }
-        this._temasCompletadosPorIdioma[idioma][temaId] = completado;
-
-        await this._actualizarDesbloqueos(idioma);
-
-        window.dispatchEvent(new CustomEvent('temaCompletado', {
-            detail: { 
-                idioma, 
-                temaId: temaOriginalId,
-                temaDbId: temaDbId,
-                completado, 
-                tema: temaEncontrado,
-                key: key,
-                esPredefinido: esTemaPredefinido,
-                origen: 'manual'
-            }
-        }));
-
-        if (this._core) {
-            this._core.mostrarToast(
-                completado ? `✅ "${temaNombre}" completado (${idioma})` : `↩️ "${temaNombre}" marcado como no completado (${idioma})`,
-                completado ? 'success' : 'info'
-            );
-        }
-
-        if (this.modoVistaTemas === 'lista') {
-            await this._renderTemas();
-        } else if (this.modoVistaTemas === 'detalle' && this.temaSeleccionado) {
-            const temaIdActual = this.temaSeleccionado;
-            if (temaIdActual === temaDbId || temaIdActual === temaOriginalId) {
-                await this._verTemaDetalle(temaDbId);
-            } else {
-                await this._renderTemas();
-            }
-        }
-    }
-
-    // ============================================================
-    // GUARDAR TEMA PREDEFINIDO COMO PLANTILLA
-    // ============================================================
 
     async _guardarTemaPredefinidoComoPlantilla(temaId, idiomaForzado = null) {
         try {
@@ -917,7 +885,6 @@ class UITemasCore {
                 }
                 this._temaPredefinidoIdMap[idioma][temaId] = idGuardado;
                 const temaCompleto = await db.obtenerTema(idGuardado);
-                console.log(`📄 Tema predefinido "${nuevoTema.nombre}" guardado como PLANTILLA (ID: ${idGuardado}) para idioma: ${idioma}`);
                 return temaCompleto;
             }
             return null;
@@ -927,212 +894,6 @@ class UITemasCore {
             return null;
         }
     }
-
-    // ============================================================
-    // GENERAR PLANTILLA JSON PARA TEMA PREDEFINIDO
-    // ============================================================
-
-    _generarPlantillaTemaPredefinido(temaId, temaNombre, nivel, idioma, nombreIdioma, idiomaNativo, nombreNativo, esJeroglifico, numHistorias, numFrases, versionEstandar, nombreVersion) {
-        const numHistoriasFinal = numHistorias || 3;
-        const numFrasesFinal = numFrases || 6;
-        const palabrasRequeridas = window.gestorIdiomas?._obtenerPalabrasPorVersion?.(idioma, versionEstandar, nivel) || 2000;
-        const numTemasRecomendados = this._calcularNumeroTemas(versionEstandar, nivel) || 8;
-
-        let instruccionesTranscripcion = '';
-        let camposTranscripcion = {};
-        
-        if (esJeroglifico) {
-            instruccionesTranscripcion = `
-                ⚠️ IMPORTANTE PARA IDIOMAS JEROGLÍFICOS:
-                - Incluye 'pinyin' CON TONOS para CADA frase y CADA palabra.
-                - La 'segmentacion' debe separar CADA palabra con su pinyin correspondiente.
-                - Ejemplo: "你好" → "nǐ hǎo"
-            `;
-            camposTranscripcion = {
-                "frase": "pinyin con tonos",
-                "palabra": "pinyin con tonos",
-                "segmentacion": "hanzi y pinyin separados"
-            };
-        } else {
-            instruccionesTranscripcion = `
-                ⚠️ IMPORTANTE PARA TRANSCRIPCIÓN FONÉTICA:
-                - Incluye 'transcripcion' para CADA frase y CADA palabra.
-                - La transcripción debe estar en el sistema fonético NATIVO del usuario (${nombreNativo}).
-                - Ejemplo: "I have a pencil" → transcripción: "ai jaf a pensil" (para español).
-            `;
-            camposTranscripcion = {
-                "frase": "transcripcion en " + nombreNativo,
-                "palabra": "transcripcion en " + nombreNativo
-            };
-        }
-
-        const plantilla = {
-            "_INSTRUCCIONES_PARA_IA": {
-                "version": "22.0",
-                "accion": "Genera " + numHistoriasFinal + " mini-historias sobre \"" + temaNombre + "\"",
-                "idioma": idioma,
-                "nombre_idioma": nombreIdioma,
-                "nivel": nivel,
-                "tema": temaNombre,
-                "tema_id": temaId,
-                "num_historias": numHistoriasFinal,
-                "max_historias": 10,
-                "max_frases_por_historia": 10,
-                "es_jeroglifico": esJeroglifico,
-                "idioma_nativo": idiomaNativo,
-                "nombre_nativo": nombreNativo,
-                "version_estandar": versionEstandar,
-                "nombre_version": nombreVersion,
-                "palabras_requeridas": palabrasRequeridas,
-                "num_temas_recomendados": numTemasRecomendados,
-                "instrucciones": [
-                    "1. Genera " + numHistoriasFinal + " mini-historias sobre \"" + temaNombre + "\"",
-                    "2. Cada historia debe tener " + numFrasesFinal + " frases en " + idioma,
-                    "3. El nivel de dificultad es " + nivel,
-                    "4. La versión del estándar es " + nombreVersion + " (" + versionEstandar + ")",
-                    "5. Este nivel requiere aproximadamente " + palabrasRequeridas + " palabras en total",
-                    "6. Cada frase debe tener: 'original', 'traduccion'",
-                    "7. Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase",
-                    "8. ⚠️ IMPORTANTE: Para CADA frase, incluye 'palabras' con TODAS las palabras de la frase",
-                    "9. " + instruccionesTranscripcion,
-                    "10. IMPORTANTE: Clasifica CADA palabra con su tipo gramatical correcto",
-                    "11. IMPORTANTE: Genera una sección 'caracteres_destacados' con los caracteres clave del tema"
-                ],
-                "campos_transcripcion": camposTranscripcion,
-                "formato_palabras": esJeroglifico ? {
-                    "hanzi": "El carácter en el idioma objetivo",
-                    "pinyin": "Pronunciación con tonos",
-                    "familia": "Familia SEMÁNTICA",
-                    "tipo": "Categoría GRAMATICAL",
-                    "significado": "Traducción al " + idiomaNativo
-                } : {
-                    "palabra": "La palabra en el idioma objetivo",
-                    "transcripcion": "Transcripción fonética en " + nombreNativo,
-                    "familia": "Familia SEMÁNTICA",
-                    "tipo": "Categoría GRAMATICAL",
-                    "significado": "Traducción al " + idiomaNativo
-                }
-            },
-            "meta": {
-                "tema": temaNombre,
-                "tema_id": temaId,
-                "idioma": idioma,
-                "nombre_idioma": nombreIdioma,
-                "nivel": nivel,
-                "es_jeroglifico": esJeroglifico,
-                "idioma_nativo": idiomaNativo,
-                "nombre_nativo": nombreNativo,
-                "num_historias": numHistoriasFinal,
-                "version_estandar": versionEstandar,
-                "nombre_version": nombreVersion,
-                "palabras_requeridas": palabrasRequeridas,
-                "fecha_generacion": new Date().toISOString(),
-                "version": "22.0",
-                "_esPredefinido": true,
-                "_esImportado": true,
-                "_completado": false
-            },
-            "historias": []
-        };
-
-        for (let i = 1; i <= numHistoriasFinal; i++) {
-            const historia = { 
-                id: i, 
-                titulo: "Historia " + i + " sobre " + temaNombre, 
-                frases: [] 
-            };
-            for (let j = 1; j <= numFrasesFinal; j++) {
-                const frase = {
-                    original: "Frase " + j + " en " + idioma,
-                    traduccion: "Traduccion " + j + " al " + idiomaNativo,
-                    regla_gramatical: "[Regla gramatical " + j + "]",
-                    explicacion_gramatical: "[Explicacion " + j + " en " + idiomaNativo + "]",
-                    palabras: []
-                };
-                
-                if (esJeroglifico) {
-                    frase.pinyin = "[pinyin_con_tonos_de_la_frase_" + j + "]";
-                    frase.segmentacion = {
-                        hanzi: "[hanzi_frase_" + j + "]",
-                        pinyin: "[pinyin_frase_" + j + "]"
-                    };
-                    frase.palabras.push({
-                        hanzi: "[hanzi_palabra_" + j + "]",
-                        pinyin: "[pinyin_de_palabra_" + j + "]",
-                        familia: "[familia_semantica]",
-                        tipo: "[tipo_gramatical]",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
-                } else {
-                    frase.transcripcion = "[transcripcion_en_" + nombreNativo + "_de_la_frase_" + j + "]";
-                    frase.palabras.push({
-                        palabra: "[palabra_" + j + "]",
-                        transcripcion: "[transcripcion_en_" + nombreNativo + "_de_palabra_" + j + "]",
-                        familia: "[familia_semantica]",
-                        tipo: "[tipo_gramatical]",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
-                }
-                historia.frases.push(frase);
-            }
-            plantilla.historias.push(historia);
-        }
-
-        if (esJeroglifico) {
-            plantilla.caracteres_destacados = {
-                "_INSTRUCCIONES": {
-                    "version": "2.0",
-                    "accion": "Genera caracteres destacados para el tema",
-                    "tema": temaNombre,
-                    "idioma": idioma,
-                    "nivel": nivel,
-                    "idioma_nativo": idiomaNativo,
-                    "instrucciones": [
-                        "1. Identifica los caracteres MÁS IMPORTANTES del tema",
-                        "2. Para cada carácter, proporciona: 'caracter', 'pinyin', 'significado', 'frecuencia', 'palabras_relacionadas', 'frases_de_la_historia'"
-                    ]
-                },
-                "lista": []
-            };
-        }
-
-        return plantilla;
-    }
-
-    _calcularNumeroTemas(version, nivel) {
-        const versionData = this.TEMAS_PREDEFINIDOS[version] || this.TEMAS_PREDEFINIDOS[this._VERSION_DEFECTO];
-        const temasNivel = versionData[nivel] || versionData['A1'] || [];
-        return temasNivel.length;
-    }
-
-    // ============================================================
-    // OBTENER O CREAR TEMA PREDEFINIDO POR IDIOMA
-    // ============================================================
-
-    async _obtenerOCrearTemaPredefinidoPorIdioma(temaId, idioma) {
-        console.log(`🔍 Buscando/creando tema ${temaId} para idioma: ${idioma}`);
-        
-        const temaExistente = await this._obtenerTemaPredefinidoPorIdioma(temaId, idioma);
-        if (temaExistente) {
-            console.log(`📂 Tema "${temaExistente.nombre}" ya existe en ${idioma} (ID: ${temaExistente.id})`);
-            return temaExistente;
-        }
-
-        console.log(`📝 Creando tema "${temaId}" como plantilla en ${idioma}...`);
-        const temaCreado = await this._guardarTemaPredefinidoComoPlantilla(temaId, idioma);
-        if (temaCreado) {
-            if (!this._temaPredefinidoIdMap[idioma]) {
-                this._temaPredefinidoIdMap[idioma] = {};
-            }
-            this._temaPredefinidoIdMap[idioma][temaId] = temaCreado.id;
-            console.log(`✅ Tema "${temaCreado.nombre}" creado como PLANTILLA en ${idioma} (ID: ${temaCreado.id})`);
-        }
-        return temaCreado;
-    }
-
-    // ============================================================
-    // VERIFICAR SI UN NIVEL ESTÁ DESBLOQUEADO
-    // ============================================================
 
     async _nivelEstaDesbloqueado(idioma, nivel) {
         const usuario = await db.getUsuario();
@@ -1155,9 +916,21 @@ class UITemasCore {
         return false;
     }
 
-    // ============================================================
-    // DESBLOQUEAR SIGUIENTE NIVEL
-    // ============================================================
+    async _nivelEstaCompletado(idioma, nivel) {
+        const progreso = await this._obtenerProgresoNivel(idioma, nivel);
+        return progreso.porcentaje >= 100 && progreso.total > 0;
+    }
+
+    async _actualizarDesbloqueos(idioma) {
+        for (let i = 0; i < this.NIVELES.length; i++) {
+            const nivel = this.NIVELES[i];
+            const estaCompletado = await this._nivelEstaCompletado(idioma, nivel);
+            
+            if (estaCompletado && i < this.NIVELES.length - 1) {
+                await this._desbloquearSiguienteNivel(idioma);
+            }
+        }
+    }
 
     async _desbloquearSiguienteNivel(idioma) {
         const usuario = await db.getUsuario();
@@ -1188,34 +961,6 @@ class UITemasCore {
         }
     }
 
-    // ============================================================
-    // VERIFICAR SI UN NIVEL ESTÁ COMPLETADO
-    // ============================================================
-
-    async _nivelEstaCompletado(idioma, nivel) {
-        const progreso = await this._obtenerProgresoNivel(idioma, nivel);
-        return progreso.porcentaje >= 100 && progreso.total > 0;
-    }
-
-    // ============================================================
-    // ACTUALIZAR DESBLOQUEOS DESPUÉS DE MARCAR UN TEMA COMO COMPLETADO
-    // ============================================================
-
-    async _actualizarDesbloqueos(idioma) {
-        for (let i = 0; i < this.NIVELES.length; i++) {
-            const nivel = this.NIVELES[i];
-            const estaCompletado = await this._nivelEstaCompletado(idioma, nivel);
-            
-            if (estaCompletado && i < this.NIVELES.length - 1) {
-                await this._desbloquearSiguienteNivel(idioma);
-            }
-        }
-    }
-
-    // ============================================================
-    // OBTENER PROGRESO DE UN NIVEL EN UN IDIOMA
-    // ============================================================
-
     async _obtenerProgresoNivel(idioma, nivel, version) {
         const versionFinal = version || this._obtenerVersionEstandar(idioma);
         const temasNivel = this._obtenerTemasPorNivelYVersion(versionFinal, nivel);
@@ -1231,8 +976,38 @@ class UITemasCore {
         return { completados, total, porcentaje: total > 0 ? Math.round((completados / total) * 100) : 0 };
     }
 
+    async _temaEstaCompletado(idioma, temaId) {
+        const key = `${idioma}_${temaId}`;
+        
+        if (this._temaCompletadoCache[key] !== undefined) {
+            return this._temaCompletadoCache[key];
+        }
+        
+        try {
+            const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
+            const temaEncontrado = todosLosTemas.find(t => 
+                t._temaOriginalId === temaId && 
+                t._esPredefinido === true &&
+                t.idioma === idioma
+            );
+
+            if (temaEncontrado) {
+                const estaCompletado = temaEncontrado.estado === 'completado' || temaEncontrado._completado === true;
+                this._temaCompletadoCache[key] = estaCompletado;
+                return estaCompletado;
+            }
+
+            this._temaCompletadoCache[key] = false;
+            return false;
+            
+        } catch (e) {
+            console.warn(`⚠️ Error en _temaEstaCompletado:`, e);
+            return false;
+        }
+    }
+
     // ============================================================
-    // NAVEGACIÓN
+    // NAVEGACIÓN Y ACCIONES
     // ============================================================
 
     _volverTemas() {
@@ -1253,10 +1028,6 @@ class UITemasCore {
             this._volverTemas();
         }
     }
-
-    // ============================================================
-    // ACCIONES (DELEGADAS A UITemasActions)
-    // ============================================================
 
     async _estudiarTema(temaId) {
         return window.UITemasActions.estudiarTema(temaId);
@@ -1290,20 +1061,8 @@ class UITemasCore {
         return window.UITemasActions.importarHistoriaATema(temaId);
     }
 
-    async _importarHistoriaYAsignarATema(temaId) {
-        return window.UITemasActions.importarHistoriaYAsignarATema(temaId);
-    }
-
     async _abrirCreadorHistoria(temaId) {
         return window.UITemasActions.abrirCreadorHistoria(temaId);
-    }
-
-    _cerrarCreadorHistoria() {
-        return window.UITemasActions.cerrarCreadorHistoria();
-    }
-
-    async _generarHistoriaConDescripcion(temaId) {
-        return window.UITemasActions.generarHistoriaConDescripcion(temaId);
     }
 
     async _abrirGeneradorDesdeTema(temaId, temaNombre) {
@@ -1353,28 +1112,6 @@ class UITemasCore {
     }
 
     // ============================================================
-    // MÉTODOS DE UTILIDAD
-    // ============================================================
-
-    _esJeroglifico(idioma) {
-        if (!idioma) return false;
-        const idiomaLower = idioma.toLowerCase().trim();
-        return this.IDIOMAS_JEROGLIFICOS.some(item =>
-            idiomaLower.includes(item) || item.includes(idiomaLower)
-        );
-    }
-
-    _detectarTipoEstructura(caracter) {
-        if (!caracter) return 'desconocido';
-        if (/[明好林双从]/u.test(caracter)) return 'izquierda-derecha';
-        if (/[安花草苗]/u.test(caracter)) return 'arriba-abajo';
-        if (/[国园图园]/u.test(caracter)) return 'envolvente';
-        if (/[街微微]/u.test(caracter)) return 'izquierda-media-derecha';
-        if (/[草篮]/u.test(caracter)) return 'arriba-media-abajo';
-        return 'simple';
-    }
-
-    // ============================================================
     // RENDERIZADO (DELEGADO A UITemasRender)
     // ============================================================
 
@@ -1396,11 +1133,11 @@ class UITemasCore {
 // ============================================================
 
 window.UITemas = new UITemasCore();
-console.log('✅ UITemas Core v4.11 - CON LISTENER DE ESTADO DE HISTORIAS Y VERIFICACIÓN DE TEMA');
-console.log('  🔥 Escucha evento historiaEstadoCambiado y verifica estado del tema');
-console.log('  🔥 Marca tema como completado cuando todas las historias están completadas');
-console.log('  🔥 Reabre tema cuando alguna historia se desmarca');
-console.log('  🔥 Actualiza caché de temas completados');
-console.log('  🔥 Dispara evento temaCompletado con origen "checkbox_sync"');
-console.log('  🔥 Lógica de desbloqueo por nivel actual del usuario');
-console.log('  🔥 Niveles inferiores SIEMPRE desbloqueados');
+
+console.log('✅ UITemas Core v4.13.1 - CON VERIFICACIÓN EN TIEMPO REAL Y CATCH CORREGIDO');
+console.log('  🔥 Verificación en tiempo real del progreso');
+console.log('  🔥 Forzar actualización completa de UI');
+console.log('  🔥 Cascada completa con GestorProgresoHistorias');
+console.log('  🔥 Sincronización con Elipse y Ondas Cruzadas');
+console.log('  🔥 Botón "Forzar Sincronización" para casos extremos');
+console.log('  🔥 Todos los try/catch correctamente cerrados');

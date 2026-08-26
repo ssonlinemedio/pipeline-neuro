@@ -1,5 +1,5 @@
 // ============================================================
-// MODO ELIPSE v5.5 - MULTIIDIOMA SIN LIMPIEZA DESTRUCTIVA
+// MODO ELIPSE v5.7 - CORREGIDO: PROMPT MULTIDIOMA
 // CON INTEGRACIÓN DE ONDAS CRUZADAS
 // ============================================================
 
@@ -71,7 +71,7 @@ class ModoElipse {
         this._registrarEventosPersistencia();
         this._configurarListenerIdioma();
         
-        console.log('🌌 ModoElipse: Constructor ejecutado (v5.5 - Multiidioma sin limpieza destructiva)');
+        console.log('🌌 ModoElipse: Constructor ejecutado (v5.7 - Prompt multidioma)');
     }
 
     // ============================================================
@@ -111,7 +111,7 @@ class ModoElipse {
         try {
             const key = `pipeline_elipse_estado_idioma_${idioma}`;
             const data = {
-                version: '5.5',
+                version: '5.7',
                 timestamp: Date.now(),
                 idioma: idioma,
                 elipseActiva: this._elipseActiva,
@@ -245,7 +245,7 @@ class ModoElipse {
             }
             
             const data = {
-                version: '5.5',
+                version: '5.7',
                 timestamp: Date.now(),
                 idioma: idiomaActual,
                 elipseActiva: this._elipseActiva,
@@ -298,7 +298,7 @@ class ModoElipse {
             const idiomaActual = this._obtenerIdiomaActual();
             
             const data = {
-                version: '5.5',
+                version: '5.7',
                 timestamp: Date.now(),
                 idioma: idiomaActual,
                 elipseActiva: this._elipseActiva,
@@ -1129,20 +1129,22 @@ class ModoElipse {
         if (this._initDone) return this;
         this._core = core || window.uiCore;
         
-        console.log('🌌 Inicializando Modo Elipse v5.5 (Multiidioma sin limpieza destructiva)...');
+        console.log('🌌 Inicializando Modo Elipse v5.7 (Prompt multidioma)...');
         
         this._cargarConfiguracion();
         this._registrarEventos();
         this._iniciarGuardadoAutomatico();
         
         this._initDone = true;
-        console.log('🌌 Modo Elipse v5.5: Inicializado');
+        console.log('🌌 Modo Elipse v5.7: Inicializado');
         console.log(`   📊 ${this._historiasElipse.length} historias en caché`);
         console.log(`   📌 Elipse activa: ${this._elipseActiva || 'Ninguna'}`);
         console.log(`   💾 Persistencia cargada: ${this._persistenciaCargada ? '✅ Sí' : '❌ No'}`);
         console.log(`   📚 Recuerdo de ondas: ${Object.keys(this._recuerdoOndas.resumenPorOnda).length} ondas recordadas`);
         console.log(`   🔥 MULTIIDIOMA: Guarda datos por idioma SIN LIMPIAR`);
         console.log(`   🔥 Puedes cambiar de idioma y volver sin perder progreso`);
+        console.log(`   🔥 DESCRIPCIÓN OPCIONAL: El usuario puede añadir descripción antes de generar`);
+        console.log(`   🔥 PROMPT MULTIDIOMA: El prompt está en el idioma nativo del usuario`);
         console.log(`   ✅ Todas las funcionalidades originales preservadas`);
         
         return this;
@@ -1541,10 +1543,10 @@ class ModoElipse {
     }
 
     // ============================================================
-    // GENERAR PLANTILLA ONDA
+    // GENERAR PLANTILLA ONDA - CON DESCRIPCIÓN OPCIONAL Y PROMPT MULTIDIOMA
     // ============================================================
 
-    async generarPlantillaOnda(temaId, historiaId = null) {
+    async generarPlantillaOnda(temaId, historiaId = null, descripcion = '') {
         if (this._generando) {
             console.log('⏳ Ya hay una generación en curso');
             return null;
@@ -1555,11 +1557,12 @@ class ModoElipse {
             return null;
         }
         
-        const idiomaActual = this._obtenerIdiomaActual();
+        const idiomaObjetivo = this._obtenerIdiomaActual();
+        const idiomaPrompt = this._obtenerIdiomaNativo() || 'es';
         
         const tema = await db.obtenerTema(temaId);
-        if (tema && tema.idioma && tema.idioma !== idiomaActual) {
-            console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaActual}"`);
+        if (tema && tema.idioma && tema.idioma !== idiomaObjetivo) {
+            console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaObjetivo}"`);
             if (this._core) {
                 this._core.mostrarToast(`⚠️ El tema es de idioma "${tema.idioma}", cambia a ese idioma primero`, 'warning');
             }
@@ -1597,8 +1600,8 @@ class ModoElipse {
             return null;
         }
         
-        if (historiaBase.idioma && historiaBase.idioma !== idiomaActual) {
-            console.log(`⚠️ Historia base ${historiaBaseId} es de idioma "${historiaBase.idioma}", actual: "${idiomaActual}"`);
+        if (historiaBase.idioma && historiaBase.idioma !== idiomaObjetivo) {
+            console.log(`⚠️ Historia base ${historiaBaseId} es de idioma "${historiaBase.idioma}", actual: "${idiomaObjetivo}"`);
             if (this._core) {
                 this._core.mostrarToast(`⚠️ La historia base es de idioma "${historiaBase.idioma}"`, 'warning');
             }
@@ -1620,6 +1623,12 @@ class ModoElipse {
         
         const recuerdo = await this._construirRecuerdoParaIA(temaId, indiceActual);
         
+        // 🔥 AÑADIR LA DESCRIPCIÓN DEL USUARIO AL RECUERDO
+        if (descripcion && descripcion.trim().length > 0) {
+            recuerdo.descripcionUsuario = descripcion.trim();
+            console.log(`📝 Descripción del usuario añadida al recuerdo: "${descripcion.trim().substring(0, 50)}..."`);
+        }
+
         const plantilla = await this._generarPlantillaJSONConRecuerdo(
             tema,
             historiaBase,
@@ -1627,7 +1636,9 @@ class ModoElipse {
             nivelActual,
             palabrasNuevas,
             indiceActual,
-            recuerdo
+            recuerdo,
+            idiomaObjetivo,
+            idiomaPrompt
         );
         
         return plantilla;
@@ -1696,7 +1707,8 @@ class ModoElipse {
                     titulo: h.titulo,
                     resumen: textoCompleto.substring(0, 200) + (textoCompleto.length > 200 ? '...' : ''),
                     palabrasNuevas: h.palabrasNuevas || [],
-                    completada: h.completada || false                };
+                    completada: h.completada || false
+                };
                 
                 if (h.palabrasNuevas) {
                     for (const p of h.palabrasNuevas) {
@@ -1770,14 +1782,15 @@ class ModoElipse {
     }
 
     // ============================================================
-    // GENERAR PLANTILLA JSON CON RECUERDO DE ONDAS
+    // GENERAR PLANTILLA JSON CON RECUERDO DE ONDAS + DESCRIPCIÓN + PROMPT MULTIDIOMA
     // ============================================================
 
-    async _generarPlantillaJSONConRecuerdo(tema, historiaBase, frasesBase, nivel, numPalabrasNuevas, indice, recuerdo) {
-        const idioma = tema.idioma || this._obtenerIdiomaActual() || 'es';
+    async _generarPlantillaJSONConRecuerdo(tema, historiaBase, frasesBase, nivel, numPalabrasNuevas, indice, recuerdo, idiomaObjetivo, idiomaPrompt) {
+        const idioma = tema.idioma || idiomaObjetivo || this._obtenerIdiomaActual() || 'es';
         const esJeroglifico = window.gestorIdiomas?._esJeroglifico(idioma) || false;
-        const idiomaNativo = window.UITemas?._obtenerIdiomaNativo() || 'español';
-        const nombreIdioma = window.UITemas?._getNombreIdioma(idioma) || idioma;
+        const idiomaNativo = this._obtenerIdiomaNativo() || 'es';
+        const nombreIdiomaObjetivo = this._getNombreIdioma(idioma);
+        const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt);
 
         const palabrasBase = frasesBase
             .flatMap(f => f.palabras || [])
@@ -1792,91 +1805,122 @@ class ModoElipse {
             .join(' ');
 
         let recuerdoTexto = '';
+        let recuerdoTextoPrompt = '';
+        
+        // 🔥 INYECTAR DESCRIPCIÓN DEL USUARIO AL INICIO (MUY VISIBLE)
+        if (recuerdo.descripcionUsuario) {
+            const descUser = recuerdo.descripcionUsuario;
+            recuerdoTextoPrompt += `\n📝 **DESCRIPCIÓN DEL USUARIO PARA ESTA NUEVA ONDA (MUY IMPORTANTE):**\n`;
+            recuerdoTextoPrompt += `"${descUser}"\n\n`;
+            recuerdoTextoPrompt += `🔴 **DEBES incorporar estos elementos en la nueva historia:**\n`;
+            recuerdoTextoPrompt += `   - Si se mencionan personajes, DEBEN aparecer en la historia.\n`;
+            recuerdoTextoPrompt += `   - Si se mencionan lugares, DEBEN ser parte de la ambientación.\n`;
+            recuerdoTextoPrompt += `   - Si se mencionan eventos, DEBEN ocurrir en la trama.\n`;
+            recuerdoTextoPrompt += `   - La historia DEBE ser coherente con esta descripción.\n\n`;
+        }
         
         if (recuerdo && Object.keys(recuerdo.resumenPorOnda).length > 0) {
-            recuerdoTexto += '\n📚 **CONTEXTO DE ONDAS ANTERIORES (MUY IMPORTANTE)**:\n\n';
+            recuerdoTextoPrompt += `\n📚 **CONTEXTO DE ONDAS ANTERIORES (MUY IMPORTANTE)**:\n\n`;
             
             if (recuerdo.resumenGlobal) {
-                recuerdoTexto += `📖 **RESUMEN GLOBAL DE LA HISTORIA HASTA AHORA:**\n${recuerdo.resumenGlobal}\n\n`;
+                recuerdoTextoPrompt += `📖 **RESUMEN GLOBAL DE LA HISTORIA HASTA AHORA:**\n${recuerdo.resumenGlobal}\n\n`;
             }
             
             if (recuerdo.personajesPrincipales && recuerdo.personajesPrincipales.length > 0) {
-                recuerdoTexto += `👤 **PERSONAJES PRINCIPALES:** ${recuerdo.personajesPrincipales.join(', ')}\n\n`;
+                recuerdoTextoPrompt += `👤 **PERSONAJES PRINCIPALES:** ${recuerdo.personajesPrincipales.join(', ')}\n\n`;
             }
             
             if (recuerdo.lugares && recuerdo.lugares.length > 0) {
-                recuerdoTexto += `📍 **LUGARES CLAVE:** ${recuerdo.lugares.join(', ')}\n\n`;
+                recuerdoTextoPrompt += `📍 **LUGARES CLAVE:** ${recuerdo.lugares.join(', ')}\n\n`;
             }
             
             if (recuerdo.eventosClave && recuerdo.eventosClave.length > 0) {
-                recuerdoTexto += `⚡ **EVENTOS CLAVE:** ${recuerdo.eventosClave.join(', ')}\n\n`;
+                recuerdoTextoPrompt += `⚡ **EVENTOS CLAVE:** ${recuerdo.eventosClave.join(', ')}\n\n`;
             }
             
             if (recuerdo.vocabularioAcumulado && recuerdo.vocabularioAcumulado.length > 0) {
-                recuerdoTexto += `📝 **VOCABULARIO ACUMULADO:** ${recuerdo.vocabularioAcumulado.join(', ')}\n\n`;
+                recuerdoTextoPrompt += `📝 **VOCABULARIO ACUMULADO:** ${recuerdo.vocabularioAcumulado.join(', ')}\n\n`;
             }
             
             if (recuerdo.ultimasFrases && recuerdo.ultimasFrases.length > 0) {
-                recuerdoTexto += `🔚 **ÚLTIMAS FRASES DE LA HISTORIA ANTERIOR:**\n"${recuerdo.ultimasFrases.join('" "')}"\n\n`;
+                recuerdoTextoPrompt += `🔚 **ÚLTIMAS FRASES DE LA HISTORIA ANTERIOR:**\n"${recuerdo.ultimasFrases.join('" "')}"\n\n`;
             }
             
-            recuerdoTexto += `📖 **RESUMEN POR ONDA (${Object.keys(recuerdo.resumenPorOnda).length} ondas):**\n`;
+            recuerdoTextoPrompt += `📖 **RESUMEN POR ONDA (${Object.keys(recuerdo.resumenPorOnda).length} ondas):**\n`;
             const ondasOrdenadas = Object.keys(recuerdo.resumenPorOnda).sort((a, b) => parseInt(a) - parseInt(b));
             for (const idx of ondasOrdenadas) {
                 const data = recuerdo.resumenPorOnda[idx];
                 const estado = data.completada ? '✅ COMPLETADA' : '📖 EN PROGRESO';
-                recuerdoTexto += `  Onda ${parseInt(idx) + 1}: "${data.titulo}" (${estado})\n`;
-                recuerdoTexto += `    ${data.resumen}\n`;
+                recuerdoTextoPrompt += `  Onda ${parseInt(idx) + 1}: "${data.titulo}" (${estado})\n`;
+                recuerdoTextoPrompt += `    ${data.resumen}\n`;
                 if (data.palabrasNuevas && data.palabrasNuevas.length > 0) {
-                    recuerdoTexto += `    Palabras nuevas: ${data.palabrasNuevas.join(', ')}\n`;
+                    recuerdoTextoPrompt += `    Palabras nuevas: ${data.palabrasNuevas.join(', ')}\n`;
                 }
-                recuerdoTexto += '\n';
+                recuerdoTextoPrompt += '\n';
             }
             
-            recuerdoTexto += `\n🔴 **REGLAS DE CONTINUIDAD:**\n`;
-            recuerdoTexto += `1. La NUEVA historia debe ser una CONTINUACIÓN DIRECTA de la historia anterior.\n`;
-            recuerdoTexto += `2. Mantén los MISMOS personajes y ambientación.\n`;
-            recuerdoTexto += `3. Resuelve o avanza en las tramas abiertas.\n`;
-            recuerdoTexto += `4. Introduce EXACTAMENTE ${numPalabrasNuevas} palabras nuevas en ${idioma}.\n`;
-            recuerdoTexto += `5. El nivel de dificultad es ${nivel}.\n`;
-            recuerdoTexto += `6. La historia debe tener COHERENCIA narrativa con TODO lo anterior.\n`;
-            recuerdoTexto += `7. NO reuses las palabras nuevas de ondas anteriores como palabras nuevas.\n`;
+            recuerdoTextoPrompt += `\n🔴 **REGLAS DE CONTINUIDAD:**\n`;
+            recuerdoTextoPrompt += `1. La NUEVA historia debe ser una CONTINUACIÓN DIRECTA de la historia anterior.\n`;
+            recuerdoTextoPrompt += `2. Mantén los MISMOS personajes y ambientación.\n`;
+            recuerdoTextoPrompt += `3. Resuelve o avanza en las tramas abiertas.\n`;
+            recuerdoTextoPrompt += `4. Introduce EXACTAMENTE ${numPalabrasNuevas} palabras nuevas en ${nombreIdiomaObjetivo}.\n`;
+            recuerdoTextoPrompt += `5. El nivel de dificultad es ${nivel}.\n`;
+            recuerdoTextoPrompt += `6. La historia debe tener COHERENCIA narrativa con TODO lo anterior.\n`;
+            recuerdoTextoPrompt += `7. NO reuses las palabras nuevas de ondas anteriores como palabras nuevas.\n`;
         } else {
-            recuerdoTexto = `📖 **PRIMERA ONDA - HISTORIA BASE:**\n"${tituloAnterior}"\n${contenidoAnterior}\n\nEsta es la primera onda, genera una continuación coherente.`;
+            recuerdoTextoPrompt = `📖 **PRIMERA ONDA - HISTORIA BASE:**\n"${tituloAnterior}"\n${contenidoAnterior}\n\nEsta es la primera onda, genera una continuación coherente.`;
         }
+
+        // 🔥 INSTRUCCIÓN ESPECIAL SOBRE LA DESCRIPCIÓN DEL USUARIO
+        if (recuerdo.descripcionUsuario) {
+            recuerdoTextoPrompt += `\n📌 **INSTRUCCIÓN ESPECIAL DEL USUARIO:**\n`;
+            recuerdoTextoPrompt += `   - La historia DEBE incluir los elementos descritos por el usuario.\n`;
+            recuerdoTextoPrompt += `   - NO ignores la descripción del usuario bajo ninguna circunstancia.\n`;
+            recuerdoTextoPrompt += `   - Integra los elementos de la descripción de forma NATURAL en la trama.\n`;
+        }
+
+        // 🔥 CONSTRUIR EL PROMPT EN EL IDIOMA NATIVO
+        let promptCompleto = `Genera una NUEVA historia (onda ${indice + 1}) que sea una CONTINUACIÓN DIRECTA de la historia anterior.\n\n`;
+        promptCompleto += `Idioma objetivo: ${nombreIdiomaObjetivo} (${idioma})\n`;
+        promptCompleto += `Nivel: ${nivel}\n`;
+        promptCompleto += `Número de palabras nuevas: ${numPalabrasNuevas}\n\n`;
+        promptCompleto += `La historia anterior se titula: "${tituloAnterior}".\n`;
+        promptCompleto += `Resumen de la historia anterior: "${contenidoAnterior.substring(0, 150)}..."\n\n`;
+        promptCompleto += recuerdoTextoPrompt;
+        promptCompleto += `\n\nLa nueva historia debe tener entre 6 y 8 frases en ${nombreIdiomaObjetivo}.\n`;
+        promptCompleto += `Debe incluir los MISMOS personajes y ambientación.\n`;
+        promptCompleto += `Debe introducir EXACTAMENTE ${numPalabrasNuevas} palabras nuevas en ${nombreIdiomaObjetivo}.\n`;
+        promptCompleto += `Las palabras nuevas deben tener su traducción al ${nombreIdiomaPrompt}.\n`;
+        promptCompleto += `Nivel de dificultad: ${nivel}.\n`;
+        promptCompleto += `Las frases deben ser NATURALES y UTILIZABLES en la vida cotidiana.\n`;
+        promptCompleto += `La historia debe tener COHERENCIA narrativa con TODAS las historias anteriores.\n`;
+        promptCompleto += `NO uses placeholders como [palabra] o [significado].\n`;
+        promptCompleto += `Las palabras deben ser REALES y APROPIADAS para el nivel ${nivel}.\n`;
+        promptCompleto += `Responde SOLO en formato JSON válido.\n`;
+        promptCompleto += `NO incluyas texto adicional fuera del JSON.\n`;
+        promptCompleto += `Cada frase debe incluir un array 'palabras' con TODAS las palabras desglosadas.\n`;
+        promptCompleto += `NO reuses palabras nuevas de ondas anteriores como palabras nuevas.\n`;
+        promptCompleto += `Mantén la CONTINUIDAD narrativa con TODAS las ondas anteriores.\n`;
 
         const plantilla = {
             "_INSTRUCCIONES_PARA_IA": {
-                "version": "5.5",
-                "accion": `Genera una NUEVA historia (onda ${indice + 1}) que sea una CONTINUACIÓN DIRECTA de la historia anterior.`,
+                "version": "5.7",
+                "idioma_prompt": idiomaPrompt,
                 "idioma_objetivo": idioma,
-                "nombre_idioma": nombreIdioma,
+                "nombre_idioma_prompt": nombreIdiomaPrompt,
+                "nombre_idioma_objetivo": nombreIdiomaObjetivo,
+                "accion": "Genera una nueva historia (onda) para el Modo Elipse",
                 "nivel": nivel,
-                "idioma_nativo": idiomaNativo,
-                "es_jeroglifico": esJeroglifico,
                 "num_palabras_nuevas": numPalabrasNuevas,
                 "onda_indice": indice + 1,
                 "onda_maxima": this._config.maxOndas,
-                "recuerdo_contexto": recuerdoTexto,
+                "prompt": promptCompleto,
+                "recuerdo_contexto": recuerdoTextoPrompt,
                 "instrucciones": [
-                    `1. Genera una NUEVA historia que sea una CONTINUACIÓN DIRECTA de la historia anterior.`,
-                    `2. La historia anterior se titula: "${tituloAnterior}".`,
-                    `3. Resumen de la historia anterior: "${contenidoAnterior.substring(0, 150)}..."`,
-                    `4. ${recuerdoTexto}`,
-                    `5. La nueva historia debe tener entre 6 y 8 frases en ${idioma}.`,
-                    `6. Debe incluir los MISMOS personajes y ambientación.`,
-                    `7. Debe introducir EXACTAMENTE ${numPalabrasNuevas} palabras nuevas en ${idioma}.`,
-                    `8. Las palabras nuevas deben tener su traducción al ${idiomaNativo}.`,
-                    `9. Nivel de dificultad: ${nivel}.`,
-                    `10. Las frases deben ser NATURALES y UTILIZABLES en la vida cotidiana.`,
-                    `11. La historia debe tener COHERENCIA narrativa con TODAS las historias anteriores.`,
-                    `12. NO uses placeholders como [palabra] o [significado].`,
-                    `13. Las palabras deben ser REALES y APROPIADAS para el nivel ${nivel}.`,
-                    `14. Responde SOLO en formato JSON válido.`,
-                    `15. NO incluyas texto adicional fuera del JSON.`,
-                    `16. 🔥 IMPORTANTE: Cada frase debe incluir un array 'palabras' con TODAS las palabras desglosadas.`,
-                    `17. 🔥 NO reuses palabras nuevas de ondas anteriores como palabras nuevas.`,
-                    `18. 🔥 Mantén la CONTINUIDAD narrativa con TODAS las ondas anteriores.`
+                    `El prompt completo está en el campo "prompt".`,
+                    `El idioma objetivo para la historia es: ${nombreIdiomaObjetivo}.`,
+                    `Responde SOLO en formato JSON válido.`,
+                    `NO incluyas texto adicional fuera del JSON.`
                 ],
                 "palabras_base": palabrasBaseUnicas,
                 "ejemplo_formato": {
@@ -1889,7 +1933,7 @@ class ModoElipse {
                     "palabras_nuevas": [
                         {
                             "palabra": "palabra_nueva_1",
-                            "significado": `significado_en_${idiomaNativo}`,
+                            "significado": `significado_en_${idiomaPrompt}`,
                             "familia_semantica": "familia_semantica"
                         }
                     ],
@@ -1899,7 +1943,7 @@ class ModoElipse {
                             "frases": [
                                 {
                                     "original": "Frase en idioma objetivo",
-                                    "traduccion": `Traducción al ${idiomaNativo}`,
+                                    "traduccion": `Traducción al ${idiomaPrompt}`,
                                     "regla_gramatical": "Nombre de la regla gramatical",
                                     "explicacion_gramatical": "Explicación de la regla",
                                     "palabras": [
@@ -1907,7 +1951,7 @@ class ModoElipse {
                                             "palabra": "palabra_en_idioma",
                                             "familia": "familia_semantica",
                                             "tipo": "tipo_gramatical",
-                                            "significado": `significado_en_${idiomaNativo}`
+                                            "significado": `significado_en_${idiomaPrompt}`
                                         }
                                     ]
                                 }
@@ -1919,19 +1963,20 @@ class ModoElipse {
             "meta": {
                 "tema": tema.nombre,
                 "tema_id": tema.id,
-                "idioma": idioma,
-                "nombre_idioma": nombreIdioma,
+                "idioma_objetivo": idioma,
+                "nombre_idioma_objetivo": nombreIdiomaObjetivo,
+                "idioma_prompt": idiomaPrompt,
+                "nombre_idioma_prompt": nombreIdiomaPrompt,
                 "nivel": nivel,
                 "es_jeroglifico": esJeroglifico,
-                "idioma_nativo": idiomaNativo,
-                "nombre_nativo": idiomaNativo,
                 "onda_indice": indice + 1,
                 "num_palabras_nuevas": numPalabrasNuevas,
                 "historia_base_id": historiaBase.id,
                 "historia_base_titulo": historiaBase.titulo,
                 "fecha_generacion": new Date().toISOString(),
-                "version": "5.5",
-                "generado_por": "Pipeline Neuro - Modo Elipse v5.5"
+                "version": "5.7",
+                "generado_por": "Pipeline Neuro - Modo Elipse v5.7",
+                "descripcion_usuario": recuerdo.descripcionUsuario || ''
             },
             "historias": [
                 {
@@ -1943,18 +1988,18 @@ class ModoElipse {
 
         for (let j = 0; j < 6; j++) {
             const frase = {
-                "original": `[Frase ${j+1} en ${idioma} sobre la continuación de la historia]`,
-                "traduccion": `[Traducción de la frase ${j+1} al ${idiomaNativo}]`,
+                "original": `[Frase ${j+1} en ${nombreIdiomaObjetivo} sobre la continuación de la historia]`,
+                "traduccion": `[Traducción de la frase ${j+1} al ${nombreIdiomaPrompt}]`,
                 "regla_gramatical": `[Regla gramatical ${j+1}]`,
-                "explicacion_gramatical": `[Explicación de la regla ${j+1} en ${idiomaNativo}]`,
+                "explicacion_gramatical": `[Explicación de la regla ${j+1} en ${nombreIdiomaPrompt}]`,
                 "palabras": []
             };
             
             frase.palabras.push({
-                "palabra": `[palabra_${j+1}_en_${idioma}]`,
+                "palabra": `[palabra_${j+1}_en_${nombreIdiomaObjetivo}]`,
                 "familia": `[familia_semantica]`,
                 "tipo": `[tipo_gramatical]`,
-                "significado": `[significado_en_${idiomaNativo}]`
+                "significado": `[significado_en_${nombreIdiomaPrompt}]`
             });
             
             plantilla.historias[0].frases.push(frase);
@@ -1963,16 +2008,16 @@ class ModoElipse {
         plantilla.palabras_nuevas = [];
         for (let i = 0; i < numPalabrasNuevas; i++) {
             plantilla.palabras_nuevas.push({
-                "palabra": `[palabra_nueva_${i+1}_en_${idioma}]`,
-                "significado": `[significado_en_${idiomaNativo}]`,
+                "palabra": `[palabra_nueva_${i+1}_en_${nombreIdiomaObjetivo}]`,
+                "significado": `[significado_en_${nombreIdiomaPrompt}]`,
                 "familia_semantica": `[familia_semantica]`
             });
         }
 
         if (esJeroglifico) {
             plantilla._INSTRUCCIONES_PARA_IA.instrucciones.push(
-                `19. ⚠️ IMPORTANTE: Para CADA frase, incluye 'pinyin' con tonos.`,
-                `20. Para CADA palabra, incluye 'pinyin' con tonos.`
+                `⚠️ IMPORTANTE: Para CADA frase, incluye 'pinyin' con tonos.`,
+                `Para CADA palabra, incluye 'pinyin' con tonos.`
             );
             for (const frase of plantilla.historias[0].frases) {
                 frase.pinyin = `[pinyin_con_tonos_de_la_frase]`;
@@ -2273,6 +2318,33 @@ class ModoElipse {
         const incremento = Math.floor(indice / 2);
         const idx = Math.min(nivelBaseIdx + incremento, niveles.length - 1);
         return niveles[idx];
+    }
+
+    _obtenerIdiomaNativo() {
+        try {
+            const usuario = JSON.parse(localStorage.getItem('pipeline_usuario') || '{}');
+            return usuario.idiomaNativo || 'es';
+        } catch (e) {
+            return 'es';
+        }
+    }
+
+    _getNombreIdioma(idioma) {
+        const nombres = {
+            'es': 'Español',
+            'en': 'Inglés',
+            'fr': 'Francés',
+            'de': 'Alemán',
+            'it': 'Italiano',
+            'pt': 'Portugués',
+            'zh': 'Chino',
+            'ja': 'Japonés',
+            'ko': 'Coreano',
+            'ru': 'Ruso',
+            'ar': 'Árabe',
+            'hi': 'Hindi'
+        };
+        return nombres[idioma] || idioma;
     }
 
     // ============================================================
@@ -2591,11 +2663,16 @@ class ModoElipse {
 const modoElipse = new ModoElipse();
 window.modoElipse = modoElipse;
 
-console.log('✅ Modo Elipse v5.5 - MULTIIDIOMA SIN LIMPIEZA DESTRUCTIVA');
+console.log('✅ Modo Elipse v5.7 - CON PROMPT MULTIDIOMA');
+console.log('  🔥 El prompt para la IA externa se genera en el idioma nativo del usuario');
+console.log('  🔥 El idioma objetivo para la historia se especifica claramente');
+console.log('  🔥 La plantilla incluye campos para ambos idiomas');
 console.log('  🔥 Guarda datos por idioma en claves separadas');
 console.log('  🔥 NO limpia localStorage ni IndexedDB al cambiar de idioma');
 console.log('  🔥 Puedes cambiar de idioma y volver sin perder progreso');
 console.log('  🔥 Cada idioma mantiene sus propias ondas');
 console.log('  🔥 Persistencia por idioma en pipeline_elipse_estado_idioma_[idioma]');
 console.log('  🔥 Integración con Modo Ondas Cruzadas');
+console.log('  📝 DESCRIPCIÓN OPCIONAL: El usuario puede añadir descripción antes de generar la onda');
+console.log('  🔥 La descripción se inyecta en el prompt para la IA externa');
 console.log('  ✅ Todas las funcionalidades originales preservadas');

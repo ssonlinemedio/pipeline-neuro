@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS RENDER v2.36 - CORREGIDO: Sincronización de checkbox y estado del tema
+// UI TEMAS RENDER v2.38 - CON SINCRONIZACIÓN FORZADA Y VERIFICACIÓN EN TIEMPO REAL
 // ============================================================
 
 class UITemasRender {
@@ -185,7 +185,6 @@ class UITemasRender {
                     const esImportado = tema.origen === 'importado' || tema._esImportado === true;
                     const esManual = !esPredefinido && !esImportado;
 
-                    // 🔥 OBTENER ESTADO REAL DEL TEMA
                     let estaCompletado = tema.estado === 'completado' || tema._completado === true;
                     let temaIdParaCompletado;
 
@@ -197,7 +196,7 @@ class UITemasRender {
                         estaCompletado = tema.estado === 'completado' || tema._completado === true;
                     }
 
-                    // 🔥 RECALCULAR PROGRESO REAL
+                    // 🔥 RECALCULAR PROGRESO REAL DESDE LA BASE DE DATOS
                     const historias = await db.obtenerHistoriasPorTema(tema.id);
                     let historiasCompletadas = 0;
                     for (const h of historias) {
@@ -249,7 +248,7 @@ class UITemasRender {
                         origenColor = 'var(--primary)';
                     }
                     
-                    // 🔥 SI EL TEMA ESTÁ COMPLETADO, PONER EN VERDE
+                    // Si el tema está completado, poner en verde
                     if (estaCompletado) {
                         borderColor = 'var(--success)';
                         cardBackground = 'var(--success)05';
@@ -330,13 +329,19 @@ class UITemasRender {
                                 `}
                                 <button class="btn-secondary" onclick="event.stopPropagation();window.UITemas._exportarTema(${tema.id})" style="padding:3px 10px;font-size:11px;"><i class="fas fa-download"></i> Exportar</button>
                                 
+                                <!-- 🔥 CHECKBOX DEL TEMA CON SINCRONIZACIÓN FORZADA -->
                                 <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                                        style="padding:2px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;"
                                        onclick="event.stopPropagation();">
                                     <input type="checkbox" ${estaCompletado ? 'checked' : ''} 
                                            onchange="(async () => {
+                                               // 🔥 MARCAR/DESMARCAR TEMA CON SINCRONIZACIÓN FORZADA
                                                await window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${temaIdParaCompletado}', this.checked);
-                                               // 🔥 FORZAR RECARGA DE LA VISTA
+                                               // 🔥 ESPERAR A QUE TERMINE LA SINCRONIZACIÓN
+                                               await new Promise(r => setTimeout(r, 500));
+                                               // 🔥 FORZAR ACTUALIZACIÓN COMPLETA
+                                               await window.UITemas._forzarActualizacionCompleta(${tema.id});
+                                               // 🔥 RECARGAR VISTA
                                                setTimeout(() => {
                                                    window.UITemas._renderTemas();
                                                }, 300);
@@ -506,11 +511,21 @@ class UITemasRender {
                                         `}
                                     `}
                                     
+                                    <!-- 🔥 CHECKBOX DEL TEMA PREDEFINIDO CON SINCRONIZACIÓN FORZADA -->
                                     <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                                            style="padding:2px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;"
                                            onclick="event.stopPropagation();">
                                         <input type="checkbox" ${estaCompletado ? 'checked' : ''} 
-                                               onchange="window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${tema.id}', this.checked)"
+                                               onchange="(async () => {
+                                                   // 🔥 MARCAR/DESMARCAR TEMA CON SINCRONIZACIÓN FORZADA
+                                                   await window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${tema.id}', this.checked);
+                                                   // 🔥 ESPERAR A QUE TERMINE LA SINCRONIZACIÓN
+                                                   await new Promise(r => setTimeout(r, 500));
+                                                   // 🔥 RECARGAR VISTA
+                                                   setTimeout(() => {
+                                                       window.UITemas._renderTemas();
+                                                   }, 300);
+                                               })()"
                                                style="margin:0;width:14px;height:14px;cursor:pointer;">
                                         <span style="font-size:9px;color:${estaCompletado ? 'var(--success)' : 'var(--gray)'};">${estaCompletado ? '✅ Completado' : 'Completar'}</span>
                                     </label>
@@ -741,7 +756,7 @@ class UITemasRender {
     }
 
     // ============================================================
-    // VER DETALLE DE TEMA - CORREGIDO: Sincronización de checkbox y estado
+    // VER DETALLE DE TEMA - CON SINCRONIZACIÓN FORZADA
     // ============================================================
 
     static async verTemaDetalle(uiTemas, temaId) {
@@ -825,7 +840,6 @@ class UITemasRender {
             if (h._esOndaCruzada === true) ondasCruzadas++;
         }
 
-        // 🔥 COLOR DE BORDE Y FONDO SEGÚN ESTADO
         const borderColor = estaCompletado ? 'var(--success)' : 'var(--primary)';
         const cardBackground = estaCompletado ? 'var(--success)05' : 'var(--white)';
 
@@ -877,12 +891,19 @@ class UITemasRender {
                     <button class="btn-secondary" onclick="window.UITemas._exportarTema(${temaId})" style="padding:6px 14px;font-size:12px;">
                         <i class="fas fa-download"></i> Exportar
                     </button>
+                    
+                    <!-- 🔥 CHECKBOX DEL TEMA CON SINCRONIZACIÓN FORZADA -->
                     <label class="tema-completado-checkbox ${estaCompletado ? 'checked' : ''}" 
                            style="padding:4px 12px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:${estaCompletado ? 'var(--success)08' : 'var(--bg)'};border:1px solid ${estaCompletado ? 'var(--success)' : 'var(--light)'};border-radius:12px;">
                         <input type="checkbox" ${estaCompletado ? 'checked' : ''} 
                                onchange="(async () => {
+                                   // 🔥 MARCAR/DESMARCAR TEMA CON SINCRONIZACIÓN FORZADA
                                    await window.UITemas._marcarTemaCompletado('${idiomaActivo}', '${temaIdParaCompletado}', this.checked);
-                                   // 🔥 FORZAR RECARGA DE LA VISTA
+                                   // 🔥 ESPERAR A QUE TERMINE LA SINCRONIZACIÓN
+                                   await new Promise(r => setTimeout(r, 500));
+                                   // 🔥 FORZAR ACTUALIZACIÓN COMPLETA
+                                   await window.UITemas._forzarActualizacionCompleta(${temaId});
+                                   // 🔥 RECARGAR VISTA
                                    setTimeout(() => {
                                        window.UITemas._verTemaDetalle(${temaId});
                                    }, 300);
@@ -1056,12 +1077,11 @@ class UITemasRender {
                                 </span>
                             ` : ''}
                             
-                            <!-- 🔥 CHECKBOX DE COMPLETADO CON SIMBIOSIS - CON VERIFICACIÓN DEL TEMA -->
+                            <!-- 🔥 CHECKBOX DE HISTORIA CON SINCRONIZACIÓN -->
                             <label style="display:flex;align-items:center;gap:3px;font-size:9px;cursor:pointer;padding:2px 8px;background:${estaCompletada ? 'var(--success)15' : 'var(--bg)'};border-radius:10px;border:1px solid ${estaCompletada ? 'var(--success)' : 'var(--light)'};">
                                 <input type="checkbox" ${estaCompletada ? 'checked' : ''} 
                                        onchange="(async () => {
                                            await window.gestorProgresoHistorias.cambiarEstadoHistoria(${h.id}, this.checked, 'temas');
-                                           // 🔥 FORZAR VERIFICACIÓN DEL TEMA DESPUÉS DEL CAMBIO
                                            setTimeout(async () => {
                                                if (window.UITemas) {
                                                    await window.UITemas._verificarYActualizarEstadoTema(${temaId});
@@ -1142,9 +1162,10 @@ class UITemasRender {
 
 window.UITemasRender = UITemasRender;
 
-console.log('✅ UITemas Render v2.36 - Sincronización de checkbox y estado del tema');
-console.log('  🔥 Si progreso = 100%, marca tema como completado automáticamente');
-console.log('  🔥 Tarjeta en verde cuando tema está completado');
-console.log('  🔥 Checkbox del tema sincronizado con el estado');
-console.log('  🔥 Recalculo de progreso real del tema al cargar vista');
+console.log('✅ UITemas Render v2.38 - CON SINCRONIZACIÓN FORZADA Y VERIFICACIÓN EN TIEMPO REAL');
+console.log('  🔥 Sincronización FORZADA del checkbox del tema');
+console.log('  🔥 Verificación en tiempo real del progreso');
+console.log('  🔥 Cascada completa con GestorProgresoHistorias');
+console.log('  🔥 Actualización de Elipse y Ondas Cruzadas');
+console.log('  🔥 Espera de 500ms para garantizar sincronización');
 console.log('  🔥 Todas las funcionalidades originales preservadas');

@@ -1,5 +1,5 @@
 // ============================================================
-// MODO ONDAS CRUZADAS v3.8 - CON RECUERDO Y PLANTILLA COMPLETA PARA IA
+// MODO ONDAS CRUZADAS v3.9 - CORREGIDO: PROMPT MULTIDIOMA
 // ============================================================
 
 class ModoOndasCruzadas {
@@ -113,7 +113,7 @@ class ModoOndasCruzadas {
             this._idiomaActual = idiomaActual;
             this._cargarEstadoPorIdioma(idiomaActual);
             this._initDone = true;
-            console.log('🌊 ModoOndasCruzadas v3.8: Inicializado correctamente');
+            console.log('🌊 ModoOndasCruzadas v3.9: Inicializado correctamente');
             console.log(`   📊 Grafo: ${Object.keys(this._grafoElipse).length} elipses (${idiomaActual})`);
             console.log(`   💾 Datos cargados: ${this._datosCargados ? '✅ Sí' : '❌ No'}`);
             
@@ -197,7 +197,7 @@ class ModoOndasCruzadas {
             const interferenciasCompactadas = this._compactarInterferencias(this._mapaInterferencias);
             
             const data = {
-                version: '3.8',
+                version: '3.9',
                 timestamp: ahora,
                 idioma: idioma,
                 grafoElipse: grafoCompactado,
@@ -236,7 +236,7 @@ class ModoOndasCruzadas {
             try {
                 const backupKey = `pipeline_ondas_cruzadas_backup_${idioma}`;
                 const backupData = {
-                    version: '3.8',
+                    version: '3.9',
                     timestamp: ahora,
                     idioma: idioma,
                     totalElipses: Object.keys(this._grafoElipse || {}).length,
@@ -358,7 +358,7 @@ class ModoOndasCruzadas {
 
     _compactarExtremo(data) {
         const compactado = {
-            version: data.version || '3.8',
+            version: data.version || '3.9',
             timestamp: data.timestamp || Date.now(),
             idioma: data.idioma,
             totalElipses: data.totalElipses || 0,
@@ -562,7 +562,7 @@ class ModoOndasCruzadas {
         if (this._initDone) return this;
         this._core = core || window.uiCore;
         
-        console.log('🌊 ModoOndasCruzadas v3.8: Inicializando (MULTIIDIOMA)...');
+        console.log('🌊 ModoOndasCruzadas v3.9: Inicializando (MULTIIDIOMA)...');
         
         this._idiomaActual = this._obtenerIdiomaActual();
         console.log(`   📌 Idioma actual: ${this._idiomaActual}`);
@@ -572,7 +572,7 @@ class ModoOndasCruzadas {
         this._initDone = true;
         this._cargaInicialRealizada = true;
         
-        console.log('🌊 ModoOndasCruzadas v3.8: Inicializado');
+        console.log('🌊 ModoOndasCruzadas v3.9: Inicializado');
         console.log(`   📊 ${Object.keys(this._grafoElipse).length} elipses en el grafo (${this._idiomaActual})`);
         console.log(`   💾 Datos: ${this._datosCargados ? '✅' : '❌'}`);
         console.log(`   🔥 Guardado optimizado - evita QuotaExceededError`);
@@ -581,6 +581,7 @@ class ModoOndasCruzadas {
         console.log(`   🔥 Eliminación automática de ondas duplicadas`);
         console.log(`   🔥 Recuerdo de ondas incluido en plantillas para IA`);
         console.log(`   🔥 Modal de exportación/importación restaurado`);
+        console.log(`   🔥 PROMPT MULTIDIOMA: El prompt está en el idioma nativo del usuario`);
         
         return this;
     }
@@ -1251,7 +1252,7 @@ class ModoOndasCruzadas {
     }
 
     // ============================================================
-    // GENERAR ONDA CRUZADA - CON RECUERDO PARA IA
+    // GENERAR ONDA CRUZADA - CON RECUERDO PARA IA Y PROMPT MULTIDIOMA
     // ============================================================
 
     async generarOndaCruzada(temaId, configuracion = {}) {
@@ -1264,11 +1265,11 @@ class ModoOndasCruzadas {
         }
 
         this._generando = true;
-        const idiomaActual = this._obtenerIdiomaActual();
-        const idiomaNativo = this._obtenerIdiomaNativo();
-        const nombreIdioma = this._getNombreIdioma(idiomaActual);
-        const nombreNativo = this._getNombreIdioma(idiomaNativo);
-        const esJeroglifico = this._esJeroglifico(idiomaActual);
+        const idiomaObjetivo = this._obtenerIdiomaActual();
+        const idiomaPrompt = this._obtenerIdiomaNativo() || 'es';
+        const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo);
+        const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt);
+        const esJeroglifico = this._esJeroglifico(idiomaObjetivo);
         
         try {
             await this._sincronizarConElipseCompleto();
@@ -1277,10 +1278,10 @@ class ModoOndasCruzadas {
             
             const elipse = this._grafoElipse[temaId];
             if (!elipse) {
-                console.warn(`⚠️ Tema "${temaId}" no encontrado en el grafo para ${idiomaActual}`);
+                console.warn(`⚠️ Tema "${temaId}" no encontrado en el grafo para ${nombreIdiomaObjetivo}`);
                 await this._sincronizarConElipseCompleto();
                 if (!this._grafoElipse[temaId]) {
-                    throw new Error(`El tema "${temaId}" no tiene ondas. Genera ondas primero en Modo Elipse para ${idiomaActual}.`);
+                    throw new Error(`El tema "${temaId}" no tiene ondas. Genera ondas primero en Modo Elipse para ${nombreIdiomaObjetivo}.`);
                 }
             }
             
@@ -1294,7 +1295,7 @@ class ModoOndasCruzadas {
                 console.warn(`⚠️ Error obteniendo tema ${temaId}:`, e);
             }
             
-            console.log(`🌊 Generando onda cruzada para tema: ${temaIdReal} (${idiomaActual})`);
+            console.log(`🌊 Generando onda cruzada para tema: ${temaIdReal} (${nombreIdiomaObjetivo})`);
             
             const interferencia = this._mapaInterferencias[temaIdReal];
             let temasConectados = interferencia?.temasConectados || [];
@@ -1380,9 +1381,9 @@ class ModoOndasCruzadas {
             console.log(`📊 Vocabulario prestado: ${vocabularioStrings.length} palabras`);
 
             // 🔥 CONSTRUIR RECUERDO PARA LA IA
-            const recuerdoTexto = this._construirRecuerdoParaIA(temaIdReal);
+            const recuerdoTexto = this._construirRecuerdoParaIA(temaIdReal, idiomaObjetivo, idiomaPrompt);
 
-            // 🔥 GENERAR PLANTILLA CON RECUERDO
+            // 🔥 GENERAR PLANTILLA CON RECUERDO Y PROMPT MULTIDIOMA
             let plantilla = null;
 
             if (window.modoElipse && typeof window.modoElipse.generarPlantillaOnda === 'function') {
@@ -1402,57 +1403,73 @@ class ModoOndasCruzadas {
                     throw new Error('No se pudo obtener la información del tema para generar la plantilla.');
                 }
 
+                // 🔥 CONSTRUIR PROMPT EN IDIOMA NATIVO
+                let promptCompleto = `Genera una nueva historia (onda) que sea una continuación de las historias anteriores del tema.\n\n`;
+                promptCompleto += `Idioma objetivo: ${nombreIdiomaObjetivo}\n`;
+                promptCompleto += `Nivel: ${temaInfo.nivel || 'A1'}\n`;
+                promptCompleto += `Tema: "${temaInfo.nombre}"\n\n`;
+                promptCompleto += recuerdoTexto;
+                promptCompleto += `\n\nLa historia debe tener entre 6 y 8 frases.\n`;
+                promptCompleto += `Cada frase debe tener: 'original', 'traduccion', 'palabras' desglosadas.\n`;
+                promptCompleto += `Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase.\n`;
+                if (esJeroglifico) {
+                    promptCompleto += `⚠️ IMPORTANTE: Incluye 'pinyin' CON TONOS para CADA frase y CADA palabra.\n`;
+                    promptCompleto += `Incluye 'segmentacion' con 'hanzi' y 'pinyin' separados.\n`;
+                    promptCompleto += `El pinyin DEBE incluir números de tono (ma1, ma2, ma3, ma4) o diacríticos (mā, má, mǎ, mà).\n`;
+                } else {
+                    promptCompleto += `⚠️ IMPORTANTE: Incluye 'transcripcion' para CADA frase y CADA palabra en ${nombreIdiomaPrompt}.\n`;
+                    promptCompleto += `La transcripción debe ser FÁCIL DE LEER para un hablante nativo de ${nombreIdiomaPrompt}.\n`;
+                    promptCompleto += `Ejemplo: "I have a pencil" → transcripción: "ai jaf a pensil" (para español).\n`;
+                }
+                promptCompleto += `Responde SOLO en formato JSON válido.\n`;
+                promptCompleto += `NO incluyas texto adicional fuera del JSON.\n`;
+
                 plantilla = {
                     "_INSTRUCCIONES_PARA_IA": {
-                        "version": "3.8",
-                        "accion": "Genera una nueva historia (onda) que sea una continuación de las historias anteriores del tema.",
-                        "idioma_objetivo": idiomaActual,
-                        "nombre_idioma": nombreIdioma,
+                        "version": "3.9",
+                        "idioma_prompt": idiomaPrompt,
+                        "idioma_objetivo": idiomaObjetivo,
+                        "nombre_idioma_prompt": nombreIdiomaPrompt,
+                        "nombre_idioma_objetivo": nombreIdiomaObjetivo,
+                        "accion": "Genera una nueva historia (onda) para el Modo Ondas Cruzadas",
                         "nivel": temaInfo.nivel || 'A1',
                         "tema": temaInfo.nombre,
                         "tema_id": temaIdReal,
                         "num_historias": 1,
                         "es_jeroglifico": esJeroglifico,
-                        "idioma_nativo": idiomaNativo,
-                        "nombre_nativo": nombreNativo,
-                        "contexto": `El tema actual es "${temaInfo.nombre}". La nueva historia debe ser una continuación natural.`,
+                        "prompt": promptCompleto,
                         "recuerdo_contexto": recuerdoTexto,
                         "instrucciones": [
-                            `Genera UNA nueva historia (onda) que sea una continuación de las historias del tema "${temaInfo.nombre}".`,
-                            "La historia debe tener entre 6 y 8 frases.",
-                            "Cada frase debe tener: 'original', 'traduccion', 'palabras' desglosadas.",
-                            "Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase.",
-                            ...(esJeroglifico ? [
-                                "⚠️ IMPORTANTE: Incluye 'pinyin' CON TONOS para CADA frase y CADA palabra.",
-                                "Incluye 'segmentacion' con 'hanzi' y 'pinyin' separados.",
-                                "El pinyin DEBE incluir números de tono (ma1, ma2, ma3, ma4) o diacríticos (mā, má, mǎ, mà)."
-                            ] : [
-                                `⚠️ IMPORTANTE: Incluye 'transcripcion' para CADA frase y CADA palabra en ${nombreNativo}.`,
-                                "La transcripción debe ser FÁCIL DE LEER para un hablante nativo de ${nombreNativo}.",
-                                `Ejemplo: "I have a pencil" → transcripción: "ai jaf a pensil" (para español).`
-                            ])
+                            `El prompt completo está en el campo "prompt".`,
+                            `El idioma objetivo para la historia es: ${nombreIdiomaObjetivo}.`,
+                            `Responde SOLO en formato JSON válido.`,
+                            `NO incluyas texto adicional fuera del JSON.`
                         ],
                         "formato_palabras": esJeroglifico ? {
                             "hanzi": "El carácter en el idioma objetivo",
                             "pinyin": "Pronunciación con tonos",
                             "familia": "Familia SEMÁNTICA",
                             "tipo": "Categoría GRAMATICAL",
-                            "significado": `Traducción al ${idiomaNativo}`
+                            "significado": `Traducción al ${nombreIdiomaPrompt}`
                         } : {
                             "palabra": "La palabra en el idioma objetivo",
-                            "transcripcion": `Transcripción fonética en ${nombreNativo}`,
+                            "transcripcion": `Transcripción fonética en ${nombreIdiomaPrompt}`,
                             "familia": "Familia SEMÁNTICA",
                             "tipo": "Categoría GRAMATICAL",
-                            "significado": `Traducción al ${idiomaNativo}`
+                            "significado": `Traducción al ${nombreIdiomaPrompt}`
                         }
                     },
                     "meta": {
                         "tema": temaInfo.nombre,
                         "tema_id": temaIdReal,
-                        "idioma": idiomaActual,
+                        "idioma_objetivo": idiomaObjetivo,
+                        "nombre_idioma_objetivo": nombreIdiomaObjetivo,
+                        "idioma_prompt": idiomaPrompt,
+                        "nombre_idioma_prompt": nombreIdiomaPrompt,
                         "nivel": temaInfo.nivel || 'A1',
                         "num_historias": 1,
-                        "fecha_generacion": new Date().toISOString()
+                        "fecha_generacion": new Date().toISOString(),
+                        "version": "3.9"
                     },
                     "historias": []
                 };
@@ -1460,8 +1477,8 @@ class ModoOndasCruzadas {
                 const historia = { id: 1, titulo: `Nueva onda para "${temaInfo.nombre}"`, frases: [] };
                 for (let i = 1; i <= 6; i++) {
                     const frase = {
-                        original: `[Frase ${i} en ${idiomaActual}]`,
-                        traduccion: `[Traducción ${i} al ${idiomaNativo}]`,
+                        original: `[Frase ${i} en ${nombreIdiomaObjetivo}]`,
+                        traduccion: `[Traducción ${i} al ${nombreIdiomaPrompt}]`,
                         regla_gramatical: `[Regla ${i}]`,
                         explicacion_gramatical: `[Explicación ${i}]`,
                         palabras: []
@@ -1478,16 +1495,16 @@ class ModoOndasCruzadas {
                             pinyin: `[pinyin_de_palabra_${i}]`,
                             familia: `[familia_semantica]`,
                             tipo: `[tipo_gramatical]`,
-                            significado: `[significado_en_${idiomaNativo}]`
+                            significado: `[significado_en_${nombreIdiomaPrompt}]`
                         });
                     } else {
-                        frase.transcripcion = `[transcripcion_en_${nombreNativo}_de_la_frase_${i}]`;
+                        frase.transcripcion = `[transcripcion_en_${nombreIdiomaPrompt}_de_la_frase_${i}]`;
                         frase.palabras.push({
                             palabra: `[palabra_${i}]`,
-                            transcripcion: `[transcripcion_en_${nombreNativo}_de_palabra_${i}]`,
+                            transcripcion: `[transcripcion_en_${nombreIdiomaPrompt}_de_palabra_${i}]`,
                             familia: `[familia_semantica]`,
                             tipo: `[tipo_gramatical]`,
-                            significado: `[significado_en_${idiomaNativo}]`
+                            significado: `[significado_en_${nombreIdiomaPrompt}]`
                         });
                     }
                     historia.frases.push(frase);
@@ -1519,7 +1536,7 @@ ${lugaresPrestados.map(l => `  - ${l}`).join('\n')}
 3. Introduce EXACTAMENTE ${config.palabrasNuevas} palabras nuevas.
 4. Nivel de dificultad: ${config.nivel}.
 5. NO uses placeholders.
-${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las palabras y frases.' : '6. 🔥 IMPORTANTE: Incluye TRANSCRIPCIÓN FONÉTICA en ' + nombreNativo + ' para TODAS las palabras y frases.'}
+${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las palabras y frases.' : '6. 🔥 IMPORTANTE: Incluye TRANSCRIPCIÓN FONÉTICA en ' + nombreIdiomaPrompt + ' para TODAS las palabras y frases.'}
 `;
 
             plantilla._INSTRUCCIONES_PARA_IA = {
@@ -1535,8 +1552,6 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
                 nivel: config.nivel,
                 temaPrincipal: temaIdReal,
                 es_jeroglifico: esJeroglifico,
-                idioma_nativo: idiomaNativo,
-                nombre_nativo: nombreNativo,
                 incluir_transcripcion: !esJeroglifico,
                 incluir_pinyin: esJeroglifico,
                 recuerdo_contexto: recuerdoTexto
@@ -1563,12 +1578,12 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
                                 }
                             } else {
                                 if (!frase.transcripcion) {
-                                    frase.transcripcion = `[transcripcion_en_${nombreNativo}_de_la_frase]`;
+                                    frase.transcripcion = `[transcripcion_en_${nombreIdiomaPrompt}_de_la_frase]`;
                                 }
                                 if (frase.palabras) {
                                     for (const p of frase.palabras) {
                                         if (!p.transcripcion) {
-                                            p.transcripcion = `[transcripcion_en_${nombreNativo}_de_la_palabra]`;
+                                            p.transcripcion = `[transcripcion_en_${nombreIdiomaPrompt}_de_la_palabra]`;
                                         }
                                     }
                                 }
@@ -1583,8 +1598,9 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
                 this._guardarDatos();
             }
 
-            console.log(`✅ Plantilla de onda cruzada generada con ${esJeroglifico ? 'pinyin' : 'transcripción'} (${idiomaActual})`);
+            console.log(`✅ Plantilla de onda cruzada generada con ${esJeroglifico ? 'pinyin' : 'transcripción'} (${nombreIdiomaObjetivo})`);
             console.log(`📚 Recuerdo incluido en la plantilla para la IA`);
+            console.log(`💬 Prompt generado en ${nombreIdiomaPrompt}`);
 
             this._generando = false;
             return plantilla;
@@ -1597,19 +1613,21 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
     }
 
     // ============================================================
-    // CONSTRUIR RECUERDO PARA LA IA
+    // CONSTRUIR RECUERDO PARA LA IA - MULTIDIOMA
     // ============================================================
 
-    _construirRecuerdoParaIA(temaId) {
+    _construirRecuerdoParaIA(temaId, idiomaObjetivo, idiomaPrompt) {
         const historiasElipse = this._grafoElipse[temaId]?.ondas || [];
+        const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo);
+        const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt);
         
         if (historiasElipse.length === 0) {
-            return '📖 No hay historias previas. Esta es la primera onda del tema.';
+            return `📖 No hay historias previas. Esta es la primera onda del tema en ${nombreIdiomaObjetivo}.`;
         }
 
         const historiasOrdenadas = [...historiasElipse].sort((a, b) => a.indice - b.indice);
         
-        let recuerdoTexto = '📚 **CONTEXTO DE ONDAS ANTERIORES**\n\n';
+        let recuerdoTexto = `📚 **CONTEXTO DE ONDAS ANTERIORES (${nombreIdiomaObjetivo})**\n\n`;
         
         for (const h of historiasOrdenadas) {
             const estado = h.completada ? '✅ COMPLETADA' : '📖 EN PROGRESO';
@@ -1627,7 +1645,7 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
         const vocabularioAcumulado = this._recuerdoGlobal.vocabularioAcumulado || new Map();
         if (vocabularioAcumulado.size > 0) {
             const palabrasMostrar = Array.from(vocabularioAcumulado.keys()).slice(0, 20);
-            recuerdoTexto += `📝 **VOCABULARIO ACUMULADO:**\n`;
+            recuerdoTexto += `📝 **VOCABULARIO ACUMULADO (${nombreIdiomaObjetivo}):**\n`;
             recuerdoTexto += `   ${palabrasMostrar.join(', ')}`;
             if (vocabularioAcumulado.size > 20) {
                 recuerdoTexto += ` y ${vocabularioAcumulado.size - 20} palabras más`;
@@ -1647,7 +1665,7 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
             recuerdoTexto += `📍 **LUGARES:** ${Array.from(lugares).join(', ')}\n\n`;
         }
 
-        recuerdoTexto += `🎯 **REGLAS DE CONTINUIDAD:**\n`;
+        recuerdoTexto += `🎯 **REGLAS DE CONTINUIDAD (${nombreIdiomaObjetivo}):**\n`;
         recuerdoTexto += `1. La NUEVA historia debe ser una CONTINUACIÓN DIRECTA de la historia anterior.\n`;
         recuerdoTexto += `2. Mantén los MISMOS personajes y ambientación.\n`;
         recuerdoTexto += `3. Introduce EXACTAMENTE las palabras nuevas indicadas.\n`;
@@ -1677,7 +1695,10 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
 const modoOndasCruzadas = new ModoOndasCruzadas();
 window.modoOndasCruzadas = modoOndasCruzadas;
 
-console.log('✅ Modo Ondas Cruzadas v3.8 - CON RECUERDO Y PLANTILLA COMPLETA');
+console.log('✅ Modo Ondas Cruzadas v3.9 - CON PROMPT MULTIDIOMA');
+console.log('  🔥 El prompt para la IA externa se genera en el idioma nativo del usuario');
+console.log('  🔥 El idioma objetivo para la historia se especifica claramente');
+console.log('  🔥 La plantilla incluye campos para ambos idiomas');
 console.log('  🔥 Recuerdo de ondas incluido en plantillas para IA');
 console.log('  🔥 Instrucciones claras para la IA');
 console.log('  🔥 Nombres reales de temas en lugar de IDs');

@@ -1,6 +1,6 @@
 // ============================================================
-// GESTOR CENTRAL DE PROGRESO DE HISTORIAS/ONDAS v2.1
-// CORREGIDO: SOPORTE PARA ONDAS CRUZADAS (NO INTENTAR SINCRONIZAR CON ELIPSE)
+// GESTOR CENTRAL DE PROGRESO DE HISTORIAS/ONDAS v2.3
+// CON SINCRONIZACIÓN FORZADA A BASE DE DATOS
 // ============================================================
 
 class GestorProgresoHistorias {
@@ -11,6 +11,7 @@ class GestorProgresoHistorias {
         this._ultimoCambio = {};
         this._cambioManual = {};
         this._registrarEventos();
+        this._inicializarEscuchas();
     }
 
     _log(mensaje, tipo = 'info') {
@@ -28,10 +29,92 @@ class GestorProgresoHistorias {
         this._log('Eventos registrados');
     }
 
-    /**
-     * Marca o desmarca una historia/onda como completada
-     * 🔥 CORREGIDO: Soporte para ondas cruzadas (no intentar sincronizar con Elipse)
-     */
+    _inicializarEscuchas() {
+        window.addEventListener('historiaEstadoCambiado', async (e) => {
+            const detail = e.detail;
+            if (!detail) return;
+            if (detail.origen !== 'gestor_progreso' && detail.historiaId) {
+                this._log(`🔄 Evento externo recibido: ${detail.historiaId} -> ${detail.completado}`, 'info');
+                const historia = await db.get('historias', detail.historiaId);
+                if (historia) {
+                    const estadoActual = historia.estado === 'completada' || historia._completada === true;
+                    if (estadoActual !== detail.completado) {
+                        this._log(`⚠️ Inconsistencia detectada: estado actual ${estadoActual} vs evento ${detail.completado}`, 'warn');
+                        await this.cambiarEstadoHistoria(detail.historiaId, estadoActual, 'sincronizacion_forzada');
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('temaCompletado', async (e) => {
+            const detail = e.detail;
+            if (!detail) return;
+            if (detail.origen === 'gestor_progreso') return;
+            
+            this._log(`🔄 Tema completado event recibido: ${detail.temaId} -> ${detail.completado}`, 'info');
+            
+            // 🔥 FORZAR SINCRONIZACIÓN COMPLETA
+            await this._sincronizarTemaCompleto(detail.temaDbId || detail.temaId, detail.completado);
+        });
+
+        this._log('✅ Escuchas inicializadas');
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: SINCRONIZACIÓN FORZADA DE TEMA COMPLETO
+    // ============================================================
+
+    async _sincronizarTemaCompleto(temaId, completado) {
+        this._log(`🔥 Sincronizando tema ${temaId} -> ${completado ? 'completado' : 'no completado'}`);
+        
+        try {
+            const tema = await db.obtenerTema(temaId);
+            if (!tema) {
+                this._log(`❌ Tema ${temaId} no encontrado`, 'error');
+                return;
+            }
+
+            // Obtener todas las historias del tema
+            const historias = await db.obtenerHistoriasPorTema(temaId);
+            this._log(`📚 Tiene ${historias.length} historias`);
+
+            if (completado) {
+                // 🔥 MARCAR TODAS LAS HISTORIAS COMO COMPLETADAS
+                this._log(`🌊 Marcando todas las ${historias.length} historias como completadas`);
+                for (const h of historias) {
+                    const estaCompletada = h.estado === 'completada' || h._completada === true;
+                    if (!estaCompletada) {
+                        await this.cambiarEstadoHistoria(h.id, true, 'tema_completado_cascada');
+                    }
+                }
+            } else {
+                // 🔥 DESMARCAR TODAS LAS HISTORIAS (Solo si el tema se desmarca manualmente)
+                this._log(`🌊 Desmarcando todas las ${historias.length} historias`);
+                for (const h of historias) {
+                    const estaCompletada = h.estado === 'completada' || h._completada === true;
+                    if (estaCompletada) {
+                        await this.cambiarEstadoHistoria(h.id, false, 'tema_desmarcado_cascada');
+                    }
+                }
+            }
+
+            // 🔥 VERIFICAR Y ACTUALIZAR ESTADO REAL DEL TEMA
+            await this._verificarYActualizarEstadoTema(temaId);
+
+            // 🔥 FORZAR ACTUALIZACIÓN DE TODOS LOS MÓDULOS
+            await this._forzarActualizacionGlobal();
+
+            this._log(`✅ Sincronización completa del tema "${tema.nombre}"`);
+            
+        } catch (error) {
+            this._log(`❌ Error sincronizando tema: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // CAMBIAR ESTADO DE UNA HISTORIA
+    // ============================================================
+
     async cambiarEstadoHistoria(historiaId, completado, origen = 'desconocido') {
         if (this._procesando.has(historiaId)) {
             this._log(`⏳ Historia ${historiaId} ya está siendo procesada, omitiendo...`, 'warn');
@@ -60,12 +143,10 @@ class GestorProgresoHistorias {
 
             this._log(`📖 Historia: "${historia.titulo}" (estado: ${historia.estado || 'sin_estado'})`);
 
-            // 🔥 DETECTAR TIPO DE HISTORIA
             const esOndaCruzada = historia._esOndaCruzada === true;
             const esOnda = historia._esOnda === true && !esOndaCruzada;
             const esBase = historia._esBase === true || historia._esOnda === false;
 
-            // 🔥 SI ES ONDA CRUZADA, NO INTENTAR SINCRONIZAR CON ELIPSE
             if (esOndaCruzada) {
                 this._log(`🌊 Onda CRUZADA detectada, NO se sincronizará con Elipse`);
             }
@@ -175,29 +256,20 @@ class GestorProgresoHistorias {
                     if (completado) {
                         elipseHistoria._sincronizado = true;
                         elipseHistoria._fechaSincronizacion = Date.now();
-                        await this._sincronizarConTemas(historia, completado);
                     } else {
                         elipseHistoria._sincronizado = false;
                         elipseHistoria._fechaSincronizacion = null;
-                        await this._reabrirTemaSiCompletado(historia.temaId);
                     }
                     
                     window.modoElipse._guardarEstadoElipse();
+                    await window.modoElipse._guardarEnIndexedDB();
                     this._log(`✅ ${esBase ? 'BASE' : 'Onda'} Elipse actualizada: completada=${elipseHistoria.completada}, RCN=${elipseHistoria.rcnPromedio.toFixed(1)}`);
-                } else {
-                    // 🔥 SOLO MOSTRAR ADVERTENCIA SI ES ONDA ELIPSE, NO PARA CRUZADAS
-                    if (!esOndaCruzada) {
-                        this._log(`⚠️ ${esBase ? 'BASE' : 'Onda'} ${historiaId} no encontrada en Modo Elipse.`, 'warn');
-                    }
                 }
             } else if (esOndaCruzada) {
-                // 🔥 PARA ONDAS CRUZADAS, SOLO DISPARAR EVENTOS, NO SINCRONIZAR CON ELIPSE
                 this._log(`🌊 Onda CRUZADA ${historiaId}: estado actualizado, sin sincronización con Elipse`);
                 
-                // 🔥 ACTUALIZAR EL GRAFO DE ONDAS CRUZADAS
                 if (window.modoOndasCruzadas) {
                     try {
-                        // Forzar sincronización del grafo
                         if (typeof window.modoOndasCruzadas.sincronizarConElipse === 'function') {
                             await window.modoOndasCruzadas.sincronizarConElipse(historia.temaId);
                         }
@@ -214,7 +286,10 @@ class GestorProgresoHistorias {
                 }
             }
 
-            // 🔥 DISPARAR EVENTO DE ESTADO CAMBIADO (SIEMPRE, PARA TODOS LOS TIPOS)
+            // 🔥 VERIFICAR Y ACTUALIZAR ESTADO DEL TEMA
+            await this._verificarYActualizarEstadoTema(historia.temaId);
+
+            // 🔥 DISPARAR EVENTO DE ESTADO CAMBIADO
             this._dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcnFinal);
             
             // 🔥 FORZAR ACTUALIZACIÓN DE UI
@@ -229,6 +304,235 @@ class GestorProgresoHistorias {
             this._procesando.delete(historiaId);
             return false;
         }
+    }
+
+    // ============================================================
+    // VERIFICAR Y ACTUALIZAR ESTADO DEL TEMA
+    // ============================================================
+
+    async _verificarYActualizarEstadoTema(temaId) {
+        try {
+            if (!temaId) return;
+            
+            const tema = await db.obtenerTema(temaId);
+            if (!tema) {
+                this._log(`⚠️ Tema ${temaId} no encontrado para verificación`, 'warn');
+                return;
+            }
+
+            const historias = await db.obtenerHistoriasPorTema(temaId);
+            if (historias.length === 0) {
+                this._log(`ℹ️ Tema "${tema.nombre}" no tiene historias`);
+                return;
+            }
+
+            let completadas = 0;
+            for (const h of historias) {
+                if (h.estado === 'completada' || h._completada === true) {
+                    completadas++;
+                }
+            }
+
+            const total = historias.length;
+            const todasCompletadas = completadas === total && total > 0;
+            const estaCompletado = tema.estado === 'completado' || tema._completado === true;
+
+            // 🔥 ACTUALIZAR PROGRESO REAL
+            tema._progreso = Math.round((completadas / total) * 100);
+            tema._historiasCompletadas = completadas;
+            tema._historiasTotales = total;
+
+            if (todasCompletadas && !estaCompletado) {
+                tema.estado = 'completado';
+                tema._completado = true;
+                tema._fechaCompletado = Date.now();
+                await db.update('temas', tema);
+                this._log(`🎯 Tema "${tema.nombre}" marcado como COMPLETADO (${completadas}/${total})`);
+
+                const idioma = tema.idioma || 'es';
+                const temaOriginalId = tema._temaOriginalId || tema.id;
+                window.dispatchEvent(new CustomEvent('temaCompletado', {
+                    detail: {
+                        idioma: idioma,
+                        temaId: temaOriginalId,
+                        temaDbId: tema.id,
+                        completado: true,
+                        tema: tema,
+                        origen: 'gestor_progreso',
+                        progreso: 100
+                    }
+                }));
+
+                if (window.UITemas && window.UITemas._core) {
+                    window.UITemas._core.mostrarToast(`🎉 Tema "${tema.nombre}" completado al 100%`, 'success');
+                }
+
+            } else if (!todasCompletadas && estaCompletado) {
+                tema.estado = 'en_curso';
+                tema._completado = false;
+                delete tema._fechaCompletado;
+                await db.update('temas', tema);
+                this._log(`🔄 Tema "${tema.nombre}" REABIERTO (${completadas}/${total})`);
+
+                const idioma = tema.idioma || 'es';
+                const temaOriginalId = tema._temaOriginalId || tema.id;
+                window.dispatchEvent(new CustomEvent('temaCompletado', {
+                    detail: {
+                        idioma: idioma,
+                        temaId: temaOriginalId,
+                        temaDbId: tema.id,
+                        completado: false,
+                        tema: tema,
+                        origen: 'gestor_progreso',
+                        progreso: Math.round((completadas / total) * 100)
+                    }
+                }));
+
+            } else {
+                await db.update('temas', tema);
+                this._log(`📊 Progreso del tema "${tema.nombre}" actualizado: ${tema._progreso}% (${completadas}/${total})`);
+            }
+
+            // 🔥 DISPARAR EVENTO PARA ACTUALIZAR UI
+            window.dispatchEvent(new CustomEvent('progresoTemaActualizado', {
+                detail: {
+                    temaId: tema.id,
+                    temaNombre: tema.nombre,
+                    progreso: tema._progreso,
+                    completadas: completadas,
+                    total: total,
+                    completado: todasCompletadas
+                }
+            }));
+
+            return { completadas, total, progreso: tema._progreso, completado: todasCompletadas };
+        } catch (error) {
+            this._log(`❌ Error verificando estado del tema: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    // ============================================================
+    // FORZAR ACTUALIZACIÓN GLOBAL
+    // ============================================================
+
+    async _forzarActualizacionGlobal() {
+        this._log(`🔥 Forzando actualización global de UI...`);
+
+        // Actualizar Temas
+        if (window.UITemas) {
+            try {
+                if (window.UITemas.modoVistaTemas === 'detalle') {
+                    await window.UITemas._verTemaDetalle(window.UITemas.temaSeleccionado);
+                } else {
+                    await window.UITemas._renderTemas();
+                }
+                this._log(`✅ UI Temas actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Temas: ${e.message}`, 'warn');
+            }
+        }
+
+        // Actualizar Elipse
+        if (window.UIClipse) {
+            try {
+                await window.UIClipse._renderizarPanel(window.UIClipse._temaId);
+                this._log(`✅ UI Elipse actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Elipse: ${e.message}`, 'warn');
+            }
+        }
+
+        // Actualizar Ondas Cruzadas
+        if (window.UIOndasCruzadas) {
+            try {
+                await window.UIOndasCruzadas._cargarDatos();
+                await window.UIOndasCruzadas._renderizarPanel();
+                this._log(`✅ UI Ondas Cruzadas actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Ondas Cruzadas: ${e.message}`, 'warn');
+            }
+        }
+
+        // Actualizar Dashboard
+        if (window.UIDashboard) {
+            try {
+                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
+                this._log(`✅ Dashboard actualizado`);
+            } catch (e) {
+                this._log(`Error actualizando Dashboard: ${e.message}`, 'warn');
+            }
+        }
+
+        // Disparar evento global
+        window.dispatchEvent(new CustomEvent('uiNeedsRefresh', {
+            detail: {
+                timestamp: Date.now(),
+                origen: 'global_sync'
+            }
+        }));
+
+        this._log(`✅ Actualización global completada`);
+    }
+
+    async _forzarActualizacionUI(historiaId, completado, esOnda, esOndaCruzada) {
+        this._log(`🔄 Forzando actualización de UI...`);
+
+        if (esOnda && window.UIClipse) {
+            try {
+                if (window.UIClipse._visorAbierto) {
+                    window.UIClipse._cerrarVisorYVolver();
+                }
+                await window.UIClipse._renderizarPanel(window.UIClipse._temaId);
+                this._log(`✅ UI Elipse actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Elipse: ${e.message}`, 'warn');
+            }
+        }
+
+        if (window.UIOndasCruzadas) {
+            try {
+                await window.UIOndasCruzadas._cargarDatos();
+                await window.UIOndasCruzadas._renderizarPanel();
+                this._log(`✅ UI Ondas Cruzadas actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Ondas Cruzadas: ${e.message}`, 'warn');
+            }
+        }
+
+        if (window.UITemas) {
+            try {
+                if (window.UITemas.modoVistaTemas === 'detalle') {
+                    await window.UITemas._verTemaDetalle(window.UITemas.temaSeleccionado);
+                } else {
+                    await window.UITemas._renderTemas();
+                }
+                this._log(`✅ UI Temas actualizada`);
+            } catch (e) {
+                this._log(`Error actualizando Temas: ${e.message}`, 'warn');
+            }
+        }
+
+        if (window.UIDashboard) {
+            try {
+                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
+                this._log(`✅ Dashboard actualizado`);
+            } catch (e) {
+                this._log(`Error actualizando Dashboard: ${e.message}`, 'warn');
+            }
+        }
+
+        window.dispatchEvent(new CustomEvent('uiNeedsRefresh', {
+            detail: {
+                historiaId: historiaId,
+                completado: completado,
+                esOnda: esOnda,
+                esOndaCruzada: esOndaCruzada,
+                timestamp: Date.now()
+            }
+        }));
+
+        this._log(`✅ UI actualizada forzadamente`);
     }
 
     async actualizarDesdeSRS(historiaId, rcnPromedio, completada) {
@@ -260,152 +564,7 @@ class GestorProgresoHistorias {
         return await this.cambiarEstadoHistoria(historiaId, completada, 'srs');
     }
 
-    async _forzarActualizacionUI(historiaId, completado, esOnda, esOndaCruzada) {
-        this._log(`🔄 Forzando actualización de UI...`);
-
-        // 🔥 ACTUALIZAR UI DE ELIPSE (SOLO SI ES ONDA ELIPSE)
-        if (esOnda && window.UIClipse) {
-            try {
-                if (window.UIClipse._visorAbierto) {
-                    window.UIClipse._cerrarVisorYVolver();
-                }
-                await window.UIClipse._renderizarPanel(window.UIClipse._temaId);
-                this._log(`✅ UI Elipse actualizada`);
-            } catch (e) {
-                this._log(`Error actualizando Elipse: ${e.message}`, 'warn');
-            }
-        }
-
-        // 🔥 ACTUALIZAR UI DE ONDAS CRUZADAS (SIEMPRE)
-        if (window.UIOndasCruzadas) {
-            try {
-                await window.UIOndasCruzadas._cargarDatos();
-                await window.UIOndasCruzadas._renderizarPanel();
-                this._log(`✅ UI Ondas Cruzadas actualizada`);
-            } catch (e) {
-                this._log(`Error actualizando Ondas Cruzadas: ${e.message}`, 'warn');
-            }
-        }
-
-        // 🔥 ACTUALIZAR UI DE TEMAS (SIEMPRE)
-        if (window.UITemas) {
-            try {
-                if (window.UITemas.modoVistaTemas === 'detalle') {
-                    await window.UITemas._verTemaDetalle(window.UITemas.temaSeleccionado);
-                } else {
-                    await window.UITemas._renderTemas();
-                }
-                this._log(`✅ UI Temas actualizada`);
-            } catch (e) {
-                this._log(`Error actualizando Temas: ${e.message}`, 'warn');
-            }
-        }
-
-        // 🔥 ACTUALIZAR DASHBOARD
-        if (window.UIDashboard) {
-            try {
-                await window.UIDashboard._cargarDashboardInicial(window.uiCore);
-                this._log(`✅ Dashboard actualizado`);
-            } catch (e) {
-                this._log(`Error actualizando Dashboard: ${e.message}`, 'warn');
-            }
-        }
-
-        // 🔥 DISPARAR EVENTO DE REFRESCO UI
-        window.dispatchEvent(new CustomEvent('uiNeedsRefresh', {
-            detail: {
-                historiaId: historiaId,
-                completado: completado,
-                esOnda: esOnda,
-                esOndaCruzada: esOndaCruzada,
-                timestamp: Date.now()
-            }
-        }));
-
-        this._log(`✅ UI actualizada forzadamente`);
-    }
-
-    async _sincronizarConTemas(historia, completado) {
-        try {
-            const temaId = historia.temaId;
-            const tema = await db.obtenerTema(temaId);
-            if (!tema) return;
-
-            const idioma = tema.idioma || 'es';
-            const temaOriginalId = tema._temaOriginalId || tema.id;
-
-            const todasHistorias = await db.obtenerHistoriasPorTema(temaId);
-            const todasCompletadas = todasHistorias.every(h => 
-                h.estado === 'completada' || h._completada === true
-            );
-
-            if (todasCompletadas && tema.estado !== 'completado') {
-                tema.estado = 'completado';
-                tema._completado = true;
-                tema._fechaCompletado = Date.now();
-                await db.update('temas', tema);
-                this._log(`✅ Tema "${tema.nombre}" marcado como completado`);
-            } else if (!todasCompletadas && tema.estado === 'completado') {
-                tema.estado = 'en_curso';
-                tema._completado = false;
-                delete tema._fechaCompletado;
-                await db.update('temas', tema);
-                this._log(`🔄 Tema "${tema.nombre}" reabierto (no todas las historias completadas)`);
-            }
-
-            window.dispatchEvent(new CustomEvent('temaCompletado', {
-                detail: {
-                    idioma: idioma,
-                    temaId: temaOriginalId,
-                    temaDbId: tema.id,
-                    completado: todasCompletadas,
-                    tema: tema,
-                    origen: 'gestor_progreso'
-                }
-            }));
-
-            this._log(`✅ Sincronización con Temas completada`);
-        } catch (error) {
-            this._log(`Error sincronizando con Temas: ${error.message}`, 'error');
-        }
-    }
-
-    async _reabrirTemaSiCompletado(temaId) {
-        try {
-            const tema = await db.obtenerTema(temaId);
-            if (!tema) return;
-
-            const historias = await db.obtenerHistoriasPorTema(temaId);
-            const todasCompletadas = historias.every(h => h.estado === 'completada' || h._completada === true);
-
-            if ((tema.estado === 'completado' || tema._completado === true) && !todasCompletadas) {
-                this._log(`🔄 Reabriendo tema "${tema.nombre}" porque una historia se desmarcó.`);
-                tema.estado = 'en_curso';
-                tema._completado = false;
-                delete tema._fechaCompletado;
-                await db.update('temas', tema);
-
-                const idioma = tema.idioma || 'es';
-                const temaOriginalId = tema._temaOriginalId || tema.id;
-                window.dispatchEvent(new CustomEvent('temaCompletado', {
-                    detail: {
-                        idioma: idioma,
-                        temaId: temaOriginalId,
-                        temaDbId: tema.id,
-                        completado: false,
-                        tema: tema,
-                        origen: 'gestor_progreso'
-                    }
-                }));
-                this._log(`✅ Tema "${tema.nombre}" reabierto`);
-            }
-        } catch (error) {
-            this._log(`Error reabriendo tema: ${error.message}`, 'error');
-        }
-    }
-
     _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn) {
-        // 🔥 DETERMINAR TIPO CORRECTO
         let tipo = 'historia';
         if (esOndaCruzada) {
             tipo = 'onda_cruzada';
@@ -425,7 +584,6 @@ class GestorProgresoHistorias {
             }
         }));
 
-        // Disparar eventos específicos
         if (esOnda) {
             window.dispatchEvent(new CustomEvent('elipseEstadoActualizado', {
                 detail: { historiaId, completado, rcn: rcn || 0 }
@@ -448,14 +606,12 @@ window.addEventListener('uiNeedsRefresh', (e) => {
     console.log('🔄 UI Needs Refresh - Refrescando vistas...');
     const detail = e.detail || {};
     
-    // Refrescar Elipse si es necesario
     if (detail.esOnda && window.UIClipse && !window.UIClipse._visorAbierto) {
         setTimeout(() => {
             window.UIClipse._renderizarPanel(window.UIClipse._temaId);
         }, 100);
     }
     
-    // Refrescar Ondas Cruzadas
     if (window.UIOndasCruzadas) {
         setTimeout(() => {
             window.UIOndasCruzadas._cargarDatos().then(() => {
@@ -464,7 +620,6 @@ window.addEventListener('uiNeedsRefresh', (e) => {
         }, 150);
     }
     
-    // Refrescar Temas
     if (window.UITemas) {
         setTimeout(() => {
             if (window.UITemas.modoVistaTemas === 'detalle') {
@@ -476,11 +631,8 @@ window.addEventListener('uiNeedsRefresh', (e) => {
     }
 });
 
-console.log('✅ GestorProgresoHistorias v2.1 cargado correctamente.');
-console.log('  🔥 SOPORTE COMPLETO PARA ONDAS CRUZADAS');
-console.log('  🔥 NO intenta sincronizar ondas cruzadas con Elipse');
-console.log('  🔥 Actualización de RCN al marcar/desmarcar');
-console.log('  🔥 Forzado de RCN a 4.0 mínimo al completar');
-console.log('  🔥 Evita reversión por SRS en cambios manuales');
-console.log('  🔥 Reapertura automática de temas');
-console.log('  🔥 Sincronización bidireccional completa (Elipse ↔ Temas ↔ Ondas Cruzadas)');
+console.log('✅ GestorProgresoHistorias v2.3 - CON SINCRONIZACIÓN FORZADA');
+console.log('  🔥 Sincronización FORZADA a base de datos');
+console.log('  🔥 Cascada completa: marcar tema marca todas sus historias');
+console.log('  🔥 Verificación en tiempo real del progreso');
+console.log('  🔥 Soporte completo para Elipse y Ondas Cruzadas');

@@ -1,5 +1,5 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.21 - CORREGIDO: VERIFICA Y ACTUALIZA historiasIds
+// UI TEMAS ACTIONS v2.23 - CORREGIDO: SINCRONIZACIÓN CON ELIPSE Y ONDAS CRUZADAS AL BORRAR
 // ============================================================
 
 class UITemasActions {
@@ -260,7 +260,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // ELIMINAR HISTORIA DE UN TEMA
+    // ELIMINAR HISTORIA DE UN TEMA - CON SINCRONIZACIÓN
     // ============================================================
 
     static async eliminarHistoriaDeTema(historiaId) {
@@ -280,6 +280,8 @@ class UITemasActions {
 
         const temaId = historia.temaId;
         const tema = temaId ? await db.obtenerTema(temaId) : null;
+        const esOnda = historia._esOnda === true;
+        const esOndaCruzada = historia._esOndaCruzada === true;
 
         const frases = await db.obtenerFrasesPorHistoria(historiaId);
         for (const f of frases) {
@@ -295,6 +297,96 @@ class UITemasActions {
                 frases: (tema.frases || 0) - frases.length
             });
         }
+
+        if (window.modoElipse) {
+            const index = window.modoElipse._historiasElipse.findIndex(h => h.id === historiaId);
+            if (index !== -1) {
+                window.modoElipse._historiasElipse.splice(index, 1);
+                window.modoElipse._estadisticas.totalOndas = window.modoElipse._historiasElipse.length;
+                window.modoElipse._guardarEstadoElipse();
+                await window.modoElipse._guardarEnIndexedDB();
+                console.log(`🌌 Onda ${historiaId} eliminada de la Elipse`);
+            }
+            
+            window.dispatchEvent(new CustomEvent('elipseEstadoActualizado', {
+                detail: {
+                    tipo: 'onda_eliminada',
+                    historiaId: historiaId,
+                    temaId: temaId
+                }
+            }));
+            
+            if (window.modoElipse._elipseActiva == temaId) {
+                if (window.UIClipse) {
+                    setTimeout(() => {
+                        window.UIClipse._renderizarPanel(temaId);
+                    }, 300);
+                }
+            }
+        }
+
+        if (window.modoOndasCruzadas) {
+            try {
+                const grafo = window.modoOndasCruzadas._grafo || {};
+                let grafoModificado = false;
+                
+                for (const [temaIdGrafo, data] of Object.entries(grafo)) {
+                    if (data.historias && Array.isArray(data.historias)) {
+                        const idx = data.historias.findIndex(h => h.id === historiaId);
+                        if (idx !== -1) {
+                            data.historias.splice(idx, 1);
+                            grafoModificado = true;
+                        }
+                    }
+                    if (data.conexiones) {
+                        for (const [conexionTema, conexionData] of Object.entries(data.conexiones)) {
+                            if (conexionData.historias && Array.isArray(conexionData.historias)) {
+                                const idx = conexionData.historias.findIndex(h => h.id === historiaId);
+                                if (idx !== -1) {
+                                    conexionData.historias.splice(idx, 1);
+                                    grafoModificado = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (grafoModificado) {
+                    window.modoOndasCruzadas._grafo = grafo;
+                    window.modoOndasCruzadas._guardarDatos();
+                    console.log(`🌊 Onda ${historiaId} eliminada del grafo de Ondas Cruzadas`);
+                }
+                
+                window.dispatchEvent(new CustomEvent('ondasCruzadasEstadoActualizado', {
+                    detail: {
+                        tipo: 'onda_eliminada',
+                        historiaId: historiaId,
+                        temaId: temaId
+                    }
+                }));
+                
+                if (window.UIOndasCruzadas) {
+                    setTimeout(() => {
+                        window.UIOndasCruzadas._cargarDatos().then(() => {
+                            window.UIOndasCruzadas._renderizarPanel();
+                        });
+                    }, 300);
+                }
+                
+            } catch (error) {
+                console.warn('⚠️ Error sincronizando con Ondas Cruzadas:', error);
+            }
+        }
+
+        window.dispatchEvent(new CustomEvent('historiaEliminada', {
+            detail: {
+                historiaId: historiaId,
+                temaId: temaId,
+                esOnda: esOnda,
+                esOndaCruzada: esOndaCruzada,
+                titulo: historia.titulo
+            }
+        }));
 
         core?.mostrarToast('🗑️ Historia eliminada', 'warning');
 
@@ -561,7 +653,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // 🔥 IMPORTAR TEMA COMPLETO CON LOADING - CORREGIDO: VERIFICA historiasIds
+    // IMPORTAR TEMA COMPLETO CON LOADING
     // ============================================================
 
     static async importarTemaCompletoConLoading(data, temaId, temaNombre) {
@@ -639,7 +731,6 @@ class UITemasActions {
             let historiasImportadas = 0;
             const historiasIds = [];
 
-            // VERIFICAR DUPLICADOS - Obtener títulos existentes
             const historiasExistentes = await db.obtenerHistoriasPorTema(temaIdRealFinal);
             const titulosExistentes = new Set(historiasExistentes.map(h => h.titulo?.toLowerCase().trim()));
 
@@ -707,7 +798,6 @@ class UITemasActions {
                 if (historiaId) {
                     historiasIds.push(historiaId);
                     
-                    // 🔥 ACTUALIZAR LA HISTORIA CON EL temaId CORRECTO POR SI ACASO
                     await db.update('historias', {
                         id: historiaId,
                         temaId: temaIdRealFinal
@@ -868,20 +958,14 @@ class UITemasActions {
                 }
             }
 
-            // ============================================================
-            // 🔥 VERIFICAR Y ACTUALIZAR historiasIds DEL TEMA
-            // ============================================================
-            
             UITemasActions._actualizarLoading(90, '🔍 Verificando historias...', 'Actualizando lista de historias del tema');
 
-            // Obtener TODAS las historias que tienen este temaId
             const todasLasHistoriasDelTema = await db.obtenerHistoriasPorTema(temaIdRealFinal);
             const todosLosIds = todasLasHistoriasDelTema.map(h => h.id);
             
             console.log(`📊 Total historias en el tema: ${todosLosIds.length}`);
             console.log(`   IDs: ${todosLosIds.join(', ')}`);
 
-            // 🔥 ACTUALIZAR historiasIds DEL TEMA CON TODOS LOS IDs
             await db.update('temas', {
                 ...temaGuardado,
                 historiasIds: todosLosIds,
@@ -889,9 +973,6 @@ class UITemasActions {
                 _tieneContenido: true
             });
 
-            // ============================================================
-            // SINCRONIZAR CARACTERES
-            // ============================================================
             let caracteresImportados = 0;
             let palabrasDerivadasGuardadas = 0;
 
@@ -1084,13 +1165,9 @@ class UITemasActions {
                 }
             }
 
-            // ============================================================
-            // ACTUALIZAR TEMA - PROGRESO REAL
-            // ============================================================
             UITemasActions._actualizarLoading(97, '💾 Guardando cambios...', 'Actualizando tema');
 
             if (temaGuardado) {
-                // 🔥 RECALCULAR PROGRESO REAL
                 const historiasActualizadas = await db.obtenerHistoriasPorTema(temaIdRealFinal);
                 let completadas = 0;
                 for (const h of historiasActualizadas) {
@@ -1132,9 +1209,6 @@ class UITemasActions {
                 }
             }
 
-            // ============================================================
-            // ACTUALIZAR MÓDULOS
-            // ============================================================
             UITemasActions._actualizarLoading(98, '🔄 Actualizando módulos...', 'Gramática, Pipeline y Vigía');
 
             if (window.gramatica) {
@@ -1155,9 +1229,6 @@ class UITemasActions {
                 }
             }
 
-            // ============================================================
-            // ACTUALIZAR UI
-            // ============================================================
             UITemasActions._actualizarLoading(99, '🔄 Actualizando interfaz...', 'Caracteres, Mi Espacio y Dashboard');
 
             if (window.UICaracteres) {
@@ -1598,7 +1669,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // 🌌 GENERAR ONDA ELIPSE CON REAPERTURA AUTOMÁTICA
+    // GENERAR ONDA ELIPSE CON REAPERTURA AUTOMÁTICA
     // ============================================================
 
     static async generarOndaElipse(temaId) {
@@ -2335,13 +2406,8 @@ class UITemasActions {
     }
 }
 
-// ============================================================
-// EXPORTAR PARA USO GLOBAL
-// ============================================================
-
 window.UITemasActions = UITemasActions;
-console.log('✅ UITemas Actions v2.21 - CORREGIDO: VERIFICA Y ACTUALIZA historiasIds');
-console.log('  🔥 Después de importar, obtiene TODAS las historias del tema');
-console.log('  🔥 Actualiza historiasIds del tema con TODOS los IDs');
-console.log('  🔥 Fuerza update de historias con temaId correcto');
-console.log('  🔥 Todas las funcionalidades originales preservadas');
+console.log('✅ UITemas Actions v2.23 - CORREGIDO: SINCRONIZACIÓN CON ELIPSE Y ONDAS CRUZADAS AL BORRAR');
+console.log('  🔥 Al eliminar historia desde Temas, se elimina de la Elipse');
+console.log('  🔥 Al eliminar historia desde Temas, se elimina del grafo de Ondas Cruzadas');
+console.log('  🔥 Sincronización bidireccional completa');

@@ -1,5 +1,5 @@
 // ============================================================
-// UI BIBLIOTECA v2.8 - CORREGIDO: PAGINACIÓN POR TEMAS COMPLETOS CON BOTONES FUNCIONALES
+// UI BIBLIOTECA v2.9 - CORREGIDO: ORDEN DE TEMAS Y HISTORIAS SEGÚN TEMAS
 // ============================================================
 
 class UIBiblioteca {
@@ -22,8 +22,8 @@ class UIBiblioteca {
         this._filtroEstado = 'todos';
         this._busqueda = '';
         this._totalItems = 0;
-        this._totalGrupos = 0;      // 🔥 NUEVO: para paginación por grupos
-        this._totalPaginas = 1;     // 🔥 NUEVO: para paginación correcta
+        this._totalGrupos = 0;
+        this._totalPaginas = 1;
         this._frasesActuales = [];
         this._historiasCache = [];
         
@@ -45,6 +45,42 @@ class UIBiblioteca {
         
         this._cargarHistoriasLeidas();
         this._cargarPreferencias();
+        
+        // ORDEN DE TEMAS SEGÚN NIVEL Y PREDEFINIDOS
+        this._ORDEN_TEMAS_PREDEFINIDOS = {};
+        this._cargarOrdenTemasPredefinidos();
+    }
+
+    _cargarOrdenTemasPredefinidos() {
+        try {
+            const temasPredefinidos = {
+                'A1': [
+                    'Mi familia', 'La casa y el hogar', 'Comida y bebida', 'Mi rutina diaria',
+                    'La ciudad y el barrio', 'La ropa y los colores', 'El tiempo y las estaciones', 'Los animales'
+                ],
+                'A2': [
+                    'Viajes y transportes', 'Compras y tiendas', 'Salud y medicina', 'Deportes y ocio',
+                    'Trabajo y profesiones', 'Música y cultura', 'Comunicación y tecnología', 'El medio ambiente'
+                ],
+                'B1': [
+                    'Relaciones personales', 'Educación y aprendizaje', 'Medios de comunicación', 'Turismo y patrimonio',
+                    'Tecnología y futuro', 'Gastronomía internacional', 'Arte y creatividad', 'Eventos históricos'
+                ],
+                'B2': [
+                    'Política y sociedad', 'Economía y finanzas', 'Ciencia e investigación', 'Filosofía y pensamiento',
+                    'Psicología y comportamiento', 'Globalización e interculturalidad', 'Desarrollo sostenible', 'Literatura y narrativa'
+                ],
+                'C1': [
+                    'Crítica cultural', 'Retórica y argumentación', 'Antropología social', 'Investigación académica', 'Análisis del discurso'
+                ],
+                'C2': [
+                    'Especialización académica', 'Debate y oratoria', 'Creación literaria', 'Análisis crítico avanzado'
+                ]
+            };
+            this._ORDEN_TEMAS_PREDEFINIDOS = temasPredefinidos;
+        } catch (e) {
+            console.warn('⚠️ Error cargando orden de temas predefinidos:', e);
+        }
     }
 
     _cargarPreferencias() {
@@ -74,7 +110,7 @@ class UIBiblioteca {
         this._core = core || window.uiCore;
         this._initDone = true;
         this._registrarEventosSincronizacion();
-        console.log('📚 UIBiblioteca v2.8: Inicializada (paginación por temas completos con botones funcionales)');
+        console.log('📚 UIBiblioteca v2.9: Inicializada (orden por Temas)');
         return this;
     }
 
@@ -278,24 +314,25 @@ class UIBiblioteca {
         const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActivo);
         console.log(`📚 ${todosLosTemas.length} temas encontrados para idioma: ${idiomaActivo}`);
         
+        // 🔥 ORDENAR TEMAS: PRIMERO PREDEFINIDOS POR NIVEL, LUEGO IMPORTADOS, LUEGO MANUALES
+        const temasOrdenados = this._ordenarTemas(todosLosTemas, idiomaActivo);
+        console.log(`📚 Temas ordenados: ${temasOrdenados.map(t => t.nombre).join(' → ')}`);
+        
         let todasLasHistorias = [];
         
-        for (const tema of todosLosTemas) {
+        for (const tema of temasOrdenados) {
             let historiasDelTema = await db.obtenerHistoriasPorTema(tema.id);
             
             if (!historiasDelTema || historiasDelTema.length === 0) {
-                console.log(`📚 Tema "${tema.nombre}": buscando historias por temaId...`);
                 try {
                     const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
                     historiasDelTema = todasLasHistoriasDB.filter(h => h.temaId === tema.id);
-                    console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por temaId`);
                 } catch (e) {
                     console.warn(`⚠️ Error buscando historias por temaId para ${tema.nombre}:`, e);
                 }
             }
             
             if ((!historiasDelTema || historiasDelTema.length === 0) && tema.historiasIds && tema.historiasIds.length > 0) {
-                console.log(`📚 Tema "${tema.nombre}": buscando ${tema.historiasIds.length} historias por ID...`);
                 const historiasPorId = [];
                 for (const hId of tema.historiasIds) {
                     try {
@@ -308,11 +345,9 @@ class UIBiblioteca {
                     }
                 }
                 historiasDelTema = historiasPorId;
-                console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por IDs`);
             }
             
             if ((!historiasDelTema || historiasDelTema.length === 0) && tema.nombre) {
-                console.log(`📚 Tema "${tema.nombre}": buscando por título...`);
                 try {
                     const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
                     const temaNombre = tema.nombre.toLowerCase().trim();
@@ -320,7 +355,6 @@ class UIBiblioteca {
                         const titulo = (h.titulo || '').toLowerCase();
                         return titulo.includes(temaNombre) || (temaNombre.length > 3 && titulo.includes(temaNombre.split(' ')[0]));
                     });
-                    console.log(`📚 Tema "${tema.nombre}": ${historiasDelTema.length} historias encontradas por título`);
                 } catch (e) {
                     console.warn(`⚠️ Error buscando por título para ${tema.nombre}:`, e);
                 }
@@ -337,42 +371,35 @@ class UIBiblioteca {
                     ...h,
                     _temaNombre: tema.nombre,
                     _temaId: tema.id,
-                    _esPredefinido: tema._esPredefinido === true
+                    _esPredefinido: tema._esPredefinido === true,
+                    _nivelTema: tema.nivel || 'A1',
+                    _ordenTema: tema._ordenTema || 0
                 });
             }
         }
         
-        try {
-            const todasLasHistoriasDB = await db.obtenerHistoriasPorIdioma(idiomaActivo);
-            const idsConTema = new Set(todasLasHistorias.filter(h => h.temaId).map(h => h.id));
-            const historiasSinTema = todasLasHistoriasDB.filter(h => !idsConTema.has(h.id) && !h.temaId);
+        // 🔥 ORDENAR HISTORIAS DENTRO DE CADA TEMA (POR TÍTULO)
+        todasLasHistorias.sort((a, b) => {
+            // Primero por nivel del tema
+            const nivelA = a._nivelTema || 'A1';
+            const nivelB = b._nivelTema || 'A1';
+            const pesoA = this._NIVEL_WEIGHT[nivelA] !== undefined ? this._NIVEL_WEIGHT[nivelA] : 99;
+            const pesoB = this._NIVEL_WEIGHT[nivelB] !== undefined ? this._NIVEL_WEIGHT[nivelB] : 99;
+            if (pesoA !== pesoB) return pesoA - pesoB;
             
-            if (historiasSinTema && historiasSinTema.length > 0) {
-                console.log(`📚 ${historiasSinTema.length} historias sin tema encontradas`);
-                for (const h of historiasSinTema) {
-                    todasLasHistorias.push({
-                        ...h,
-                        _temaNombre: 'Sin tema',
-                        _temaId: null,
-                        _esPredefinido: false
-                    });
-                }
-            }
-        } catch (e) {}
+            // Luego por nombre del tema
+            const temaA = a._temaNombre || '';
+            const temaB = b._temaNombre || '';
+            if (temaA !== temaB) return temaA.localeCompare(temaB);
+            
+            // Luego por título de la historia
+            return (a.titulo || '').localeCompare(b.titulo || '');
+        });
         
-        const idsVistos = new Set();
-        const historiasUnicas = [];
-        for (const h of todasLasHistorias) {
-            if (h.id && !idsVistos.has(h.id)) {
-                idsVistos.add(h.id);
-                historiasUnicas.push(h);
-            }
-        }
-        
-        console.log(`📚 Total historias únicas: ${historiasUnicas.length}`);
+        console.log(`📚 Total historias ordenadas: ${todasLasHistorias.length}`);
         
         const historiasConOrigen = [];
-        for (const h of historiasUnicas) {
+        for (const h of todasLasHistorias) {
             const origen = await this._obtenerOrigenCompleto(h);
             const nivel = await this._obtenerNivelHistoria(h);
             historiasConOrigen.push({
@@ -385,8 +412,71 @@ class UIBiblioteca {
             });
         }
         
-        console.log(`📚 Total historias procesadas: ${historiasConOrigen.length}`);
         return historiasConOrigen;
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: ORDENAR TEMAS SEGÚN PREDEFINIDOS POR NIVEL
+    // ============================================================
+
+    _ordenarTemas(temas, idioma) {
+        if (!temas || temas.length === 0) return temas;
+        
+        // Separar predefinidos, importados y manuales
+        const predefinidos = [];
+        const importados = [];
+        const manuales = [];
+        
+        for (const tema of temas) {
+            if (tema._esPredefinido === true) {
+                predefinidos.push(tema);
+            } else if (tema._esImportado === true || tema.origen === 'importado') {
+                importados.push(tema);
+            } else {
+                manuales.push(tema);
+            }
+        }
+        
+        // Ordenar predefinidos por nivel y orden predefinido
+        predefinidos.sort((a, b) => {
+            const nivelA = a.nivel || 'A1';
+            const nivelB = b.nivel || 'A1';
+            const pesoA = this._NIVEL_WEIGHT[nivelA] !== undefined ? this._NIVEL_WEIGHT[nivelA] : 99;
+            const pesoB = this._NIVEL_WEIGHT[nivelB] !== undefined ? this._NIVEL_WEIGHT[nivelB] : 99;
+            if (pesoA !== pesoB) return pesoA - pesoB;
+            
+            // Orden predefinido por nombre
+            const ordenA = this._ORDEN_TEMAS_PREDEFINIDOS[nivelA] || [];
+            const idxA = ordenA.indexOf(a.nombre);
+            const idxB = ordenA.indexOf(b.nombre);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.nombre.localeCompare(b.nombre);
+        });
+        
+        // Ordenar importados por nivel
+        importados.sort((a, b) => {
+            const nivelA = a.nivel || 'A1';
+            const nivelB = b.nivel || 'A1';
+            const pesoA = this._NIVEL_WEIGHT[nivelA] !== undefined ? this._NIVEL_WEIGHT[nivelA] : 99;
+            const pesoB = this._NIVEL_WEIGHT[nivelB] !== undefined ? this._NIVEL_WEIGHT[nivelB] : 99;
+            if (pesoA !== pesoB) return pesoA - pesoB;
+            return a.nombre.localeCompare(b.nombre);
+        });
+        
+        // Ordenar manuales por nivel
+        manuales.sort((a, b) => {
+            const nivelA = a.nivel || 'A1';
+            const nivelB = b.nivel || 'A1';
+            const pesoA = this._NIVEL_WEIGHT[nivelA] !== undefined ? this._NIVEL_WEIGHT[nivelA] : 99;
+            const pesoB = this._NIVEL_WEIGHT[nivelB] !== undefined ? this._NIVEL_WEIGHT[nivelB] : 99;
+            if (pesoA !== pesoB) return pesoA - pesoB;
+            return a.nombre.localeCompare(b.nombre);
+        });
+        
+        // Combinar: predefinidos primero, luego importados, luego manuales
+        return [...predefinidos, ...importados, ...manuales];
     }
 
     async _obtenerNombreTema(temaId) {
@@ -446,14 +536,31 @@ class UIBiblioteca {
                     temaId: key,
                     nombre: nombre,
                     origen: h._origen,
+                    nivel: h._nivel || 'A1',
                     historias: []
                 };
             }
             grupos[key].historias.push(h);
         }
         
+        // 🔥 ORDENAR GRUPOS POR NIVEL Y ORDEN PREDEFINIDO
         const gruposArray = Object.values(grupos);
-        gruposArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        gruposArray.sort((a, b) => {
+            const nivelA = a.nivel || 'A1';
+            const nivelB = b.nivel || 'A1';
+            const pesoA = this._NIVEL_WEIGHT[nivelA] !== undefined ? this._NIVEL_WEIGHT[nivelA] : 99;
+            const pesoB = this._NIVEL_WEIGHT[nivelB] !== undefined ? this._NIVEL_WEIGHT[nivelB] : 99;
+            if (pesoA !== pesoB) return pesoA - pesoB;
+            
+            // Orden predefinido por nombre
+            const ordenA = this._ORDEN_TEMAS_PREDEFINIDOS[nivelA] || [];
+            const idxA = ordenA.indexOf(a.nombre);
+            const idxB = ordenA.indexOf(b.nombre);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.nombre.localeCompare(b.nombre);
+        });
         
         for (const grupo of gruposArray) {
             grupo.historias.sort((a, b) => {
@@ -493,7 +600,7 @@ class UIBiblioteca {
     }
 
     // ============================================================
-    // 🔥 RENDERIZAR BIBLIOTECA - CORREGIDO: PAGINACIÓN POR TEMAS
+    // RENDERIZAR BIBLIOTECA - CON ORDEN POR TEMAS
     // ============================================================
 
     async _renderizarBiblioteca() {
@@ -511,10 +618,12 @@ class UIBiblioteca {
             const nombreIdioma = this._getNombreIdioma(idioma);
             
             let historias = await this._obtenerTodasLasHistorias();
-            this._historiasCache = historias; // Guardar para paginación
+            this._historiasCache = historias;
             
             historias = this._aplicarFiltros(historias);
             
+            // Ya están ordenadas por _obtenerTodasLasHistorias
+            // Pero reordenamos por si acaso
             historias.sort((a, b) => {
                 const nivelA = a._nivel || a.nivel || 'A1';
                 const nivelB = b._nivel || b.nivel || 'A1';
@@ -525,10 +634,14 @@ class UIBiblioteca {
                 if (pesoA !== pesoB) {
                     return pesoA - pesoB;
                 }
+                
+                const temaA = a._temaNombre || '';
+                const temaB = b._temaNombre || '';
+                if (temaA !== temaB) return temaA.localeCompare(temaB);
+                
                 return (a.titulo || '').localeCompare(b.titulo || '');
             });
             
-            // 🔥 SI ESTAMOS EN VISTA AGRUPADA, PAGINAR POR TEMAS COMPLETOS
             let grupos = null;
             let totalItems = historias.length;
             let historiasPagina = historias;
@@ -536,15 +649,12 @@ class UIBiblioteca {
             let totalGrupos = 0;
             
             if (this._vistaAgrupada) {
-                // 1. Agrupar todas las historias por tema
                 const todosLosGrupos = this._agruparHistoriasPorTema(historias);
                 totalGrupos = todosLosGrupos.length;
                 
-                // 2. Paginar por GRUPOS (no por historias individuales)
                 const gruposPorPagina = Math.max(2, Math.floor(this._itemsPorPagina / 3));
                 totalPaginas = Math.max(1, Math.ceil(totalGrupos / gruposPorPagina));
                 
-                // Guardar para usar en _irPagina
                 this._totalGrupos = totalGrupos;
                 this._totalPaginas = totalPaginas;
                 this._gruposPorPagina = gruposPorPagina;
@@ -556,7 +666,6 @@ class UIBiblioteca {
                 const finGrupo = Math.min(inicioGrupo + gruposPorPagina, totalGrupos);
                 const gruposPagina = todosLosGrupos.slice(inicioGrupo, finGrupo);
                 
-                // 3. Extraer TODAS las historias de los grupos de esta página
                 historiasPagina = [];
                 for (const grupo of gruposPagina) {
                     for (const h of grupo.historias) {
@@ -564,15 +673,11 @@ class UIBiblioteca {
                     }
                 }
                 
-                // 4. Reconstruir los grupos solo con las historias de esta página
                 grupos = this._agruparHistoriasPorTema(historiasPagina);
-                
-                // 5. Actualizar totalItems para el contador
                 totalItems = historiasPagina.length;
                 
                 console.log(`📚 Vista agrupada: ${totalGrupos} grupos, página ${this._paginaActual}/${totalPaginas}, ${historiasPagina.length} historias`);
             } else {
-                // Vista plana: paginación normal por historias
                 totalItems = historias.length;
                 totalPaginas = Math.max(1, Math.ceil(totalItems / this._itemsPorPagina));
                 
@@ -680,7 +785,7 @@ class UIBiblioteca {
                                     onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
                                 <i class="fas fa-list"></i> Lista Plana
                             </button>
-                            ${this._vistaAgrupada ? `<span style="font-size:10px;color:var(--secondary);font-weight:600;">📌 Paginación por temas completos (${totalGrupos} temas)</span>` : ''}
+                            ${this._vistaAgrupada ? `<span style="font-size:10px;color:var(--secondary);font-weight:600;">📌 Ordenado por Temas (Nivel → Predefinidos → Importados → Manuales)</span>` : ''}
                         </div>
                         
                         <div style="flex:1;min-width:150px;position:relative;">
@@ -769,6 +874,7 @@ class UIBiblioteca {
                                     <span style="font-size:16px;font-weight:700;color:var(--dark);">${grupo.nombre}</span>
                                     <span style="font-size:11px;color:var(--gray-light);">(${totalGrupo} historias)</span>
                                     <span style="font-size:10px;padding:2px 10px;border-radius:10px;background:${origenColor}20;color:${origenColor};font-weight:600;">${origenLabel}</span>
+                                    <span style="font-size:10px;color:var(--gray-light);">🎯 ${grupo.nivel || 'A1'}</span>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                     <div style="display:flex;gap:6px;font-size:10px;color:var(--gray-light);">
@@ -843,9 +949,13 @@ class UIBiblioteca {
                         </span>
                         <br>
                         <span style="font-size:9px;color:var(--secondary);">
-                            📋 Vista ${this._vistaAgrupada ? 'agrupada por Temas (paginación por temas completos)' : 'en lista plana'} · 
+                            📋 Vista ${this._vistaAgrupada ? 'agrupada por Temas (orden: Nivel → Predefinidos → Importados → Manuales)' : 'en lista plana'} · 
                             ${this._mostrarTraduccion ? '🌐 Traducción visible' : '🔒 Traducción oculta'}
-                            ${this._vistaAgrupada ? ' · 📊 Historias ordenadas por nivel (A1→C2)' : ''}
+                            ${this._vistaAgrupada ? ' · 📊 Historias ordenadas por nivel (A1→C2) y dentro de cada tema por título' : ''}
+                        </span>
+                        <br>
+                        <span style="font-size:9px;color:var(--success);">
+                            🔥 El orden de los temas coincide con el que ves en "Temas" (predefinidos por nivel → importados → manuales)
                         </span>
                     </div>
                 </div>
@@ -889,7 +999,7 @@ class UIBiblioteca {
         this._guardarPreferencias();
         this._renderizarBiblioteca();
         this._core?.mostrarToast(
-            this._vistaAgrupada ? '📋 Vista agrupada por Temas (paginación por temas completos)' : '📋 Vista en lista plana',
+            this._vistaAgrupada ? '📋 Vista agrupada por Temas (orden: Nivel → Predefinidos → Importados → Manuales)' : '📋 Vista en lista plana',
             'info'
         );
     }
@@ -929,6 +1039,9 @@ class UIBiblioteca {
         else if (esOnda) badgeExtra = '<span style="font-size:9px;color:white;background:#6C5CE7;padding:1px 8px;border-radius:8px;">🌌 Elipse</span>';
         else if (esImportada) badgeExtra = '<span style="font-size:9px;color:white;background:#FDCB6E;padding:1px 8px;border-radius:8px;">📥 Importada</span>';
         
+        // Mostrar el nivel del tema
+        const nivelTema = historia._nivelTema || nivel;
+        
         return `
             <div class="historia-card" data-historia-id="${historia.id}" 
                  style="background: ${esLeida ? 'rgba(0, 184, 148, 0.05)' : 'var(--white)'};
@@ -953,7 +1066,7 @@ class UIBiblioteca {
                             📁 ${temaNombre}
                         </span>
                         <span style="font-size:10px;font-weight:700;color:${colorNivel};background:${colorNivel}15;padding:2px 10px;border-radius:12px;border:1px solid ${colorNivel}30;">
-                            ${emojiNivel} ${nivel}
+                            ${emojiNivel} ${nivelTema || nivel}
                         </span>
                         ${badgeExtra}
                         ${completada ? '<span style="font-size:9px;color:var(--success);font-weight:600;">✅ Completada</span>' : ''}
@@ -971,6 +1084,7 @@ class UIBiblioteca {
                     <span>🎯 ${pct}% completado</span>
                     <span>🌍 ${historia.idioma || 'es'}</span>
                     ${historia.nivel ? `<span>🎯 ${historia.nivel}</span>` : ''}
+                    <span>📂 ${temaNombre}</span>
                 </div>
                 
                 <div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-top:4px;">
@@ -1028,7 +1142,7 @@ class UIBiblioteca {
                     ${esOndaCruzada ? '<span>🌊 Cruzada</span>' : ''}
                     ${esOnda ? '<span>🌌 Elipse</span>' : ''}
                     <span>📁 ${temaNombre}</span>
-                    <span>${emojiNivel} ${nivel}</span>
+                    <span>${emojiNivel} ${nivelTema || nivel}</span>
                 </div>
             </div>
         `;
@@ -1116,15 +1230,10 @@ class UIBiblioteca {
         this._renderizarBiblioteca();
     }
 
-    // ============================================================
-    // 🔥 IR A PÁGINA - CORREGIDO: usa _totalPaginas en vista agrupada
-    // ============================================================
-
     _irPagina(pagina) {
         let totalPaginas = 1;
         
         if (this._vistaAgrupada) {
-            // En vista agrupada, usar _totalGrupos y _gruposPorPagina
             const gruposPorPagina = this._gruposPorPagina || Math.max(2, Math.floor(this._itemsPorPagina / 3));
             totalPaginas = Math.max(1, Math.ceil(this._totalGrupos / gruposPorPagina));
             console.log(`📄 Vista agrupada: ${this._totalGrupos} grupos, ${gruposPorPagina} grupos/página, total páginas: ${totalPaginas}`);
@@ -1177,6 +1286,7 @@ class UIBiblioteca {
         const nivel = historia._nivel || historia.nivel || 'A1';
         const emojiNivel = this._getEmojiNivel(nivel);
         const colorNivel = this._getColorNivel(nivel);
+        const nivelTema = historia._nivelTema || nivel;
         
         let html = `
             <div style="padding:16px;max-width:900px;margin:0 auto;">
@@ -1190,7 +1300,7 @@ class UIBiblioteca {
                         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;">${titulo}</h2>
                         <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">
                             ${frases.length} frases · 
-                            <span style="color:${colorNivel};font-weight:600;">${emojiNivel} ${nivel}</span> · 
+                            <span style="color:${colorNivel};font-weight:600;">${emojiNivel} ${nivelTema}</span> · 
                             ${idioma}
                             <span style="font-size:10px;color:${origen.color};margin-left:8px;">${origen.label}</span>
                             <span style="font-size:10px;color:var(--gray-light);margin-left:8px;">📁 ${temaNombre}</span>
@@ -1654,9 +1764,9 @@ class UIBiblioteca {
 
 window.UIBiblioteca = new UIBiblioteca();
 
-console.log('✅ UIBiblioteca v2.8 - CORREGIDO: PAGINACIÓN POR TEMAS COMPLETOS CON BOTONES FUNCIONALES');
-console.log('  🔥 En vista agrupada, se pagina por GRUPOS de temas completos');
-console.log('  🔥 _totalGrupos y _gruposPorPagina para calcular páginas correctamente');
-console.log('  🔥 Botones Anterior/Siguiente funcionan correctamente');
-console.log('  🔥 TODAS las historias de un tema se muestran juntas');
+console.log('✅ UIBiblioteca v2.9 - ORDEN DE TEMAS Y HISTORIAS SEGÚN TEMAS');
+console.log('  🔥 Los temas se ordenan: Predefinidos por Nivel → Importados → Manuales');
+console.log('  🔥 Dentro de cada nivel, el orden coincide con la vista de Temas');
+console.log('  🔥 Las historias se ordenan por nivel, tema y título');
+console.log('  🔥 El orden es consistente entre "Temas" y "Biblioteca"');
 console.log('  🔥 Todas las funcionalidades originales preservadas');
