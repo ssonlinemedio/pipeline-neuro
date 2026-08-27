@@ -1,5 +1,5 @@
 // ============================================================
-// UI TOOLS v23.0 - COMPLETO CON LIMPIEZA DE ELIPSE
+// UI TOOLS v23.1 - LIMPIEZA SELECTIVA POR IDIOMA
 // ============================================================
 
 class UITools {
@@ -19,6 +19,7 @@ class UITools {
         this._storageInterval = null;
         this._STORAGE_LIMIT = 50 * 1024 * 1024; // 50MB para IndexedDB
         this._LOCAL_STORAGE_LIMIT = 5 * 1024 * 1024; // 5MB para localStorage
+        this._idiomasDisponibles = [];
     }
 
     async init(core) {
@@ -43,9 +44,62 @@ class UITools {
         if (this._container) {
             this._renderizarPanelConBackupMultiCapa();
             this._iniciarActualizacionStorage();
+            this._cargarIdiomasDisponibles();
         } else {
             console.warn('⚠️ toolsContent no encontrado');
         }
+    }
+
+    async _cargarIdiomasDisponibles() {
+        try {
+            const usuario = await db.getUsuario();
+            if (usuario && usuario.idiomasObjetivo) {
+                this._idiomasDisponibles = usuario.idiomasObjetivo.map(i => i.idioma);
+            } else {
+                // Intentar recuperar de localStorage
+                const usuarioLocal = localStorage.getItem('pipeline_usuario');
+                if (usuarioLocal) {
+                    const parsed = JSON.parse(usuarioLocal);
+                    if (parsed && parsed.idiomasObjetivo) {
+                        this._idiomasDisponibles = parsed.idiomasObjetivo.map(i => i.idioma);
+                    }
+                }
+            }
+            // Añadir siempre el idioma actual si no está en la lista
+            const idiomaActual = this._obtenerIdiomaActual();
+            if (idiomaActual && !this._idiomasDisponibles.includes(idiomaActual)) {
+                this._idiomasDisponibles.push(idiomaActual);
+            }
+            console.log('📚 Idiomas disponibles para limpieza:', this._idiomasDisponibles);
+        } catch (e) {
+            console.warn('⚠️ Error cargando idiomas:', e);
+        }
+    }
+
+    _obtenerIdiomaActual() {
+        try {
+            return gestorIdiomas?.getIdiomaActivo() || 'es';
+        } catch (e) {
+            return 'es';
+        }
+    }
+
+    _getNombreIdioma(idioma) {
+        const nombres = {
+            'es': 'Español',
+            'en': 'Inglés',
+            'fr': 'Francés',
+            'de': 'Alemán',
+            'it': 'Italiano',
+            'pt': 'Portugués',
+            'zh': 'Chino',
+            'ja': 'Japonés',
+            'ko': 'Coreano',
+            'ru': 'Ruso',
+            'ar': 'Árabe',
+            'hi': 'Hindi'
+        };
+        return nombres[idioma] || idioma;
     }
 
     _iniciarActualizacionStorage() {
@@ -570,27 +624,56 @@ class UITools {
                         </div>
                     </div>
 
-                    <!-- 10. LIMPIAR DATOS (CORREGIDO CON ELIPSE) -->
-                    <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;"
-                         onclick="window.UITools._reset()"
-                         onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)'" 
+                    <!-- 10. LIMPIAR DATOS SELECTIVA -->
+                    <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;border:2px solid var(--danger);"
+                         onclick="window.UITools._limpiarDatosSelectiva()"
+                         onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(255,118,117,0.15)'" 
                          onmouseout="this.style.transform='none';this.style.boxShadow='var(--shadow)'">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
                             <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#e74c3c,#c0392b);display:flex;align-items:center;justify-content:center;font-size:18px;color:white;flex-shrink:0;">
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-trash-alt"></i>
                             </div>
                             <div>
                                 <h3 style="font-size:14px;font-weight:700;color:var(--dark);margin:0;">🗑️ Limpiar Datos</h3>
-                                <span style="font-size:11px;color:var(--gray-light);">Eliminar todo (incluye ondas Elipse)</span>
+                                <span style="font-size:11px;color:var(--gray-light);">Selectivo por idioma</span>
                             </div>
                         </div>
                         <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
-                            ⚠️ Elimina TODOS los datos de la aplicación incluyendo ondas del Modo Elipse
+                            ⚠️ Elimina datos de un idioma específico o todos los datos
                         </p>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-                            <span style="font-size:10px;background:var(--danger)15;padding:2px 12px;border-radius:12px;color:var(--danger);font-weight:600;">⚠️ Peligroso</span>
+                            <span style="font-size:10px;background:var(--danger)15;padding:2px 12px;border-radius:12px;color:var(--danger);font-weight:600;">⚠️ Selectivo</span>
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">🌍 Por idioma</span>
                             <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">💾 Backup recomendado</span>
-                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">🌌 Borra ondas</span>
+                        </div>
+                        <div style="margin-top:6px;font-size:10px;color:var(--danger);font-weight:600;">
+                            🖱️ Haz clic para elegir qué limpiar
+                        </div>
+                    </div>
+
+                    <!-- 11. LIMPIAR TODO (TOTAL) -->
+                    <div class="dash-card" style="background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--danger);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;height:100%;border:3px solid #e74c3c;"
+                         onclick="window.UITools._resetTotal()"
+                         onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(231,76,60,0.2)'" 
+                         onmouseout="this.style.transform='none';this.style.boxShadow='var(--shadow)'">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#c0392b,#922B21);display:flex;align-items:center;justify-content:center;font-size:18px;color:white;flex-shrink:0;">
+                                <i class="fas fa-radiation"></i>
+                            </div>
+                            <div>
+                                <h3 style="font-size:14px;font-weight:700;color:var(--dark);margin:0;">☢️ Limpiar TODO</h3>
+                                <span style="font-size:11px;color:var(--gray-light);">Eliminar TODOS los datos</span>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--gray);margin:0 0 8px 0;line-height:1.4;flex:1;">
+                            ⚠️⚠️ Elimina ABSOLUTAMENTE TODOS los datos de la aplicación ⚠️⚠️
+                        </p>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                            <span style="font-size:10px;background:var(--danger)25;padding:2px 12px;border-radius:12px;color:var(--danger);font-weight:700;">🚨 PELIGROSO</span>
+                            <span style="font-size:10px;background:var(--bg);padding:2px 12px;border-radius:12px;color:var(--gray);">💾 Backup URGENTE</span>
+                        </div>
+                        <div style="margin-top:6px;font-size:10px;color:var(--danger);font-weight:700;">
+                            ⚠️ ¡Sin posibilidad de recuperación!
                         </div>
                     </div>
                 </div>
@@ -607,7 +690,7 @@ class UITools {
                         <span>⚖️ ${modeloActivo}</span>
                         <span>🌌 Ondas: ${window.modoElipse?.getEstado()?.totalOndas || 0}</span>
                     </div>
-                    <div><span>⚙️ Tools v23.0</span></div>
+                    <div><span>⚙️ Tools v23.1</span></div>
                 </div>
             </div>
         `;
@@ -789,7 +872,7 @@ class UITools {
             mensaje += '🟢 Vigía: ' + (estadoVigia.enLinea ? 'Online' : 'Offline') + '\n';
             mensaje += '📡 Modelo: ' + (estadoVigia.modelo || 'openai/gpt-oss-120b') + '\n';
             mensaje += '⚖️ Balanceador: ' + balanceadorInfo + '\n';
-            mensaje += '🧩 Versión: 23.0\n\n';
+            mensaje += '🧩 Versión: 23.1\n\n';
             
             mensaje += '🌌 MODO ELIPSE:\n';
             mensaje += '- Ondas totales: ' + (elipseEstado.totalOndas || 0) + '\n';
@@ -844,12 +927,396 @@ class UITools {
     }
 
     // ============================================================
-    // 🔥 LIMPIAR DATOS - CORREGIDO CON ELIPSE
+    // 🔥 LIMPIEZA SELECTIVA POR IDIOMA
     // ============================================================
 
-    async _reset() {
+    async _limpiarDatosSelectiva() {
+        await this._cargarIdiomasDisponibles();
+        
+        const idiomaActual = this._obtenerIdiomaActual();
+        const nombreIdiomaActual = this._getNombreIdioma(idiomaActual);
+        
+        let opciones = '🌍 **LIMPIAR DATOS POR IDIOMA**\n\n';
+        opciones += 'Selecciona qué datos quieres eliminar:\n\n';
+        
+        // Opciones de idioma
+        opciones += '**📚 IDIOMAS DISPONIBLES:**\n';
+        if (this._idiomasDisponibles.length === 0) {
+            opciones += '  No hay idiomas disponibles\n\n';
+        } else {
+            for (let i = 0; i < this._idiomasDisponibles.length; i++) {
+                const idioma = this._idiomasDisponibles[i];
+                const nombre = this._getNombreIdioma(idioma);
+                const esActual = idioma === idiomaActual ? ' (actual)' : '';
+                opciones += `  ${i + 1}. ${nombre} (${idioma})${esActual}\n`;
+            }
+        }
+        
+        opciones += '\n**🔧 OPCIONES ADICIONALES:**\n';
+        opciones += `  L. Limpiar solo el idioma actual (${nombreIdiomaActual})\n`;
+        opciones += `  T. Limpiar TODOS los idiomas (conservando configuración)\n`;
+        opciones += `  X. Limpiar TODOS los datos (borrado completo)\n`;
+        opciones += `  C. Cancelar\n\n`;
+        opciones += `💡 Elige un número de idioma o una letra de opción.`;
+
+        const seleccion = await this._core.prompt(opciones, 'L', 'Elige una opción...', '🗑️ Limpieza Selectiva');
+        
+        if (!seleccion) return;
+        
+        const seleccionTrim = seleccion.trim().toUpperCase();
+        
+        // Opción: Limpiar idioma actual
+        if (seleccionTrim === 'L') {
+            await this._limpiarIdioma(idiomaActual);
+            return;
+        }
+        
+        // Opción: Limpiar todos los idiomas (conservando configuración)
+        if (seleccionTrim === 'T') {
+            await this._limpiarTodosLosIdiomas();
+            return;
+        }
+        
+        // Opción: Limpiar todo (borrado completo)
+        if (seleccionTrim === 'X') {
+            await this._resetTotal();
+            return;
+        }
+        
+        // Opción: Cancelar
+        if (seleccionTrim === 'C') {
+            this._core.mostrarToast('⏹️ Limpieza cancelada', 'info');
+            return;
+        }
+        
+        // Opción: Número de idioma
+        const num = parseInt(seleccion);
+        if (!isNaN(num) && num >= 1 && num <= this._idiomasDisponibles.length) {
+            const idioma = this._idiomasDisponibles[num - 1];
+            await this._limpiarIdioma(idioma);
+            return;
+        }
+        
+        this._core.mostrarToast('❌ Opción inválida', 'error');
+    }
+
+    // ============================================================
+    // LIMPIAR UN IDIOMA ESPECÍFICO
+    // ============================================================
+
+    async _limpiarIdioma(idioma) {
+        if (!idioma) {
+            this._core.mostrarToast('❌ Idioma no especificado', 'error');
+            return;
+        }
+        
+        const nombreIdioma = this._getNombreIdioma(idioma);
+        
         const confirmar = await this._core.confirm(
-            '⚠️ ⚠️ ⚠️ ¡ATENCIÓN! ⚠️ ⚠️ ⚠️\n\n' +
+            `⚠️ ¿Eliminar TODOS los datos del idioma "${nombreIdioma}" (${idioma})?\n\n` +
+            `Se eliminarán:\n` +
+            `• Todas las frases en ${nombreIdioma}\n` +
+            `• Todas las palabras en ${nombreIdioma}\n` +
+            `• Todas las historias en ${nombreIdioma}\n` +
+            `• Todos los temas en ${nombreIdioma}\n` +
+            `• Todo el progreso en ${nombreIdioma}\n` +
+            `• 🌌 Todas las ondas del Modo Elipse en ${nombreIdioma}\n` +
+            `• Configuración específica de ${nombreIdioma}\n\n` +
+            `⚠️ Los datos de otros idiomas NO se verán afectados.\n\n` +
+            `💡 Se recomienda hacer un Backup antes.\n\n` +
+            `¿Continuar?`,
+            `🗑️ Limpiar ${nombreIdioma}`
+        );
+        
+        if (!confirmar) return;
+        
+        const segundaConfirmacion = await this._core.confirm(
+            `🔴 ¿Estás SEGURO de que quieres eliminar "${nombreIdioma}"?\n\n` +
+            `Esta acción es IRREVERSIBLE.\n` +
+            `Todos los datos de aprendizaje en ${nombreIdioma} se perderán.\n\n` +
+            `Escribe "ELIMINAR" para confirmar:`,
+            `CONFIRMACIÓN FINAL - ${nombreIdioma}`
+        );
+        
+        if (!segundaConfirmacion) return;
+        
+        try {
+            this._core.mostrarToast(`🗑️ Eliminando datos de ${nombreIdioma}...`, 'warning');
+            
+            // ============================================================
+            // 1. ELIMINAR FRASES DEL IDIOMA
+            // ============================================================
+            const frases = await db.obtenerFrasesPorIdioma(idioma);
+            for (const f of frases) {
+                await db.delete('frases', f.id);
+            }
+            console.log(`🗑️ ${frases.length} frases eliminadas de ${nombreIdioma}`);
+            
+            // ============================================================
+            // 2. ELIMINAR PALABRAS DEL IDIOMA
+            // ============================================================
+            const palabras = await db.obtenerPalabrasPorIdioma(idioma);
+            for (const p of palabras) {
+                await db.delete('palabras', p.id);
+            }
+            console.log(`🗑️ ${palabras.length} palabras eliminadas de ${nombreIdioma}`);
+            
+            // ============================================================
+            // 3. ELIMINAR HISTORIAS DEL IDIOMA
+            // ============================================================
+            const historias = await db.obtenerHistoriasPorIdioma(idioma);
+            for (const h of historias) {
+                // Eliminar frases asociadas
+                const frasesHistoria = await db.obtenerFrasesPorHistoria(h.id);
+                for (const f of frasesHistoria) {
+                    await db.delete('frases', f.id);
+                }
+                await db.delete('historias', h.id);
+            }
+            console.log(`🗑️ ${historias.length} historias eliminadas de ${nombreIdioma}`);
+            
+            // ============================================================
+            // 4. ELIMINAR TEMAS DEL IDIOMA
+            // ============================================================
+            const temas = await db.obtenerTemasPorIdioma(idioma);
+            for (const t of temas) {
+                await db.delete('temas', t.id);
+            }
+            console.log(`🗑️ ${temas.length} temas eliminados de ${nombreIdioma}`);
+            
+            // ============================================================
+            // 5. ELIMINAR PROGRESO DEL IDIOMA
+            // ============================================================
+            const progreso = await db.obtenerProgresoPorIdioma(idioma);
+            for (const p of progreso) {
+                await db.delete('progreso', p.id);
+            }
+            console.log(`🗑️ ${progreso.length} registros de progreso eliminados de ${nombreIdioma}`);
+            
+            // ============================================================
+            // 6. LIMPIAR MODO ELIPSE DEL IDIOMA
+            // ============================================================
+            if (window.modoElipse) {
+                // Limpiar claves de localStorage del idioma
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes(idioma)) {
+                        keysToRemove.push(key);
+                    }
+                }
+                for (const key of keysToRemove) {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Eliminada clave localStorage: ${key}`);
+                }
+                
+                // Limpiar configuración de Elipse en IndexedDB para este idioma
+                try {
+                    const allConfigs = await db.getAll('configuracion');
+                    for (const cfg of allConfigs) {
+                        if (cfg.clave && cfg.clave.includes(idioma)) {
+                            await db.delete('configuracion', cfg.id);
+                            console.log(`🗑️ Eliminada configuración en IndexedDB: ${cfg.clave}`);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Error limpiando Elipse en IndexedDB:', e);
+                }
+                
+                // Si el idioma actual es el que se está limpiando, resetear Elipse
+                const idiomaActual = this._obtenerIdiomaActual();
+                if (idiomaActual === idioma) {
+                    window.modoElipse._historiasElipse = [];
+                    window.modoElipse._elipseActiva = null;
+                    window.modoElipse._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
+                    window.modoElipse._datosCargados = false;
+                    window.modoElipse._progresoTemasCache = {};
+                    localStorage.removeItem('pipeline_elipse_tema_activo');
+                    console.log('🌌 Modo Elipse reseteado para el idioma actual');
+                }
+            }
+            
+            // ============================================================
+            // 7. NOTIFICAR Y RECARGAR
+            // ============================================================
+            this._core.mostrarToast(`✅ Datos de "${nombreIdioma}" eliminados correctamente`, 'success');
+            
+            // Recargar la interfaz
+            setTimeout(() => {
+                this._renderizarPanelConBackupMultiCapa();
+                if (window.UIClipse) {
+                    window.UIClipse.cargar(window.UIClipse._core);
+                }
+                if (window.UITemas) {
+                    window.UITemas._renderTemas();
+                }
+                if (window.UIDashboard) {
+                    window.UIDashboard._cargarDashboardInicial(this._core);
+                }
+            }, 500);
+            
+        } catch (error) {
+            console.error(`❌ Error eliminando datos de ${nombreIdioma}:`, error);
+            this._core.mostrarToast(`❌ Error: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // LIMPIAR TODOS LOS IDIOMAS (CONSERVANDO CONFIGURACIÓN)
+    // ============================================================
+
+    async _limpiarTodosLosIdiomas() {
+        const confirmar = await this._core.confirm(
+            `⚠️ ¿Eliminar TODOS los datos de TODOS los idiomas?\n\n` +
+            `Se eliminarán:\n` +
+            `• Todas las frases de todos los idiomas\n` +
+            `• Todas las palabras de todos los idiomas\n` +
+            `• Todas las historias de todos los idiomas\n` +
+            `• Todos los temas de todos los idiomas\n` +
+            `• Todo el progreso de todos los idiomas\n` +
+            `• 🌌 Todas las ondas del Modo Elipse\n\n` +
+            `⚠️ La configuración del usuario SE CONSERVARÁ.\n` +
+            `⚠️ Los checkpoints y backups NO se eliminarán.\n\n` +
+            `¿Continuar?`,
+            `🗑️ Limpiar TODOS los idiomas`
+        );
+        
+        if (!confirmar) return;
+        
+        const segundaConfirmacion = await this._core.confirm(
+            `🔴 ¿Estás SEGURO de que quieres eliminar TODOS los idiomas?\n\n` +
+            `Esta acción es IRREVERSIBLE.\n` +
+            `Todos tus datos de aprendizaje se perderán.\n` +
+            `Solo se conservará la configuración del usuario.\n\n` +
+            `Escribe "ELIMINAR" para confirmar:`,
+            `CONFIRMACIÓN FINAL - TODOS LOS IDIOMAS`
+        );
+        
+        if (!segundaConfirmacion) return;
+        
+        try {
+            this._core.mostrarToast(`🗑️ Eliminando datos de TODOS los idiomas...`, 'warning');
+            
+            // ============================================================
+            // 1. ELIMINAR TODAS LAS FRASES
+            // ============================================================
+            const frases = await db.getAll('frases');
+            for (const f of frases) {
+                await db.delete('frases', f.id);
+            }
+            console.log(`🗑️ ${frases.length} frases eliminadas`);
+            
+            // ============================================================
+            // 2. ELIMINAR TODAS LAS PALABRAS
+            // ============================================================
+            const palabras = await db.getAll('palabras');
+            for (const p of palabras) {
+                await db.delete('palabras', p.id);
+            }
+            console.log(`🗑️ ${palabras.length} palabras eliminadas`);
+            
+            // ============================================================
+            // 3. ELIMINAR TODAS LAS HISTORIAS
+            // ============================================================
+            const historias = await db.getAll('historias');
+            for (const h of historias) {
+                const frasesHistoria = await db.obtenerFrasesPorHistoria(h.id);
+                for (const f of frasesHistoria) {
+                    await db.delete('frases', f.id);
+                }
+                await db.delete('historias', h.id);
+            }
+            console.log(`🗑️ ${historias.length} historias eliminadas`);
+            
+            // ============================================================
+            // 4. ELIMINAR TODOS LOS TEMAS
+            // ============================================================
+            const temas = await db.getAll('temas');
+            for (const t of temas) {
+                await db.delete('temas', t.id);
+            }
+            console.log(`🗑️ ${temas.length} temas eliminados`);
+            
+            // ============================================================
+            // 5. ELIMINAR TODO EL PROGRESO
+            // ============================================================
+            const progreso = await db.getAll('progreso');
+            for (const p of progreso) {
+                await db.delete('progreso', p.id);
+            }
+            console.log(`🗑️ ${progreso.length} registros de progreso eliminados`);
+            
+            // ============================================================
+            // 6. LIMPIAR MODO ELIPSE COMPLETO
+            // ============================================================
+            if (window.modoElipse) {
+                // Limpiar todas las claves de Elipse en localStorage
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('pipeline_elipse_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                for (const key of keysToRemove) {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Eliminada clave localStorage: ${key}`);
+                }
+                
+                // Limpiar configuración de Elipse en IndexedDB
+                try {
+                    const allConfigs = await db.getAll('configuracion');
+                    for (const cfg of allConfigs) {
+                        if (cfg.clave && cfg.clave.startsWith('elipse_')) {
+                            await db.delete('configuracion', cfg.id);
+                            console.log(`🗑️ Eliminada configuración en IndexedDB: ${cfg.clave}`);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Error limpiando Elipse en IndexedDB:', e);
+                }
+                
+                window.modoElipse._historiasElipse = [];
+                window.modoElipse._elipseActiva = null;
+                window.modoElipse._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
+                window.modoElipse._datosCargados = false;
+                window.modoElipse._progresoTemasCache = {};
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                console.log('🌌 Modo Elipse limpiado completamente');
+            }
+            
+            // ============================================================
+            // 7. NOTIFICAR Y RECARGAR
+            // ============================================================
+            this._core.mostrarToast(`✅ Datos de todos los idiomas eliminados correctamente`, 'success');
+            
+            // Recargar la interfaz
+            setTimeout(() => {
+                this._renderizarPanelConBackupMultiCapa();
+                if (window.UIClipse) {
+                    window.UIClipse.cargar(window.UIClipse._core);
+                }
+                if (window.UITemas) {
+                    window.UITemas._renderTemas();
+                }
+                if (window.UIDashboard) {
+                    window.UIDashboard._cargarDashboardInicial(this._core);
+                }
+            }, 500);
+            
+        } catch (error) {
+            console.error(`❌ Error eliminando datos de todos los idiomas:`, error);
+            this._core.mostrarToast(`❌ Error: ${error.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // LIMPIAR TODO (BORRADO COMPLETO) - Legacy con nombre mejorado
+    // ============================================================
+
+    async _resetTotal() {
+        const confirmar = await this._core.confirm(
+            '☢️ ☢️ ☢️ ¡ATENCIÓN! ☢️ ☢️ ☢️\n\n' +
             'Vas a eliminar TODOS los datos de la aplicación:\n' +
             '• Usuario y perfil\n' +
             '• Frases, palabras e historias\n' +
@@ -857,11 +1324,12 @@ class UITools {
             '• Checkpoints y backups\n' +
             '• Configuración y preferencias\n' +
             '• 🌌 TODAS las ondas del Modo Elipse\n' +
-            '• TODOS los temas (incluyendo los de Elipse)\n\n' +
+            '• TODOS los temas (incluyendo los de Elipse)\n' +
+            '• TODOS los idiomas\n\n' +
             '⚠️ Esta acción NO se puede deshacer.\n\n' +
             '💡 Se recomienda hacer un Backup antes.\n\n' +
             '¿Estás SEGURO de que quieres continuar?',
-            '⚠️ ELIMINAR TODOS LOS DATOS'
+            '☢️ ELIMINAR TODOS LOS DATOS'
         );
         
         if (confirmar) {
@@ -870,7 +1338,8 @@ class UITools {
                 '¿Estás ABSOLUTAMENTE SEGURO?\n\n' +
                 'Esta acción es IRREVERSIBLE.\n' +
                 'Todos tus datos de aprendizaje se perderán para siempre.\n' +
-                'Las ondas del Modo Elipse también serán eliminadas.\n\n' +
+                'Las ondas del Modo Elipse también serán eliminadas.\n' +
+                'Tendrás que registrarte de nuevo.\n\n' +
                 'Escribe "ELIMINAR" para confirmar:',
                 'CONFIRMACIÓN FINAL'
             );
@@ -878,34 +1347,32 @@ class UITools {
             if (segundaConfirmacion) {
                 try {
                     // ============================================================
-                    // 🔥 1. LIMPIAR MODO ELIPSE
+                    // 1. LIMPIAR MODO ELIPSE
                     // ============================================================
                     if (window.modoElipse) {
                         console.log('🌌 Limpiando Modo Elipse...');
-                        // Limpiar historias de Elipse
                         window.modoElipse._historiasElipse = [];
                         window.modoElipse._elipseActiva = null;
                         window.modoElipse._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
                         window.modoElipse._datosCargados = false;
                         window.modoElipse._progresoTemasCache = {};
                         
-                        // Limpiar localStorage de Elipse
-                        localStorage.removeItem('pipeline_elipse_estado_v4');
-                        localStorage.removeItem('pipeline_elipse_estado_v4_backup');
-                        localStorage.removeItem('pipeline_elipse_tema_activo');
-                        localStorage.removeItem('pipeline_elipse_config');
-                        localStorage.removeItem('pipeline_elipse_recomendaciones');
-                        
-                        // Eliminar configuración de Elipse en IndexedDB
-                        try {
-                            const configs = await db.getByIndex('configuracion', 'clave', 'elipse_estado');
-                            if (configs && configs.length > 0) {
-                                await db.delete('configuracion', configs[0].id);
+                        const keysToRemove = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith('pipeline_elipse_')) {
+                                keysToRemove.push(key);
                             }
-                            // Eliminar también backups de estado por tema
+                        }
+                        for (const key of keysToRemove) {
+                            localStorage.removeItem(key);
+                            console.log(`🗑️ Eliminada clave localStorage: ${key}`);
+                        }
+                        
+                        try {
                             const allConfigs = await db.getAll('configuracion');
                             for (const cfg of allConfigs) {
-                                if (cfg.clave && cfg.clave.startsWith('pipeline_elipse_estado_tema_')) {
+                                if (cfg.clave && cfg.clave.startsWith('elipse_')) {
                                     await db.delete('configuracion', cfg.id);
                                 }
                             }
@@ -948,7 +1415,7 @@ class UITools {
                         sessionStorage.clear();
                     } catch (e) {}
                     
-                    this._core.mostrarToast('🗑️ Todos los datos eliminados (incluyendo ondas Elipse). Recargando...', 'warning');
+                    this._core.mostrarToast('🗑️ Todos los datos eliminados. Recargando...', 'warning');
                     
                     // ============================================================
                     // 6. RECARGAR LA PÁGINA
@@ -963,6 +1430,14 @@ class UITools {
                 }
             }
         }
+    }
+
+    // ============================================================
+    // LEGACY: _reset() redirige a _resetTotal()
+    // ============================================================
+
+    async _reset() {
+        await this._resetTotal();
     }
 
     // ============================================================
@@ -1044,7 +1519,7 @@ class UITools {
     async _handleReconectarVigia() { this._reconectarVigia(); }
     async _handleModoSimplificado() { this._modoSimplificado(); }
     async _handleReiniciarFase() { this._reiniciarFase(); }
-    async _handleReset() { this._reset(); }
+    async _handleReset() { await this._resetTotal(); }
 
     destroy() {
         if (this._storageInterval) {
@@ -1059,12 +1534,12 @@ class UITools {
 // ============================================================
 
 window.UITools = new UITools();
-console.log('✅ UITools v23.0 - COMPLETO CON LIMPIEZA DE ELIPSE');
-console.log('  🌌 Limpia TODOS los datos del Modo Elipse');
-console.log('  🗑️ Elimina ondas, configuración y persistencia');
-console.log('  🔥 Elimina claves de localStorage: pipeline_elipse_*');
-console.log('  🔥 Elimina configuración en IndexedDB: elipse_estado');
-console.log('  🔥 Elimina backups de estado por tema');
+console.log('✅ UITools v23.1 - LIMPIEZA SELECTIVA POR IDIOMA');
+console.log('  🌍 Limpia datos por idioma específico');
+console.log('  🌍 Limpia todos los idiomas (conserva configuración)');
+console.log('  ☢️ Limpia TODO (borrado completo)');
+console.log('  🌌 Limpia ondas Elipse por idioma');
+console.log('  🔥 Elimina claves de localStorage por idioma');
 console.log('  📊 Incluye estadísticas de Elipse en diagnóstico');
 console.log('  ⚖️ Tarjeta "Balanceador Groq" en Herramientas');
 console.log('  💾 Cálculo real de almacenamiento con exportar');

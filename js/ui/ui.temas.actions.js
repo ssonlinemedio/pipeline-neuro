@@ -670,7 +670,12 @@ class UITemasActions {
             const esJeroglifico = window.UITemas._esJeroglifico(idioma);
             const versionEstandar = data.meta?.version_estandar || window.UITemas._obtenerVersionEstandar(idioma);
             const nombreVersion = data.meta?.nombre_version || window.UITemas._obtenerNombreVersion(idioma, versionEstandar);
-            const completado = data.meta?._completado || false;
+            
+            // 🔥 PATCH ANTI-COMPLETADO AUTOMÁTICO:
+            // Un tema recién importado SIEMPRE debe empezar como 'en_curso' y 'completado: false'
+            // independientemente de lo que diga el JSON de origen.
+            const completado = false; 
+            const estadoInicial = 'en_curso';
 
             UITemasActions._actualizarLoading(10, '📂 Preparando tema...', 'Creando estructura del tema');
 
@@ -700,13 +705,14 @@ class UITemasActions {
                         nivel: nivel,
                         icono: '📁',
                         fechaCreacion: new Date().toISOString(),
-                        estado: 'en_curso',
+                        estado: estadoInicial, // 🔥 FORZADO
                         historiasIds: [],
                         palabrasClave: [],
                         _version_estandar: versionEstandar,
                         _nombre_version: nombreVersion,
                         _esManual: true,
-                        origen: 'manual'
+                        origen: 'manual',
+                        _completado: completado // 🔥 FORZADO
                     };
                     const id = await db.guardarTema(nuevoTema);
                     temaGuardado = await db.obtenerTema(id);
@@ -784,13 +790,14 @@ class UITemasActions {
                     idioma: idioma,
                     nivel: nivel,
                     fechaCreacion: new Date().toISOString(),
-                    estado: 'en_curso',
+                    estado: 'en_curso', // 🔥 FORZADO
                     frases: historiaData.frases ? historiaData.frases.length : 0,
                     _version_estandar: versionEstandar,
                     _nombre_version: nombreVersion,
                     _esOnda: historiaData.esOnda || false,
                     _esImportada: true,
-                    _importadoDesdeJSON: true
+                    _importadoDesdeJSON: true,
+                    _completada: false // 🔥 FORZADO
                 };
 
                 const historiaId = await db.guardarHistoria(historiaObj);
@@ -970,7 +977,9 @@ class UITemasActions {
                 ...temaGuardado,
                 historiasIds: todosLosIds,
                 frases: (temaGuardado.frases || 0) + totalFrases,
-                _tieneContenido: true
+                _tieneContenido: true,
+                estado: estadoInicial, // 🔥 FORZADO 'en_curso'
+                _completado: completado // 🔥 FORZADO false
             });
 
             let caracteresImportados = 0;
@@ -1182,7 +1191,7 @@ class UITemasActions {
                     ...temaGuardado,
                     historiasIds: todosLosIds,
                     frases: (temaGuardado.frases || 0) + totalFrases,
-                    estado: completado ? 'completado' : 'en_curso',
+                    estado: estadoInicial, // 🔥 FORZADO
                     _tieneContenido: true,
                     _esPredefinido: temaGuardado._esPredefinido || false,
                     _esImportado: temaGuardado._esImportado || false,
@@ -1193,7 +1202,7 @@ class UITemasActions {
                     _version_estandar: versionEstandar,
                     _nombre_version: nombreVersion,
                     _idioma_original: idioma,
-                    _completado: completado,
+                    _completado: completado, // 🔥 FORZADO false
                     _historiasImportadas: true,
                     _progreso: progreso,
                     _historiasCompletadas: completadas,
@@ -1204,7 +1213,7 @@ class UITemasActions {
                     await window.UITemas._marcarTemaCompletado(
                         idioma,
                         temaGuardado._temaOriginalId,
-                        completado
+                        completado // 🔥 FORZADO false
                     );
                 }
             }
@@ -1262,7 +1271,7 @@ class UITemasActions {
                     `📝 Palabras derivadas añadidas: ${palabrasDerivadasGuardadas}` : '') +
                 `\n📌 Versión: ${nombreVersion}\n` +
                 `\n🌍 Idioma: ${idioma}\n` +
-                `\n${completado ? '✅ Tema marcado como completado' : '📖 Tema marcado como en curso'}\n` +
+                `\n📖 Tema marcado como EN CURSO\n` +
                 `\n💡 Los caracteres están disponibles en el módulo "Caracteres" y las palabras en "Mi Espacio"`;
 
             window.UITemas._core?.alert(mensaje, '✅ Importación Completada');
@@ -1273,7 +1282,7 @@ class UITemasActions {
                 palabras: totalPalabras,
                 caracteres: caracteresImportados,
                 derivadas: palabrasDerivadasGuardadas,
-                completado: completado,
+                completado: completado, // 🔥 FORZADO false
                 duplicados: historiasDuplicadas
             };
 

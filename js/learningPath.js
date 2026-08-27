@@ -1,7 +1,8 @@
 // ============================================================
-// LEARNING PATH V3.0 - MAESTRÍA ABSOLUTA CON DOBLE HERENCIA
+// LEARNING PATH V3.0.1 - MAESTRÍA ABSOLUTA CON DOBLE HERENCIA
 // INTERFAZ SUPER FASHION, POTENTE Y COMPLETA
 // HEREDADO DE VIGIA + CENTINELA PARA PODER DE GUÍA TOTAL
+// CORREGIDO: FALLO DE SEGURIDAD EN CENTINELA (ANTI-BUCLE Y TYPESAFE)
 // ============================================================
 
 class LearningPath {
@@ -107,7 +108,7 @@ class LearningPath {
             console.log('🔗 LearningPath: Vinculado con Centinela para neuro-monitoreo');
         }
         
-        console.log('🧭 Learning Path v3.0: Constructor ejecutado (MAESTRÍA ABSOLUTA - DOBLE HERENCIA)');
+        console.log('🧭 Learning Path v3.0.1: Constructor ejecutado (MAESTRÍA ABSOLUTA - DOBLE HERENCIA)');
     }
 
     // ============================================================
@@ -136,7 +137,7 @@ class LearningPath {
         }
         
         this._initDone = true;
-        console.log('🧭 Learning Path v3.0: Inicializado correctamente (MAESTRÍA ABSOLUTA - DOBLE HERENCIA)');
+        console.log('🧭 Learning Path v3.0.1: Inicializado correctamente (MAESTRÍA ABSOLUTA - DOBLE HERENCIA)');
         console.log(`   📊 ${this._rutaActual ? this._rutaActual.length : 0} pasos en ruta`);
         console.log(`   🧠 Neuro-monitoreo: ${this._centinela ? '✅ ACTIVO' : '❌ NO DISPONIBLE'}`);
         
@@ -529,14 +530,27 @@ class LearningPath {
             
             const modoInversoActivo = modoInverso?.isActivo?.() || false;
 
-            // Datos de Centinela para neuro-monitoreo
+            // 🔥 PATCH ANTI-CENTINELA: Bloque seguro con múltiples fallbacks
             let fatiga = 0;
             if (this._centinela) {
                 try {
-                    const estadoCentinela = this._centinela.getEstado();
-                    fatiga = estadoCentinela.neuroFatiga || 0;
+                    // Verificar si es función antes de llamarla
+                    if (typeof this._centinela.getEstado === 'function') {
+                        const estadoCentinela = this._centinela.getEstado();
+                        fatiga = estadoCentinela?.neuroFatiga || 0;
+                    } 
+                    // Fallback si el método se llama getStatus
+                    else if (typeof this._centinela.getStatus === 'function') {
+                        const estadoCentinela = this._centinela.getStatus();
+                        fatiga = estadoCentinela?.neuroFatiga || 0;
+                    } 
+                    // Fallback si es una propiedad directa
+                    else if (this._centinela.neuroFatiga !== undefined) {
+                        fatiga = this._centinela.neuroFatiga || 0;
+                    }
                 } catch (e) {
-                    console.warn('⚠️ Error obteniendo fatiga de Centinela:', e);
+                    // Nunca romper la generación por un error del Centinela
+                    console.warn('⚠️ Error obteniendo fatiga de Centinela (ignorado):', e);
                 }
             }
 
@@ -1500,7 +1514,7 @@ Cada paso debe tener:
                         <div>
                             <h4 style="font-size:16px;font-weight:700;color:var(--dark);margin:0;">
                                 Ruta de Aprendizaje
-                                <span style="font-size:11px;font-weight:400;color:var(--gray-light);">v3.0</span>
+                                <span style="font-size:11px;font-weight:400;color:var(--gray-light);">v3.0.1</span>
                             </h4>
                             <div style="display:flex;gap:8px;font-size:10px;color:var(--gray-light);flex-wrap:wrap;">
                                 <span>${modoInfo}</span>
@@ -1711,7 +1725,7 @@ Cada paso debe tener:
         this._initDone = false;
         this._rutaActual = null;
         this._eventosRegistrados = false;
-        console.log('🧭 Learning Path v3.0 destruido');
+        console.log('🧭 Learning Path v3.0.1 destruido');
     }
 }
 
@@ -1724,7 +1738,7 @@ window.LearningPath = window.learningPath;
 
 // Inicialización automática cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🧭 Learning Path v3.0: Inicialización automática...');
+    console.log('🧭 Learning Path v3.0.1: Inicialización automática...');
     setTimeout(function() {
         if (window.uiCore) {
             window.learningPath.init(window.uiCore);
@@ -1734,7 +1748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 2000);
 });
 
-console.log('✅ Learning Path v3.0 - MAESTRÍA ABSOLUTA - DOBLE HERENCIA');
+console.log('✅ Learning Path v3.0.1 - MAESTRÍA ABSOLUTA - DOBLE HERENCIA');
 console.log('  🚀 Interfaz Super Fashion con paginación y búsqueda');
 console.log('  🔥 Progreso en tiempo real con porcentaje por paso');
 console.log('  🧠 Neuro-monitoreo con Centinela para rutas adaptativas');
@@ -1743,4 +1757,5 @@ console.log('  📚 Integración con todos los módulos (Biblioteca, Tonos, etc.
 console.log('  🔄 Sincronización con Tutor Neuro');
 console.log('  🔒 Modo Guiado detectado automáticamente');
 console.log('  🎨 Diseño Super Fashion con gradientes y animaciones');
+console.log('  🛡️ CORREGIDO: Centinela TypeSafe con fallbacks (Error "getEstado" solucionado)');
 console.log('  ✅ Todas las funcionalidades originales preservadas');

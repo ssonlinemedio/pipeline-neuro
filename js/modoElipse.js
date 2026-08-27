@@ -1,6 +1,6 @@
 // ============================================================
-// MODO ELIPSE v5.7 - CORREGIDO: PROMPT MULTIDIOMA
-// CON INTEGRACIÓN DE ONDAS CRUZADAS
+// MODO ELIPSE v5.7.3 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS
+// getHistoriasElipse() SIEMPRE FILTRA
 // ============================================================
 
 class ModoElipse {
@@ -60,7 +60,7 @@ class ModoElipse {
             resumenPorOnda: {}
         };
         
-        // 🔥 ALMACENAR DATOS POR IDIOMA
+        // 🔥 ALMACENAR DATOS POR IDIOMA + TEMA
         this._datosPorIdioma = {};
         this._idiomaActual = null;
         
@@ -71,7 +71,7 @@ class ModoElipse {
         this._registrarEventosPersistencia();
         this._configurarListenerIdioma();
         
-        console.log('🌌 ModoElipse: Constructor ejecutado (v5.7 - Prompt multidioma)');
+        console.log('🌌 ModoElipse: Constructor ejecutado (v5.7.3 - Persistencia por idioma+tema)');
     }
 
     // ============================================================
@@ -103,204 +103,26 @@ class ModoElipse {
     }
 
     // ============================================================
-    // GUARDAR ESTADO POR IDIOMA
+    // GUARDAR ESTADO POR IDIOMA + TEMA (CORREGIDO)
     // ============================================================
 
     _guardarEstadoPorIdioma(idioma) {
         if (!idioma) return;
-        try {
-            const key = `pipeline_elipse_estado_idioma_${idioma}`;
-            const data = {
-                version: '5.7',
-                timestamp: Date.now(),
-                idioma: idioma,
-                elipseActiva: this._elipseActiva,
-                estadisticas: this._estadisticas,
-                historias: this._historiasElipse,
-                recuerdoOndas: this._recuerdoOndas,
-                config: this._config
-            };
-            localStorage.setItem(key, JSON.stringify(data));
-            console.log(`💾 Estado de Elipse guardado para idioma: ${idioma} (${this._historiasElipse.length} ondas)`);
-            
-            this._datosPorIdioma[idioma] = {
-                elipseActiva: this._elipseActiva,
-                estadisticas: this._estadisticas,
-                historias: this._historiasElipse,
-                recuerdoOndas: this._recuerdoOndas,
-                config: this._config
-            };
-        } catch (e) {
-            console.warn(`⚠️ Error guardando estado para idioma ${idioma}:`, e);
-        }
-    }
-
-    // ============================================================
-    // CARGAR ESTADO POR IDIOMA
-    // ============================================================
-
-    _cargarEstadoPorIdioma(idioma) {
-        if (!idioma) return;
         
-        if (this._datosPorIdioma[idioma]) {
-            console.log(`📦 Cargando datos de Elipse desde caché para idioma: ${idioma}`);
-            const data = this._datosPorIdioma[idioma];
-            this._elipseActiva = data.elipseActiva || null;
-            this._estadisticas = data.estadisticas || { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
-            this._historiasElipse = data.historias || [];
-            this._recuerdoOndas = data.recuerdoOndas || {
-                resumenGlobal: '',
-                personajesPrincipales: [],
-                lugares: [],
-                eventosClave: [],
-                tramasAbiertas: [],
-                ultimasFrases: [],
-                vocabularioAcumulado: [],
-                resumenPorOnda: {}
-            };
-            if (data.config) this._config = data.config;
-            this._persistenciaCargada = true;
-            this._datosCargados = true;
-            this._temaIdPersistido = this._elipseActiva;
-            if (this._elipseActiva) {
-                localStorage.setItem('pipeline_elipse_tema_activo', this._elipseActiva);
-            }
+        // 🔥 NUEVO: Usar una clave compuesta de idioma + tema
+        const temaId = this._elipseActiva;
+        if (!temaId) {
+            console.warn('⚠️ No hay tema activo, no se guarda estado.');
             return;
         }
         
+        const key = `pipeline_elipse_estado_idioma_${idioma}_tema_${temaId}`;
         try {
-            const key = `pipeline_elipse_estado_idioma_${idioma}`;
-            const data = localStorage.getItem(key);
-            if (data) {
-                const parsed = JSON.parse(data);
-                console.log(`📦 Cargando datos de Elipse desde localStorage para idioma: ${idioma}`);
-                console.log(`   📊 ${parsed.historias?.length || 0} ondas`);
-                
-                this._elipseActiva = parsed.elipseActiva || null;
-                this._estadisticas = parsed.estadisticas || { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
-                this._historiasElipse = parsed.historias || [];
-                this._recuerdoOndas = parsed.recuerdoOndas || {
-                    resumenGlobal: '',
-                    personajesPrincipales: [],
-                    lugares: [],
-                    eventosClave: [],
-                    tramasAbiertas: [],
-                    ultimasFrases: [],
-                    vocabularioAcumulado: [],
-                    resumenPorOnda: {}
-                };
-                if (parsed.config) this._config = parsed.config;
-                this._persistenciaCargada = true;
-                this._datosCargados = true;
-                this._temaIdPersistido = this._elipseActiva;
-                if (this._elipseActiva) {
-                    localStorage.setItem('pipeline_elipse_tema_activo', this._elipseActiva);
-                }
-                
-                this._datosPorIdioma[idioma] = {
-                    elipseActiva: this._elipseActiva,
-                    estadisticas: this._estadisticas,
-                    historias: this._historiasElipse,
-                    recuerdoOndas: this._recuerdoOndas,
-                    config: this._config
-                };
-                return;
-            }
-            
-            console.log(`📭 No hay datos de Elipse para idioma: ${idioma}`);
-            this._historiasElipse = [];
-            this._elipseActiva = null;
-            this._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
-            this._recuerdoOndas = {
-                resumenGlobal: '',
-                personajesPrincipales: [],
-                lugares: [],
-                eventosClave: [],
-                tramasAbiertas: [],
-                ultimasFrases: [],
-                vocabularioAcumulado: [],
-                resumenPorOnda: {}
-            };
-            this._persistenciaCargada = false;
-            this._datosCargados = false;
-            this._temaIdPersistido = null;
-            
-        } catch (e) {
-            console.warn(`⚠️ Error cargando estado para idioma ${idioma}:`, e);
-        }
-    }
-
-    // ============================================================
-    // GUARDAR ESTADO COMPLETO (con idioma)
-    // ============================================================
-
-    _guardarEstadoElipse() {
-        try {
-            if (this._guardando) return;
-            
-            const idiomaActual = this._obtenerIdiomaActual();
-            
-            if (idiomaActual) {
-                this._guardarEstadoPorIdioma(idiomaActual);
-            }
-            
             const data = {
-                version: '5.7',
+                version: '5.7.3',
                 timestamp: Date.now(),
-                idioma: idiomaActual,
-                elipseActiva: this._elipseActiva,
-                estadisticas: this._estadisticas,
-                historias: this._historiasElipse
-            };
-            
-            localStorage.setItem(this._persistenciaKey, JSON.stringify(data));
-            this._guardarRecuerdoOndas();
-            
-            if (this._elipseActiva) {
-                localStorage.setItem('pipeline_elipse_tema_activo', this._elipseActiva);
-            }
-            
-            this._ultimoGuardado = Date.now();
-
-            this._guardarEnIndexedDB();
-
-            console.log(`💾 Estado de Elipse guardado (${this._historiasElipse.length} ondas) para idioma: ${idiomaActual || 'desconocido'}`);
-
-            window.dispatchEvent(new CustomEvent('elipseEstadoGuardado', {
-                detail: {
-                    totalOndas: this._historiasElipse.length,
-                    elipseActiva: this._elipseActiva,
-                    idioma: idiomaActual,
-                    timestamp: this._ultimoGuardado
-                }
-            }));
-
-        } catch (e) {
-            console.warn('⚠️ Error guardando estado Elipse:', e);
-        }
-    }
-
-    // ============================================================
-    // GUARDAR EN INDEXEDDB (con idioma)
-    // ============================================================
-
-    async _guardarEnIndexedDB() {
-        if (this._guardando) return false;
-        this._guardando = true;
-        
-        try {
-            if (typeof db === 'undefined' || !db._initialized) {
-                console.warn('⚠️ DB no disponible para guardar');
-                this._guardando = false;
-                return false;
-            }
-
-            const idiomaActual = this._obtenerIdiomaActual();
-            
-            const data = {
-                version: '5.7',
-                timestamp: Date.now(),
-                idioma: idiomaActual,
+                idioma: idioma,
+                temaId: temaId,
                 elipseActiva: this._elipseActiva,
                 estadisticas: this._estadisticas,
                 historias: this._historiasElipse.map(h => ({
@@ -318,28 +140,351 @@ class ModoElipse {
                     completada: h.completada || false,
                     _sincronizado: h._sincronizado || false,
                     _fechaSincronizacion: h._fechaSincronizacion || null,
-                    _recuerdo: h._recuerdo || null
+                    _recuerdo: h._recuerdo || null,
+                    _esOndaCruzada: h._esOndaCruzada || false
+                })),
+                recuerdoOndas: this._recuerdoOndas,
+                config: this._config
+            };
+            localStorage.setItem(key, JSON.stringify(data));
+            console.log(`💾 Estado de Elipse guardado para idioma: ${idioma}, tema: ${temaId} (${this._historiasElipse.length} ondas)`);
+            
+            // Guardar en el mapa de datos por idioma (para caché)
+            if (!this._datosPorIdioma[idioma]) {
+                this._datosPorIdioma[idioma] = {};
+            }
+            this._datosPorIdioma[idioma][temaId] = {
+                elipseActiva: this._elipseActiva,
+                estadisticas: this._estadisticas,
+                historias: this._historiasElipse,
+                recuerdoOndas: this._recuerdoOndas,
+                config: this._config,
+                timestamp: Date.now()
+            };
+            
+            // También guardar en el backup global para compatibilidad
+            this._guardarBackupGlobal(idioma);
+            
+        } catch (e) {
+            console.warn(`⚠️ Error guardando estado para idioma ${idioma}, tema ${temaId}:`, e);
+        }
+    }
+
+    // ============================================================
+    // GUARDAR BACKUP GLOBAL (para compatibilidad)
+    // ============================================================
+
+    _guardarBackupGlobal(idioma) {
+        try {
+            const data = {
+                version: '5.7.3',
+                timestamp: Date.now(),
+                idioma: idioma,
+                elipseActiva: this._elipseActiva,
+                estadisticas: this._estadisticas,
+                historias: this._historiasElipse,
+                recuerdoOndas: this._recuerdoOndas,
+                config: this._config
+            };
+            localStorage.setItem(this._persistenciaKey, JSON.stringify(data));
+        } catch (e) {
+            console.warn('⚠️ Error guardando backup global:', e);
+        }
+    }
+
+    // ============================================================
+    // CARGAR ESTADO POR IDIOMA + TEMA (CORREGIDO)
+    // ============================================================
+
+    _cargarEstadoPorIdioma(idioma) {
+        if (!idioma) return;
+        
+        // 🔥 Obtener el tema activo para cargar el estado correcto
+        const temaId = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
+        if (!temaId) {
+            console.log(`📭 No hay tema activo para cargar datos de Elipse para idioma: ${idioma}`);
+            this._resetearEstado();
+            return;
+        }
+
+        // 🔥 Cargar desde caché por idioma + tema
+        if (this._datosPorIdioma[idioma] && this._datosPorIdioma[idioma][temaId]) {
+            console.log(`📦 Cargando datos de Elipse desde caché para idioma: ${idioma}, tema: ${temaId}`);
+            const data = this._datosPorIdioma[idioma][temaId];
+            this._aplicarDatosCargados(data);
+            return;
+        }
+
+        // 🔥 Cargar desde localStorage con clave compuesta
+        const key = `pipeline_elipse_estado_idioma_${idioma}_tema_${temaId}`;
+        try {
+            const storedData = localStorage.getItem(key);
+            if (storedData) {
+                const parsed = JSON.parse(storedData);
+                console.log(`📦 Cargando datos de Elipse desde localStorage para idioma: ${idioma}, tema: ${temaId}`);
+                console.log(`   📊 ${parsed.historias?.length || 0} ondas`);
+                
+                this._aplicarDatosCargados(parsed);
+                
+                // Guardar en caché
+                if (!this._datosPorIdioma[idioma]) {
+                    this._datosPorIdioma[idioma] = {};
+                }
+                this._datosPorIdioma[idioma][temaId] = {
+                    elipseActiva: parsed.elipseActiva,
+                    estadisticas: parsed.estadisticas,
+                    historias: parsed.historias,
+                    recuerdoOndas: parsed.recuerdoOndas,
+                    config: parsed.config,
+                    timestamp: parsed.timestamp || Date.now()
+                };
+                this._persistenciaCargada = true;
+                this._datosCargados = true;
+                return;
+            }
+        } catch (e) {
+            console.warn(`⚠️ Error cargando estado para idioma ${idioma}, tema ${temaId}:`, e);
+        }
+
+        // Si no hay datos específicos, intentar cargar desde backup global
+        console.log(`📭 No hay datos específicos para idioma: ${idioma}, tema: ${temaId}. Intentando backup global...`);
+        const cargadoBackup = this._cargarBackupGlobal(idioma, temaId);
+        if (cargadoBackup) {
+            console.log(`✅ Datos cargados desde backup global para idioma: ${idioma}, tema: ${temaId}`);
+            return;
+        }
+
+        // Si no hay datos, resetear estado
+        console.log(`📭 No hay datos de Elipse para idioma: ${idioma}, tema: ${temaId}`);
+        this._resetearEstado();
+    }
+
+    // ============================================================
+    // CARGAR BACKUP GLOBAL (para compatibilidad)
+    // ============================================================
+
+    _cargarBackupGlobal(idioma, temaId) {
+        try {
+            const storedData = localStorage.getItem(this._persistenciaKey);
+            if (!storedData) return false;
+            
+            const parsed = JSON.parse(storedData);
+            
+            // Verificar que el backup sea del idioma correcto
+            if (parsed.idioma !== idioma) {
+                console.log(`⚠️ Backup global es de idioma "${parsed.idioma}", actual: "${idioma}"`);
+                return false;
+            }
+            
+            // Verificar que el backup sea del tema correcto o que no tenga tema específico
+            const backupTemaId = parsed.elipseActiva;
+            if (backupTemaId && backupTemaId !== temaId) {
+                console.log(`⚠️ Backup global es de tema "${backupTemaId}", actual: "${temaId}"`);
+                return false;
+            }
+            
+            if (parsed.historias && parsed.historias.length > 0) {
+                console.log(`📦 Cargando ${parsed.historias.length} ondas desde backup global para idioma: ${idioma}, tema: ${temaId}`);
+                this._aplicarDatosCargados(parsed);
+                
+                // Guardar en el nuevo formato para futuras cargas
+                this._guardarEstadoPorIdioma(idioma);
+                return true;
+            }
+            
+            return false;
+        } catch (e) {
+            console.warn('⚠️ Error cargando backup global:', e);
+            return false;
+        }
+    }
+
+    // ============================================================
+    // APLICAR DATOS CARGADOS
+    // ============================================================
+
+    _aplicarDatosCargados(data) {
+        this._elipseActiva = data.elipseActiva || null;
+        this._estadisticas = data.estadisticas || { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
+        // 🔥 Filtrar ondas cruzadas al cargar datos
+        this._historiasElipse = this._filtrarOndasElipse(data.historias || []);
+        this._recuerdoOndas = data.recuerdoOndas || {
+            resumenGlobal: '',
+            personajesPrincipales: [],
+            lugares: [],
+            eventosClave: [],
+            tramasAbiertas: [],
+            ultimasFrases: [],
+            vocabularioAcumulado: [],
+            resumenPorOnda: {}
+        };
+        if (data.config) this._config = data.config;
+        this._persistenciaCargada = true;
+        this._datosCargados = true;
+        this._temaIdPersistido = this._elipseActiva;
+        if (this._elipseActiva) {
+            localStorage.setItem('pipeline_elipse_tema_activo', this._elipseActiva);
+        }
+    }
+
+    // ============================================================
+    // 🔥 FILTRO UNIFICADO PARA EXCLUIR ONDAS CRUZADAS
+    // ============================================================
+    _esOndaCruzada(historia) {
+        if (!historia) return false;
+        return historia._esOndaCruzada === true;
+    }
+
+    _filtrarOndasElipse(historias) {
+        if (!historias || !Array.isArray(historias)) return [];
+        return historias.filter(h => !this._esOndaCruzada(h));
+    }
+
+    // ============================================================
+    // RESETEAR ESTADO
+    // ============================================================
+
+    _resetearEstado() {
+        this._historiasElipse = [];
+        this._elipseActiva = null;
+        this._estadisticas = { totalOndas: 0, palabrasNuevas: 0, palabrasConsolidadas: 0 };
+        this._recuerdoOndas = {
+            resumenGlobal: '',
+            personajesPrincipales: [],
+            lugares: [],
+            eventosClave: [],
+            tramasAbiertas: [],
+            ultimasFrases: [],
+            vocabularioAcumulado: [],
+            resumenPorOnda: {}
+        };
+        this._persistenciaCargada = false;
+        this._datosCargados = false;
+        this._temaIdPersistido = null;
+        console.log('🧹 Estado de Elipse reseteado (sin datos para este idioma/tema).');
+    }
+
+    // ============================================================
+    // GUARDAR ESTADO COMPLETO (con idioma + tema)
+    // ============================================================
+
+    _guardarEstadoElipse() {
+        try {
+            if (this._guardando) return;
+            
+            const idiomaActual = this._obtenerIdiomaActual();
+            const temaId = this._elipseActiva;
+            
+            if (idiomaActual && temaId) {
+                this._guardarEstadoPorIdioma(idiomaActual);
+            } else {
+                console.warn('⚠️ No se puede guardar estado: falta idioma o tema');
+            }
+            
+            // Guardar también en el backup global para compatibilidad
+            if (idiomaActual) {
+                this._guardarBackupGlobal(idiomaActual);
+            }
+            
+            this._guardarRecuerdoOndas();
+            
+            if (this._elipseActiva) {
+                localStorage.setItem('pipeline_elipse_tema_activo', this._elipseActiva);
+            }
+            
+            this._ultimoGuardado = Date.now();
+            this._guardarEnIndexedDB();
+
+            console.log(`💾 Estado de Elipse guardado (${this._historiasElipse.length} ondas) para idioma: ${idiomaActual || 'desconocido'}, tema: ${temaId || 'desconocido'}`);
+
+            window.dispatchEvent(new CustomEvent('elipseEstadoGuardado', {
+                detail: {
+                    totalOndas: this._historiasElipse.length,
+                    elipseActiva: this._elipseActiva,
+                    idioma: idiomaActual,
+                    temaId: temaId,
+                    timestamp: this._ultimoGuardado
+                }
+            }));
+
+        } catch (e) {
+            console.warn('⚠️ Error guardando estado Elipse:', e);
+        }
+    }
+
+    // ============================================================
+    // GUARDAR EN INDEXEDDB (con idioma + tema)
+    // ============================================================
+
+    async _guardarEnIndexedDB() {
+        if (this._guardando) return false;
+        this._guardando = true;
+        
+        try {
+            if (typeof db === 'undefined' || !db._initialized) {
+                console.warn('⚠️ DB no disponible para guardar');
+                this._guardando = false;
+                return false;
+            }
+
+            const idiomaActual = this._obtenerIdiomaActual();
+            const temaId = this._elipseActiva;
+            
+            if (!idiomaActual || !temaId) {
+                console.warn('⚠️ No se puede guardar en IndexedDB: falta idioma o tema');
+                this._guardando = false;
+                return false;
+            }
+            
+            const data = {
+                version: '5.7.3',
+                timestamp: Date.now(),
+                idioma: idiomaActual,
+                temaId: temaId,
+                elipseActiva: this._elipseActiva,
+                estadisticas: this._estadisticas,
+                historias: this._historiasElipse.map(h => ({
+                    id: h.id,
+                    titulo: h.titulo,
+                    temaId: h.temaId,
+                    nivel: h.nivel,
+                    indice: h.indice,
+                    fecha: h.fecha,
+                    palabrasNuevas: h.palabrasNuevas || [],
+                    palabrasBase: h.palabrasBase || [],
+                    historiasPrevias: h.historiasPrevias || [],
+                    esBase: h.esBase || false,
+                    rcnPromedio: h.rcnPromedio || 0,
+                    completada: h.completada || false,
+                    _sincronizado: h._sincronizado || false,
+                    _fechaSincronizacion: h._fechaSincronizacion || null,
+                    _recuerdo: h._recuerdo || null,
+                    _esOndaCruzada: h._esOndaCruzada || false
                 }))
             };
 
             let guardadoExitoso = false;
             let intentos = 0;
             const maxIntentos = 3;
+            
+            // Usar una clave compuesta para guardar en IndexedDB
+            const claveIndexedDB = `elipse_estado_${idiomaActual}_tema_${temaId}`;
 
             while (!guardadoExitoso && intentos < maxIntentos) {
                 try {
                     intentos++;
-                    const configs = await db.getByIndex('configuracion', 'clave', 'elipse_estado');
+                    const configs = await db.getByIndex('configuracion', 'clave', claveIndexedDB);
                     
                     if (configs && configs.length > 0) {
                         await db.update('configuracion', {
                             ...configs[0],
+                            clave: claveIndexedDB,
                             valor: JSON.stringify(data),
                             timestamp: Date.now()
                         });
                     } else {
                         await db.add('configuracion', {
-                            clave: 'elipse_estado',
+                            clave: claveIndexedDB,
                             valor: JSON.stringify(data),
                             timestamp: Date.now()
                         });
@@ -364,16 +509,25 @@ class ModoElipse {
     }
 
     // ============================================================
-    // CARGAR DATOS (con idioma)
+    // CARGAR DATOS (con idioma + tema)
     // ============================================================
 
     async cargarDatos() {
         const idiomaActual = this._obtenerIdiomaActual();
+        const temaId = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         
-        this._cargarEstadoPorIdioma(idiomaActual);
+        console.log(`🌌 ModoElipse.cargarDatos(): idioma=${idiomaActual}, tema=${temaId}`);
+        
+        // Si hay tema, cargar estado específico
+        if (temaId) {
+            this._cargarEstadoPorIdioma(idiomaActual);
+        }
+        
+        // 🔥 Siempre filtrar al cargar
+        this._historiasElipse = this._filtrarOndasElipse(this._historiasElipse);
         
         if (this._datosCargados && this._historiasElipse.length > 0) {
-            console.log(`📦 Datos de Elipse cargados (${this._historiasElipse.length} ondas) para idioma: ${idiomaActual}`);
+            console.log(`📦 Datos de Elipse cargados (${this._historiasElipse.length} ondas) para idioma: ${idiomaActual}, tema: ${temaId}`);
             return this._historiasElipse;
         }
 
@@ -389,6 +543,8 @@ class ModoElipse {
             const resultado = await this._promesaCarga;
             this._datosCargados = true;
             this._cargaCompletada = true;
+            // 🔥 Filtrar al finalizar la carga
+            this._historiasElipse = this._filtrarOndasElipse(this._historiasElipse);
             return resultado;
         } catch (error) {
             console.error('❌ Error cargando datos:', error);
@@ -404,38 +560,60 @@ class ModoElipse {
         this._intentosCarga = 0;
         
         const idiomaActual = this._obtenerIdiomaActual();
-        console.log(`🌌 ModoElipse: Cargando datos para idioma: ${idiomaActual}`);
+        const temaId = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         
-        this._cargarEstadoPorIdioma(idiomaActual);
+        console.log(`🌌 ModoElipse: Cargando datos para idioma: ${idiomaActual}, tema: ${temaId || 'sin tema'}`);
+        
+        // 🔥 PASO 1: Cargar estado por idioma + tema
+        if (temaId) {
+            this._cargarEstadoPorIdioma(idiomaActual);
+        }
+        
+        // 🔥 Filtrar ondas cruzadas después de cargar
+        this._historiasElipse = this._filtrarOndasElipse(this._historiasElipse);
         
         if (this._historiasElipse.length > 0) {
-            console.log(`✅ ${this._historiasElipse.length} ondas cargadas para idioma: ${idiomaActual}`);
+            console.log(`✅ ${this._historiasElipse.length} ondas cargadas para idioma: ${idiomaActual}, tema: ${temaId}`);
             await this._reconstruirRecuerdoOndas();
             return this._historiasElipse;
         }
         
-        const cargadoLocal = await this._cargarEstadoElipseCompleto();
-        
-        if (cargadoLocal && this._historiasElipse.length > 0) {
-            this._guardarEstadoPorIdioma(idiomaActual);
-            console.log(`✅ ${this._historiasElipse.length} ondas cargadas desde localStorage principal`);
-            await this._reconstruirRecuerdoOndas();
-            return this._historiasElipse;
+        // 🔥 PASO 2: Intentar cargar desde backup global
+        if (temaId) {
+            const cargadoBackup = this._cargarBackupGlobal(idiomaActual, temaId);
+            if (cargadoBackup && this._historiasElipse.length > 0) {
+                // Guardar en el nuevo formato para futuras cargas
+                this._guardarEstadoPorIdioma(idiomaActual);
+                await this._reconstruirRecuerdoOndas();
+                return this._historiasElipse;
+            }
         }
         
-        if (this._historiasElipse.length === 0 && this._temaIdPersistido) {
+        // 🔥 PASO 3: Si no hay datos y hay un tema persistido, intentar recuperar desde la base de datos
+        if (this._historiasElipse.length === 0 && temaId) {
             console.log('🌌 ModoElipse: Recuperando desde tema persistido...');
-            await this._recuperarElipseDesdeTema(this._temaIdPersistido);
+            await this._recuperarElipseDesdeTema(temaId);
+            if (this._historiasElipse.length > 0) {
+                this._guardarEstadoPorIdioma(idiomaActual);
+                await this._reconstruirRecuerdoOndas();
+                return this._historiasElipse;
+            }
         }
         
+        // 🔥 PASO 4: Intentar backup de emergencia desde localStorage antiguo
         if (this._historiasElipse.length === 0) {
             console.log('🌌 ModoElipse: Intentando backup de emergencia...');
             await this._cargarDesdeLocalStorageBackup();
         }
         
+        // 🔥 Filtrar ondas cruzadas después de cualquier carga
+        this._historiasElipse = this._filtrarOndasElipse(this._historiasElipse);
+        
         if (this._historiasElipse.length > 0) {
             await this._reconstruirRecuerdoOndas();
-            this._guardarEstadoPorIdioma(idiomaActual);
+            if (temaId) {
+                this._guardarEstadoPorIdioma(idiomaActual);
+            }
         }
         
         this._progresoTemasCache = {};
@@ -445,11 +623,12 @@ class ModoElipse {
                 totalOndas: this._historiasElipse.length,
                 elipseActiva: this._elipseActiva,
                 idioma: idiomaActual,
+                temaId: temaId,
                 timestamp: Date.now()
             }
         }));
         
-        console.log(`🌌 ModoElipse: Datos cargados. ${this._historiasElipse.length} ondas para idioma: ${idiomaActual}`);
+        console.log(`🌌 ModoElipse: Datos cargados. ${this._historiasElipse.length} ondas para idioma: ${idiomaActual}, tema: ${temaId}`);
         return this._historiasElipse;
     }
 
@@ -484,8 +663,12 @@ class ModoElipse {
         };
         
         const idiomaActual = this._obtenerIdiomaActual();
+        const temaId = this._elipseActiva;
         
-        for (const h of this._historiasElipse) {
+        // Solo reconstruir ondas del tema actual (ya filtradas)
+        const historiasTema = this._filtrarOndasElipse(this._historiasElipse.filter(h => h.temaId === temaId));
+        
+        for (const h of historiasTema) {
             try {
                 const historia = await db.get('historias', h.id);
                 if (historia && historia.idioma !== idiomaActual) {
@@ -504,6 +687,7 @@ class ModoElipse {
                 }
                 
                 this._recuerdoOndas.resumenPorOnda[h.indice] = {
+                    id: h.id,
                     titulo: h.titulo,
                     resumen: textoCompleto.substring(0, 200) + (textoCompleto.length > 200 ? '...' : ''),
                     palabrasNuevas: h.palabrasNuevas || [],
@@ -558,6 +742,7 @@ class ModoElipse {
             this._temaIdPersistido = localStorage.getItem('pipeline_elipse_tema_activo');
             if (this._temaIdPersistido) {
                 console.log(`📌 Tema persistido encontrado: ${this._temaIdPersistido}`);
+                this._elipseActiva = this._temaIdPersistido;
             }
         } catch (e) {}
         
@@ -570,7 +755,10 @@ class ModoElipse {
         } catch (e) {}
         
         const idiomaActual = this._obtenerIdiomaActual();
-        this._cargarEstadoPorIdioma(idiomaActual);
+        const temaId = this._elipseActiva;
+        if (temaId) {
+            this._cargarEstadoPorIdioma(idiomaActual);
+        }
     }
 
     _guardarConfiguracion() {
@@ -608,7 +796,7 @@ class ModoElipse {
     }
 
     // ============================================================
-    // CARGAR DESDE LOCALSTORAGE BACKUP
+    // CARGAR DESDE LOCALSTORAGE BACKUP (legacy)
     // ============================================================
 
     async _cargarDesdeLocalStorageBackup() {
@@ -617,57 +805,25 @@ class ModoElipse {
             if (estado) {
                 const parsed = JSON.parse(estado);
                 const idiomaActual = this._obtenerIdiomaActual();
+                const temaIdActual = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
                 
-                if (parsed.idioma && parsed.idioma !== idiomaActual) {
-                    console.log(`⚠️ Backup de localStorage es de idioma "${parsed.idioma}", actual: "${idiomaActual}". No se carga.`);
-                    return false;
-                }
-                
-                if (parsed.historias && parsed.historias.length > 0) {
-                    console.log('📦 Estado Elipse encontrado en localStorage (principal):', {
-                        historias: parsed.historias?.length || 0,
-                        elipseActiva: parsed.elipseActiva,
-                        idioma: parsed.idioma || 'no especificado'
-                    });
-                    this._historiasElipse = parsed.historias;
-                    this._elipseActiva = parsed.elipseActiva;
-                    this._estadisticas = parsed.estadisticas || this._estadisticas;
-                    this._persistenciaCargada = true;
-                    this._datosCargados = true;
-                    await this._reconstruirRecuerdoOndas();
-                    this._guardarEstadoPorIdioma(idiomaActual);
-                    return true;
+                if (parsed.idioma === idiomaActual) {
+                    if (parsed.historias && parsed.historias.length > 0) {
+                        const backupTemaId = parsed.elipseActiva;
+                        if (backupTemaId && temaIdActual && backupTemaId === temaIdActual) {
+                            console.log('📦 Backup de localStorage coincide con el tema actual:', backupTemaId);
+                            this._aplicarDatosCargados(parsed);
+                            return true;
+                        } else if (!backupTemaId || !temaIdActual) {
+                            console.log('📦 Cargando backup de localStorage (sin tema específico)');
+                            this._aplicarDatosCargados(parsed);
+                            return true;
+                        } else {
+                            console.log(`⚠️ Backup de localStorage es de tema "${backupTemaId}", actual: "${temaIdActual}"`);
+                        }
+                    }
                 }
             }
-
-            const backup = localStorage.getItem(this._persistenciaKey + '_backup');
-            if (backup) {
-                const parsed = JSON.parse(backup);
-                const idiomaActual = this._obtenerIdiomaActual();
-                
-                if (parsed.idioma && parsed.idioma !== idiomaActual) {
-                    console.log(`⚠️ Backup de localStorage es de idioma "${parsed.idioma}", actual: "${idiomaActual}". No se carga.`);
-                    return false;
-                }
-                
-                if (parsed.historias && parsed.historias.length > 0) {
-                    console.log('📦 Estado Elipse encontrado en localStorage (backup):', {
-                        historias: parsed.historias?.length || 0,
-                        elipseActiva: parsed.elipseActiva,
-                        idioma: parsed.idioma || 'no especificado'
-                    });
-                    this._historiasElipse = parsed.historias;
-                    this._elipseActiva = parsed.elipseActiva;
-                    this._estadisticas = parsed.estadisticas || this._estadisticas;
-                    this._persistenciaCargada = true;
-                    this._datosCargados = true;
-                    await this._reconstruirRecuerdoOndas();
-                    this._guardarEstadoPorIdioma(idiomaActual);
-                    return true;
-                }
-            }
-
-            console.log('📭 No se encontraron datos de Elipse en ningún lugar');
             return false;
         } catch (error) {
             console.warn('⚠️ Error cargando desde localStorage:', error);
@@ -676,7 +832,7 @@ class ModoElipse {
     }
 
     // ============================================================
-    // CARGAR ESTADO COMPLETO DE ELIPSE
+    // CARGAR ESTADO COMPLETO DE ELIPSE (legacy)
     // ============================================================
 
     async _cargarEstadoElipseCompleto() {
@@ -689,9 +845,16 @@ class ModoElipse {
 
             const parsed = JSON.parse(estado);
             const idiomaActual = this._obtenerIdiomaActual();
+            const temaIdActual = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
             
             if (parsed.idioma && parsed.idioma !== idiomaActual) {
-                console.log(`⚠️ Estado de localStorage es de idioma "${parsed.idioma}", actual: "${idiomaActual}". No se carga.`);
+                console.log(`⚠️ Estado de localStorage es de idioma "${parsed.idioma}", actual: "${idiomaActual}"`);
+                return false;
+            }
+            
+            const backupTemaId = parsed.elipseActiva;
+            if (backupTemaId && temaIdActual && backupTemaId !== temaIdActual) {
+                console.log(`⚠️ Estado de localStorage es de tema "${backupTemaId}", actual: "${temaIdActual}"`);
                 return false;
             }
             
@@ -722,6 +885,11 @@ class ModoElipse {
                             if (historiaDB.idioma && historiaDB.idioma !== idiomaActual) {
                                 continue;
                             }
+                            // 🔥 Filtrar ondas cruzadas en el momento de cargar
+                            if (this._esOndaCruzada(hData)) {
+                                console.log(`🔍 Onda cruzada "${hData.titulo}" filtrada al cargar`);
+                                continue;
+                            }
                             this._historiasElipse.push({
                                 id: hData.id,
                                 titulo: historiaDB.titulo || hData.titulo || 'Historia sin título',
@@ -737,18 +905,25 @@ class ModoElipse {
                                 completada: hData.completada || false,
                                 _sincronizado: hData._sincronizado || false,
                                 _fechaSincronizacion: hData._fechaSincronizacion || null,
-                                _recuerdo: hData._recuerdo || null
+                                _recuerdo: hData._recuerdo || null,
+                                _esOndaCruzada: hData._esOndaCruzada || false
                             });
                             datosValidos++;
                         } else {
                             if (hData.idioma && hData.idioma !== idiomaActual) {
                                 continue;
                             }
+                            if (this._esOndaCruzada(hData)) {
+                                console.log(`🔍 Onda cruzada "${hData.titulo}" filtrada al cargar (no existe en DB)`);
+                                continue;
+                            }
                             this._historiasElipse.push(hData);
                         }
                     } catch (e) {
                         console.warn(`⚠️ Error verificando historia ${hData.id}:`, e);
-                        this._historiasElipse.push(hData);
+                        if (!this._esOndaCruzada(hData)) {
+                            this._historiasElipse.push(hData);
+                        }
                     }
                 }
 
@@ -756,7 +931,8 @@ class ModoElipse {
                     this._persistenciaCargada = true;
                     this._datosCargados = true;
                     await this._reconstruirRecuerdoOndas();
-                    this._guardarEstadoPorIdioma(idiomaActual);
+                    const idioma = this._obtenerIdiomaActual();
+                    this._guardarEstadoPorIdioma(idioma);
                 }
                 
                 console.log(`✅ ${this._historiasElipse.length} historias restauradas desde localStorage para idioma: ${idiomaActual}`);
@@ -818,20 +994,25 @@ class ModoElipse {
             const idiomaActual = this._obtenerIdiomaActual();
             
             if (tema.idioma && tema.idioma !== idiomaActual) {
-                console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaActual}". No se recupera.`);
+                console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaActual}"`);
                 localStorage.removeItem('pipeline_elipse_tema_activo');
                 this._recuperando = false;
                 return;
             }
             
+            // Obtener todas las historias del tema, incluyendo la base
             const historias = await db.obtenerHistoriasPorTema(temaId);
-            const ondas = historias.filter(h => h._esOnda === true);
+            // 🔥 Filtrar ondas cruzadas
+            const historiasFiltradas = historias.filter(h => h.idioma === idiomaActual && !this._esOndaCruzada(h));
             
-            if (ondas.length === 0) {
-                console.log(`ℹ️ No hay ondas en el tema ${temaId}`);
+            if (historiasFiltradas.length === 0) {
+                console.log(`ℹ️ No hay historias en el tema ${temaId}`);
                 this._recuperando = false;
                 return;
             }
+            
+            // Verificar si hay ondas marcadas
+            const ondas = historiasFiltradas.filter(h => h._esOnda === true);
             
             console.log(`📚 Encontradas ${ondas.length} ondas en el tema ${temaId}`);
             
@@ -839,43 +1020,76 @@ class ModoElipse {
             this._historiasElipse = [];
             this._estadisticas.totalOndas = 0;
             
-            for (const h of ondas) {
-                const frases = await db.obtenerFrasesPorHistoria(h.id);
-                let rcnPromedio = 0;
-                let completadas = 0;
-                
-                if (frases.length > 0) {
-                    let totalRCN = 0;
-                    for (const f of frases) {
-                        const progreso = await db.obtenerProgreso(f.id);
-                        if (progreso) {
-                            totalRCN += progreso.rcn || 0;
-                            if (progreso.rcn >= 4 || progreso.estado === 'completada') {
-                                completadas++;
-                            }
-                        }
-                    }
-                    rcnPromedio = totalRCN / frases.length;
-                }
-                
-                this._historiasElipse.push({
-                    id: h.id,
-                    titulo: h.titulo || 'Historia sin título',
+            // Si no hay ondas, usar la primera historia como base
+            if (ondas.length === 0) {
+                const historiaBase = historiasFiltradas[0];
+                console.log(`📚 Usando "${historiaBase.titulo}" como historia base`);
+                const ondaBase = {
+                    id: historiaBase.id,
+                    titulo: historiaBase.titulo || 'Historia base',
                     temaId: temaId,
-                    nivel: h.nivel || 'A1',
-                    indice: h._ondaIndice || 0,
-                    fecha: h.fechaCreacion || Date.now(),
-                    palabrasNuevas: h._palabrasNuevas || [],
+                    nivel: historiaBase.nivel || 'A1',
+                    indice: 0,
+                    fecha: Date.now(),
+                    palabrasNuevas: [],
                     palabrasBase: [],
                     historiasPrevias: [],
-                    esBase: h._esBase || false,
-                    rcnPromedio: rcnPromedio,
-                    completada: completadas === frases.length && frases.length > 0,
-                    _sincronizado: h._sincronizado || false,
-                    _fechaSincronizacion: h._fechaSincronizacion || null
-                });
-                this._estadisticas.totalOndas++;
+                    esBase: true,
+                    rcnPromedio: 0,
+                    completada: false,
+                    _sincronizado: false,
+                    _fechaSincronizacion: null,
+                    _recuerdo: null,
+                    _esOndaCruzada: false
+                };
+                this._historiasElipse.push(ondaBase);
+                this._estadisticas.totalOndas = 1;
+            } else {
+                // Procesar ondas existentes
+                for (const h of ondas) {
+                    const frases = await db.obtenerFrasesPorHistoria(h.id);
+                    let rcnPromedio = 0;
+                    let completadas = 0;
+                    
+                    if (frases.length > 0) {
+                        let totalRCN = 0;
+                        for (const f of frases) {
+                            const progreso = await db.obtenerProgreso(f.id);
+                            if (progreso) {
+                                totalRCN += progreso.rcn || 0;
+                                if (progreso.rcn >= 4 || progreso.estado === 'completada') {
+                                    completadas++;
+                                }
+                            }
+                        }
+                        rcnPromedio = totalRCN / frases.length;
+                    }
+                    
+                    this._historiasElipse.push({
+                        id: h.id,
+                        titulo: h.titulo || 'Historia sin título',
+                        temaId: temaId,
+                        nivel: h.nivel || 'A1',
+                        indice: h._ondaIndice || this._historiasElipse.length,
+                        fecha: h.fechaCreacion || Date.now(),
+                        palabrasNuevas: h._palabrasNuevas || [],
+                        palabrasBase: [],
+                        historiasPrevias: [],
+                        esBase: h._esBase || false,
+                        rcnPromedio: rcnPromedio,
+                        completada: completadas === frases.length && frases.length > 0,
+                        _sincronizado: h._sincronizado || false,
+                        _fechaSincronizacion: h._fechaSincronizacion || null,
+                        _esOndaCruzada: h._esOndaCruzada || false
+                    });
+                    this._estadisticas.totalOndas++;
+                }
             }
+            
+            // Asegurar que la historia base esté al principio
+            const historiasBase = this._historiasElipse.filter(h => h.esBase);
+            const historiasOndas = this._historiasElipse.filter(h => !h.esBase);
+            this._historiasElipse = [...historiasBase, ...historiasOndas];
             
             this._persistenciaCargada = true;
             this._datosCargados = true;
@@ -917,9 +1131,10 @@ class ModoElipse {
             return null;
         }
         
+        // Verificar si ya existe una elipse para este tema en el idioma actual
         const existente = this._historiasElipse.find(h => h.temaId === temaId);
         if (existente) {
-            console.log(`📌 Ya existe una elipse para el tema ${temaId}`);
+            console.log(`📌 Ya existe una elipse para el tema ${temaId} en ${idiomaActual}`);
             this._elipseActiva = temaId;
             localStorage.setItem('pipeline_elipse_tema_activo', temaId);
             this._guardarEstadoElipse();
@@ -933,6 +1148,15 @@ class ModoElipse {
             return null;
         }
         
+        // 🔥 Verificar que la historia NO sea una onda cruzada
+        if (this._esOndaCruzada(historia)) {
+            console.log(`⚠️ La historia ${historiaId} es una ONDA CRUZADA, no se puede iniciar la Elipse con ella.`);
+            if (this._core) {
+                this._core.mostrarToast(`⚠️ La historia "${historia.titulo}" es una Onda Cruzada, no se puede usar como base de Elipse.`, 'warning');
+            }
+            return null;
+        }
+        
         if (historia.idioma && historia.idioma !== idiomaActual) {
             console.log(`⚠️ La historia ${historiaId} es de idioma "${historia.idioma}", actual: "${idiomaActual}"`);
             if (this._core) {
@@ -940,6 +1164,9 @@ class ModoElipse {
             }
             return null;
         }
+        
+        // Limpiar el estado actual para este tema antes de iniciar
+        this._resetearEstado();
         
         const ondaInicial = {
             id: historiaId,
@@ -956,7 +1183,8 @@ class ModoElipse {
             completada: false,
             _sincronizado: false,
             _fechaSincronizacion: null,
-            _recuerdo: null
+            _recuerdo: null,
+            _esOndaCruzada: false
         };
         
         this._historiasElipse = [ondaInicial];
@@ -970,7 +1198,7 @@ class ModoElipse {
         
         this._guardarEstadoPorIdioma(idiomaActual);
         
-        console.log(`✅ Elipse iniciada y guardada con tema ${temaId}`);
+        console.log(`✅ Elipse iniciada y guardada con tema ${temaId} (${idiomaActual})`);
         
         if (this._core) {
             this._core.mostrarToast(`🌌 Elipse iniciada con "${historia.titulo}"`, 'success');
@@ -1013,12 +1241,16 @@ class ModoElipse {
             }
             
             const todasHistorias = await db.obtenerHistoriasPorTema(temaId);
-            const historiasElipse = this._historiasElipse.filter(h => h.temaId === temaId);
+            // 🔥 Filtrar ondas cruzadas
+            const historiasElipse = this._filtrarOndasElipse(this._historiasElipse.filter(h => h.temaId === temaId));
             
             let historiasCompletadas = 0;
-            let historiasTotales = todasHistorias.length;
+            let historiasTotales = 0;
             
             for (const h of todasHistorias) {
+                if (this._esOndaCruzada(h)) continue;
+                historiasTotales++;
+                
                 const esElipse = historiasElipse.some(eh => eh.id === h.id);
                 
                 if (esElipse) {
@@ -1129,22 +1361,23 @@ class ModoElipse {
         if (this._initDone) return this;
         this._core = core || window.uiCore;
         
-        console.log('🌌 Inicializando Modo Elipse v5.7 (Prompt multidioma)...');
+        console.log('🌌 Inicializando Modo Elipse v5.7.3 (Persistencia por idioma+tema)...');
         
         this._cargarConfiguracion();
         this._registrarEventos();
         this._iniciarGuardadoAutomatico();
         
         this._initDone = true;
-        console.log('🌌 Modo Elipse v5.7: Inicializado');
+        console.log('🌌 Modo Elipse v5.7.3: Inicializado');
         console.log(`   📊 ${this._historiasElipse.length} historias en caché`);
         console.log(`   📌 Elipse activa: ${this._elipseActiva || 'Ninguna'}`);
         console.log(`   💾 Persistencia cargada: ${this._persistenciaCargada ? '✅ Sí' : '❌ No'}`);
         console.log(`   📚 Recuerdo de ondas: ${Object.keys(this._recuerdoOndas.resumenPorOnda).length} ondas recordadas`);
-        console.log(`   🔥 MULTIIDIOMA: Guarda datos por idioma SIN LIMPIAR`);
-        console.log(`   🔥 Puedes cambiar de idioma y volver sin perder progreso`);
+        console.log(`   🔥 MULTIIDIOMA + MULTITEMA: Guarda datos por idioma y tema`);
+        console.log(`   🔥 Puedes cambiar de tema y volver sin perder progreso`);
         console.log(`   🔥 DESCRIPCIÓN OPCIONAL: El usuario puede añadir descripción antes de generar`);
         console.log(`   🔥 PROMPT MULTIDIOMA: El prompt está en el idioma nativo del usuario`);
+        console.log(`   🔥 FILTRO UNIFICADO: getHistoriasElipse() SIEMPRE filtra ondas cruzadas`);
         console.log(`   ✅ Todas las funcionalidades originales preservadas`);
         
         return this;
@@ -1313,11 +1546,12 @@ class ModoElipse {
 
             const todasLasHistoriasDelTema = await db.obtenerHistoriasPorTema(temaId);
             let historiasCompletadasReales = 0;
-            let historiasTotalesReales = todasLasHistoriasDelTema.length;
-
-            console.log(`📊 Total de historias en el tema: ${historiasTotalesReales}`);
+            let historiasTotalesReales = 0;
 
             for (const h of todasLasHistoriasDelTema) {
+                if (this._esOndaCruzada(h)) continue;
+                historiasTotalesReales++;
+                
                 let estaCompletada = false;
                 
                 if (h.estado === 'completada' || h._completada === true) {
@@ -1560,8 +1794,14 @@ class ModoElipse {
         const idiomaObjetivo = this._obtenerIdiomaActual();
         const idiomaPrompt = this._obtenerIdiomaNativo() || 'es';
         
-        const tema = await db.obtenerTema(temaId);
-        if (tema && tema.idioma && tema.idioma !== idiomaObjetivo) {
+        // 🔥 PATCH ANTI-ERROR: Asegurar que el tema existe antes de continuar
+        let tema = await db.obtenerTema(temaId);
+        if (!tema) {
+            console.warn(`⚠️ Tema ${temaId} no encontrado en generarPlantillaOnda, usando ID como fallback...`);
+            tema = { id: temaId, nombre: `Tema ${temaId}`, idioma: idiomaObjetivo, nivel: 'A1' };
+        }
+
+        if (tema.idioma && tema.idioma !== idiomaObjetivo) {
             console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaObjetivo}"`);
             if (this._core) {
                 this._core.mostrarToast(`⚠️ El tema es de idioma "${tema.idioma}", cambia a ese idioma primero`, 'warning');
@@ -1569,7 +1809,8 @@ class ModoElipse {
             return null;
         }
         
-        const historiasElipse = this._historiasElipse.filter(h => h.temaId === temaId);
+        // 🔥 Usar getHistoriasElipse() que ya filtra
+        const historiasElipse = this.getHistoriasElipse(temaId);
         if (historiasElipse.length >= this._config.maxOndas) {
             if (this._core) {
                 this._core.mostrarToast(`🌌 Límite de ondas alcanzado (${this._config.maxOndas})`, 'warning');
@@ -1650,7 +1891,8 @@ class ModoElipse {
 
     async _construirRecuerdoParaIA(temaId, indiceActual) {
         const idiomaActual = this._obtenerIdiomaActual();
-        const historiasElipse = this._historiasElipse.filter(h => h.temaId === temaId);
+        // 🔥 Usar getHistoriasElipse() que ya filtra
+        const historiasElipse = this.getHistoriasElipse(temaId);
         
         const historiasFiltradas = [];
         for (const h of historiasElipse) {
@@ -1704,6 +1946,7 @@ class ModoElipse {
                 const textoCompleto = frases.map(f => f.original).join(' ');
                 
                 recuerdo.resumenPorOnda[h.indice] = {
+                    id: h.id,
                     titulo: h.titulo,
                     resumen: textoCompleto.substring(0, 200) + (textoCompleto.length > 200 ? '...' : ''),
                     palabrasNuevas: h.palabrasNuevas || [],
@@ -1786,7 +2029,9 @@ class ModoElipse {
     // ============================================================
 
     async _generarPlantillaJSONConRecuerdo(tema, historiaBase, frasesBase, nivel, numPalabrasNuevas, indice, recuerdo, idiomaObjetivo, idiomaPrompt) {
-        const idioma = tema.idioma || idiomaObjetivo || this._obtenerIdiomaActual() || 'es';
+        // 🔥 PATCH ANTI-ERROR: Blindar el acceso a tema.idioma
+        const idioma = (tema && tema.idioma) || idiomaObjetivo || this._obtenerIdiomaActual() || 'es';
+        const temaNombre = (tema && tema.nombre) || `Tema ${tema.id || 'desconocido'}`;
         const esJeroglifico = window.gestorIdiomas?._esJeroglifico(idioma) || false;
         const idiomaNativo = this._obtenerIdiomaNativo() || 'es';
         const nombreIdiomaObjetivo = this._getNombreIdioma(idioma);
@@ -1904,7 +2149,7 @@ class ModoElipse {
 
         const plantilla = {
             "_INSTRUCCIONES_PARA_IA": {
-                "version": "5.7",
+                "version": "5.7.3",
                 "idioma_prompt": idiomaPrompt,
                 "idioma_objetivo": idioma,
                 "nombre_idioma_prompt": nombreIdiomaPrompt,
@@ -1961,8 +2206,8 @@ class ModoElipse {
                 }
             },
             "meta": {
-                "tema": tema.nombre,
-                "tema_id": tema.id,
+                "tema": temaNombre,
+                "tema_id": tema?.id || temaId || null,
                 "idioma_objetivo": idioma,
                 "nombre_idioma_objetivo": nombreIdiomaObjetivo,
                 "idioma_prompt": idiomaPrompt,
@@ -1974,9 +2219,10 @@ class ModoElipse {
                 "historia_base_id": historiaBase.id,
                 "historia_base_titulo": historiaBase.titulo,
                 "fecha_generacion": new Date().toISOString(),
-                "version": "5.7",
-                "generado_por": "Pipeline Neuro - Modo Elipse v5.7",
-                "descripcion_usuario": recuerdo.descripcionUsuario || ''
+                "version": "5.7.3",
+                "generado_por": "Pipeline Neuro - Modo Elipse v5.7.3",
+                "descripcion_usuario": recuerdo.descripcionUsuario || '',
+                "_esOndaCruzada": false // 🔥 Asegurar que las ondas generadas NO sean cruzadas
             },
             "historias": [
                 {
@@ -2039,274 +2285,304 @@ class ModoElipse {
     // ============================================================
 
     async importarOnda(temaId, jsonCompletado) {
-        if (this._importando) {
-            console.log('⏳ Ya hay una importación en curso');
-            return null;
+    if (this._importando) {
+        console.log('⏳ Ya hay una importación en curso');
+        return null;
+    }
+
+    this._importando = true;
+    
+    try {
+        let data;
+        if (typeof jsonCompletado === 'string') {
+            data = JSON.parse(jsonCompletado);
+        } else {
+            data = jsonCompletado;
         }
 
-        this._importando = true;
+        if (!data.historias || !Array.isArray(data.historias) || data.historias.length === 0) {
+            throw new Error('JSON inválido: debe contener "historias"');
+        }
+
+        const historiaData = data.historias[0];
+        if (!historiaData.frases || !Array.isArray(historiaData.frases) || historiaData.frases.length === 0) {
+            throw new Error('JSON inválido: la historia no tiene frases');
+        }
+
+        const primeraFrase = historiaData.frases[0];
+        if (primeraFrase.original && 
+            (primeraFrase.original.includes('[') || 
+             primeraFrase.original.includes('Frase') ||
+             primeraFrase.original.includes('frase') ||
+             primeraFrase.original.length < 3)) {
+            throw new Error('El JSON parece ser una plantilla vacía. Completa la plantilla con la IA antes de importar.');
+        }
+
+        // 🔥 CORREGIDO: Asegurar que temaId sea tratado correctamente (string o número)
+        const temaIdNumerico = parseInt(temaId);
+        if (isNaN(temaIdNumerico)) {
+            throw new Error(`ID de tema inválido: "${temaId}"`);
+        }
+
+        const tema = await db.obtenerTema(temaIdNumerico);
+        if (!tema) {
+            throw new Error(`Tema no encontrado con ID: ${temaIdNumerico}`);
+        }
+
+        const idioma = tema.idioma || this._obtenerIdiomaActual() || 'es';
+        const idiomaActual = this._obtenerIdiomaActual();
         
-        try {
-            let data;
-            if (typeof jsonCompletado === 'string') {
-                data = JSON.parse(jsonCompletado);
-            } else {
-                data = jsonCompletado;
-            }
+        if (tema.idioma && tema.idioma !== idiomaActual) {
+            throw new Error(`El tema es de idioma "${tema.idioma}", pero el idioma actual es "${idiomaActual}"`);
+        }
+        
+        const nivel = data.meta?.nivel || tema.nivel || 'A1';
+        const esJeroglifico = data.meta?.es_jeroglifico || window.gestorIdiomas?._esJeroglifico(idioma) || false;
 
-            if (!data.historias || !Array.isArray(data.historias) || data.historias.length === 0) {
-                throw new Error('JSON inválido: debe contener "historias"');
-            }
+        const palabrasNuevas = data.palabras_nuevas || [];
 
-            const historiaData = data.historias[0];
-            if (!historiaData.frases || !Array.isArray(historiaData.frases) || historiaData.frases.length === 0) {
-                throw new Error('JSON inválido: la historia no tiene frases');
-            }
+        const historiasElipse = this._historiasElipse.filter(h => h.temaId === temaIdNumerico);
+        const ultimaHistoria = historiasElipse.sort((a, b) => b.indice - a.indice)[0];
+        const historiaBaseId = ultimaHistoria ? ultimaHistoria.id : null;
 
-            const primeraFrase = historiaData.frases[0];
-            if (primeraFrase.original && 
-                (primeraFrase.original.includes('[') || 
-                 primeraFrase.original.includes('Frase') ||
-                 primeraFrase.original.length < 3)) {
-                throw new Error('El JSON parece ser una plantilla vacía. Completa la plantilla con la IA antes de importar.');
-            }
+        // 🔥 DETECTAR SI LA ONDA ES CRUZADA
+        const esOndaCruzada = data._esOndaCruzada === true || data.meta?._esOndaCruzada === true;
 
-            const tema = await db.obtenerTema(temaId);
-            if (!tema) {
-                throw new Error('Tema no encontrado');
-            }
+        const historiaObj = {
+            titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
+            temaId: temaIdNumerico,
+            idioma: idioma,
+            nivel: nivel,
+            fechaCreacion: new Date().toISOString(),
+            estado: 'en_curso',
+            frases: historiaData.frases.length,
+            _esOnda: !esOndaCruzada, // Si es cruzada, NO es onda de Elipse
+            _esOndaCruzada: esOndaCruzada,
+            _ondaIndice: historiasElipse.length + 1,
+            _historiaBaseId: historiaBaseId,
+            _palabrasNuevas: palabrasNuevas,
+            _importadoDesdeJSON: true,
+            _sincronizarAutomaticamente: true
+        };
+        
+        const historiaId = await db.guardarHistoria(historiaObj);
+        
+        if (!historiaId) {
+            throw new Error('Error guardando la historia');
+        }
 
-            const idioma = tema.idioma || this._obtenerIdiomaActual() || 'es';
-            const idiomaActual = this._obtenerIdiomaActual();
+        let totalFrases = 0;
+        
+        if (window.gestorFavoritos && !window.gestorFavoritos._initDone) {
+            await window.gestorFavoritos.init();
+        }
+        
+        for (const fraseData of historiaData.frases) {
+            if (!fraseData.original || !fraseData.traduccion) continue;
             
-            if (tema.idioma && tema.idioma !== idiomaActual) {
-                throw new Error(`El tema es de idioma "${tema.idioma}", pero el idioma actual es "${idiomaActual}"`);
-            }
+            const palabrasFrase = [];
+            const palabrasData = fraseData.palabras || [];
             
-            const nivel = data.meta?.nivel || tema.nivel || 'A1';
-            const esJeroglifico = data.meta?.es_jeroglifico || window.gestorIdiomas?._esJeroglifico(idioma) || false;
-
-            const palabrasNuevas = data.palabras_nuevas || [];
-
-            const historiasElipse = this._historiasElipse.filter(h => h.temaId === temaId);
-            const ultimaHistoria = historiasElipse.sort((a, b) => b.indice - a.indice)[0];
-            const historiaBaseId = ultimaHistoria ? ultimaHistoria.id : null;
-
-            const historiaObj = {
-                titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
-                temaId: temaId,
-                idioma: idioma,
-                nivel: nivel,
-                fechaCreacion: new Date().toISOString(),
-                estado: 'en_curso',
-                frases: historiaData.frases.length,
-                _esOnda: true,
-                _ondaIndice: historiasElipse.length + 1,
-                _historiaBaseId: historiaBaseId,
-                _palabrasNuevas: palabrasNuevas,
-                _importadoDesdeJSON: true,
-                _sincronizarAutomaticamente: true
-            };
-            
-            const historiaId = await db.guardarHistoria(historiaObj);
-            
-            if (!historiaId) {
-                throw new Error('Error guardando la historia');
-            }
-
-            let totalFrases = 0;
-            
-            if (window.gestorFavoritos && !window.gestorFavoritos._initDone) {
-                await window.gestorFavoritos.init();
-            }
-            
-            for (const fraseData of historiaData.frases) {
-                if (!fraseData.original || !fraseData.traduccion) continue;
+            for (const pData of palabrasData) {
+                const palabraText = pData.palabra || pData.hanzi || '';
+                if (!palabraText) continue;
                 
-                const palabrasFrase = [];
-                const palabrasData = fraseData.palabras || [];
+                const palabrasExistentes = await db.obtenerPalabrasPorIdioma(idioma);
+                let palabraExistente = palabrasExistentes.find(p => 
+                    (p.palabra || p.hanzi || '').toLowerCase() === palabraText.toLowerCase()
+                );
                 
-                for (const pData of palabrasData) {
-                    const palabraText = pData.palabra || pData.hanzi || '';
-                    if (!palabraText) continue;
-                    
-                    const palabrasExistentes = await db.obtenerPalabrasPorIdioma(idioma);
-                    let palabraExistente = palabrasExistentes.find(p => 
-                        (p.palabra || p.hanzi || '').toLowerCase() === palabraText.toLowerCase()
-                    );
-                    
-                    let palabraId;
-                    if (palabraExistente) {
-                        palabraId = palabraExistente.id;
-                        await db.guardarPalabra({
-                            ...palabraExistente,
-                            frecuencia: (palabraExistente.frecuencia || 0) + 1,
-                            _esPalabraOnda: true,
-                            _ondaIndice: historiasElipse.length + 1
-                        });
-                    } else {
-                        const nuevaPalabra = {
-                            palabra: palabraText,
-                            hanzi: esJeroglifico ? palabraText : '',
-                            pinyin: pData.pinyin || '',
-                            transcripcion: pData.transcripcion || '',
-                            significado: pData.significado || palabraText,
-                            familia: pData.familia || 'sustantivo',
-                            familias: [pData.familia || 'sustantivo'],
-                            familiaSemantica: pData.familia_semantica || 'General',
-                            nivel: nivel,
-                            tipo: pData.tipo || 'sustantivo',
-                            idioma: idioma,
-                            frecuencia: 1,
-                            neuroScore: 0.5,
-                            nivelDominio: 'nuevo',
-                            fechaCreacion: Date.now(),
-                            _esPalabraOnda: true,
-                            _ondaIndice: historiasElipse.length + 1
-                        };
-                        palabraId = await db.guardarPalabra(nuevaPalabra);
-                    }
-                    
-                    if (palabraId) {
-                        if (window.gestorFavoritos) {
-                            try {
-                                const esFavorita = await window.gestorFavoritos.estaEnFavoritos('palabra', palabraId);
-                                if (!esFavorita) {
-                                    await window.gestorFavoritos.añadirPalabra(palabraId);
-                                    await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `📚 Nivel ${nivel}`);
-                                    await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `🧠 ${pData.familia_semantica || 'General'}`);
-                                    await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `🌌 Elipse: ${historiaData.titulo || 'Onda'}`);
-                                }
-                            } catch (e) {
-                                console.warn(`⚠️ Error guardando palabra "${palabraText}" en favoritos:`, e);
-                            }
-                        }
-                        
-                        palabrasFrase.push({
-                            id: palabraId,
-                            palabra: palabraText,
-                            hanzi: esJeroglifico ? palabraText : '',
-                            pinyin: pData.pinyin || '',
-                            transcripcion: pData.transcripcion || '',
-                            significado: pData.significado || palabraText,
-                            familia: pData.familia || 'sustantivo',
-                            tipo: pData.tipo || 'sustantivo',
-                            familiaSemantica: pData.familia_semantica || 'General'
-                        });
-                    }
+                let palabraId;
+                if (palabraExistente) {
+                    palabraId = palabraExistente.id;
+                    await db.guardarPalabra({
+                        ...palabraExistente,
+                        frecuencia: (palabraExistente.frecuencia || 0) + 1,
+                        _esPalabraOnda: !esOndaCruzada,
+                        _ondaIndice: historiasElipse.length + 1
+                    });
+                } else {
+                    const nuevaPalabra = {
+                        palabra: palabraText,
+                        hanzi: esJeroglifico ? palabraText : '',
+                        pinyin: pData.pinyin || '',
+                        transcripcion: pData.transcripcion || '',
+                        significado: pData.significado || palabraText,
+                        familia: pData.familia || 'sustantivo',
+                        familias: [pData.familia || 'sustantivo'],
+                        familiaSemantica: pData.familia_semantica || 'General',
+                        nivel: nivel,
+                        tipo: pData.tipo || 'sustantivo',
+                        idioma: idioma,
+                        frecuencia: 1,
+                        neuroScore: 0.5,
+                        nivelDominio: 'nuevo',
+                        fechaCreacion: Date.now(),
+                        _esPalabraOnda: !esOndaCruzada,
+                        _ondaIndice: historiasElipse.length + 1
+                    };
+                    palabraId = await db.guardarPalabra(nuevaPalabra);
                 }
                 
-                const fraseObj = {
-                    original: fraseData.original,
-                    traduccion: fraseData.traduccion,
-                    historiaId: historiaId,
-                    idioma: idioma,
-                    nivel: nivel,
-                    esJeroglifico: esJeroglifico,
-                    pinyinCompleto: esJeroglifico ? (fraseData.pinyin || '') : '',
-                    transcripcion: !esJeroglifico ? (fraseData.transcripcion || '') : '',
-                    segmentacion: esJeroglifico && fraseData.segmentacion ? {
-                        hanzi: fraseData.segmentacion.hanzi || fraseData.original,
-                        pinyin: fraseData.segmentacion.pinyin || fraseData.pinyin || ''
-                    } : null,
-                    palabras: palabrasFrase,
-                    rg: 0,
-                    rcn: 0,
-                    activa: true,
-                    reglaGramatical: fraseData.regla_gramatical || null,
-                    explicacionGramatical: fraseData.explicacion_gramatical || null,
-                    tipoRegla: fraseData.tipo_regla || null,
-                    _esOnda: true,
-                    _ondaIndice: historiasElipse.length + 1
-                };
-                
-                await db.guardarFrase(fraseObj);
-                totalFrases++;
+                if (palabraId) {
+                    if (window.gestorFavoritos) {
+                        try {
+                            const esFavorita = await window.gestorFavoritos.estaEnFavoritos('palabra', palabraId);
+                            if (!esFavorita) {
+                                await window.gestorFavoritos.añadirPalabra(palabraId);
+                                await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `📚 Nivel ${nivel}`);
+                                await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `🧠 ${pData.familia_semantica || 'General'}`);
+                                await window.gestorFavoritos.añadirPalabraAGrupo(palabraId, `🌌 Elipse: ${historiaData.titulo || 'Onda'}`);
+                            }
+                        } catch (e) {
+                            console.warn(`⚠️ Error guardando palabra "${palabraText}" en favoritos:`, e);
+                        }
+                    }
+                    
+                    palabrasFrase.push({
+                        id: palabraId,
+                        palabra: palabraText,
+                        hanzi: esJeroglifico ? palabraText : '',
+                        pinyin: pData.pinyin || '',
+                        transcripcion: pData.transcripcion || '',
+                        significado: pData.significado || palabraText,
+                        familia: pData.familia || 'sustantivo',
+                        tipo: pData.tipo || 'sustantivo',
+                        familiaSemantica: pData.familia_semantica || 'General'
+                    });
+                }
             }
-
-            const temaActual = await db.obtenerTema(temaId);
-            if (temaActual) {
-                temaActual.historiasIds = [...(temaActual.historiasIds || []), historiaId];
-                temaActual.frases = (temaActual.frases || 0) + totalFrases;
-                temaActual._elipseActiva = true;
-                temaActual._ultimaOnda = historiasElipse.length + 1;
-                await db.update('temas', temaActual);
-            }
-
-            const ondaNueva = {
-                id: historiaId,
-                titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
-                temaId: temaId,
+            
+            const fraseObj = {
+                original: fraseData.original,
+                traduccion: fraseData.traduccion,
+                historiaId: historiaId,
+                idioma: idioma,
                 nivel: nivel,
-                indice: historiasElipse.length,
-                fecha: Date.now(),
-                palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
-                palabrasBase: [],
-                historiasPrevias: historiasElipse.map(h => h.id),
-                esBase: false,
-                rcnPromedio: 0,
-                completada: false,
-                _sincronizado: false,
-                _fechaSincronizacion: null
+                esJeroglifico: esJeroglifico,
+                pinyinCompleto: esJeroglifico ? (fraseData.pinyin || '') : '',
+                transcripcion: !esJeroglifico ? (fraseData.transcripcion || '') : '',
+                segmentacion: esJeroglifico && fraseData.segmentacion ? {
+                    hanzi: fraseData.segmentacion.hanzi || fraseData.original,
+                    pinyin: fraseData.segmentacion.pinyin || fraseData.pinyin || ''
+                } : null,
+                palabras: palabrasFrase,
+                rg: 0,
+                rcn: 0,
+                activa: true,
+                reglaGramatical: fraseData.regla_gramatical || null,
+                explicacionGramatical: fraseData.explicacion_gramatical || null,
+                tipoRegla: fraseData.tipo_regla || null,
+                _esOnda: !esOndaCruzada,
+                _esOndaCruzada: esOndaCruzada,
+                _ondaIndice: historiasElipse.length + 1
             };
             
+            await db.guardarFrase(fraseObj);
+            totalFrases++;
+        }
+
+        const temaActual = await db.obtenerTema(temaIdNumerico);
+        if (temaActual) {
+            temaActual.historiasIds = [...(temaActual.historiasIds || []), historiaId];
+            temaActual.frases = (temaActual.frases || 0) + totalFrases;
+            temaActual._elipseActiva = !esOndaCruzada;
+            temaActual._ultimaOnda = historiasElipse.length + 1;
+            await db.update('temas', temaActual);
+        }
+
+        // 🔥 CORREGIDO: Guardar el temaId como string en la onda nueva
+        const ondaNueva = {
+            id: historiaId,
+            titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
+            temaId: String(temaIdNumerico),
+            nivel: nivel,
+            indice: historiasElipse.length,
+            fecha: Date.now(),
+            palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
+            palabrasBase: [],
+            historiasPrevias: historiasElipse.map(h => h.id),
+            esBase: false,
+            rcnPromedio: 0,
+            completada: false,
+            _sincronizado: false,
+            _fechaSincronizacion: null,
+            _esOndaCruzada: esOndaCruzada
+        };
+        
+        // 🔥 SOLO añadir a la Elipse si NO es una onda cruzada
+        if (!esOndaCruzada) {
             this._historiasElipse.push(ondaNueva);
             this._estadisticas.totalOndas++;
             this._estadisticas.palabrasNuevas += palabrasNuevas.length;
-            
-            localStorage.setItem('pipeline_elipse_tema_activo', temaId);
-            this._guardarEstadoElipse();
-            await this._guardarEnIndexedDB();
-            await this._reconstruirRecuerdoOndas();
-            
-            const idiomaActual2 = this._obtenerIdiomaActual();
-            this._guardarEstadoPorIdioma(idiomaActual2);
-            
-            this._progresoTemasCache = {};
-
-            window.dispatchEvent(new CustomEvent('elipseNuevaOndaGenerada', {
-                detail: {
-                    temaId: temaId,
-                    historiaId: historiaId,
-                    titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
-                    indice: historiasElipse.length,
-                    palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
-                    totalPalabrasDesglosadas: totalFrases,
-                    idioma: idioma,
-                    timestamp: Date.now()
-                }
-            }));
-
-            window.dispatchEvent(new CustomEvent('elipseOndaGenerada', {
-                detail: {
-                    temaId: temaId,
-                    historiaId: historiaId,
-                    titulo: historiaData.titulo,
-                    indice: historiasElipse.length,
-                    palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
-                    totalPalabrasDesglosadas: totalFrases,
-                    idioma: idioma
-                }
-            }));
-
-            if (this._core) {
-                this._core.mostrarToast(`🌌 Onda ${historiasElipse.length} importada: "${historiaData.titulo}"`, 'success');
-                this._core.mostrarToast(`📝 ${totalFrases} frases con palabras desglosadas`, 'info');
-            }
-
-            this._datosCargados = true;
-            this._importando = false;
-            return historiaId;
-
-        } catch (error) {
-            console.error('❌ Error importando onda:', error);
-            this._importando = false;
-            if (this._core) {
-                this._core.mostrarToast('❌ Error importando onda: ' + error.message, 'error');
-            }
-            throw error;
+        } else {
+            console.log(`🌊 Onda CRUZADA importada, NO se añade a la Elipse`);
         }
+        
+        // 🔥 CORREGIDO: Guardar el temaId como string en localStorage
+        localStorage.setItem('pipeline_elipse_tema_activo', String(temaIdNumerico));
+        
+        // 🔥 CORREGIDO: Asegurar que _elipseActiva sea string
+        this._elipseActiva = String(temaIdNumerico);
+        
+        this._guardarEstadoElipse();
+        await this._guardarEnIndexedDB();
+        await this._reconstruirRecuerdoOndas();
+        
+        const idiomaActual2 = this._obtenerIdiomaActual();
+        this._guardarEstadoPorIdioma(idiomaActual2);
+        
+        this._progresoTemasCache = {};
+
+        window.dispatchEvent(new CustomEvent('elipseNuevaOndaGenerada', {
+            detail: {
+                temaId: String(temaIdNumerico),
+                historiaId: historiaId,
+                titulo: historiaData.titulo || `Onda ${historiasElipse.length + 1}`,
+                indice: historiasElipse.length,
+                palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
+                totalPalabrasDesglosadas: totalFrases,
+                idioma: idioma,
+                timestamp: Date.now(),
+                esOndaCruzada: esOndaCruzada
+            }
+        }));
+
+        window.dispatchEvent(new CustomEvent('elipseOndaGenerada', {
+            detail: {
+                temaId: String(temaIdNumerico),
+                historiaId: historiaId,
+                titulo: historiaData.titulo,
+                indice: historiasElipse.length,
+                palabrasNuevas: palabrasNuevas.map(p => p.palabra || ''),
+                totalPalabrasDesglosadas: totalFrases,
+                idioma: idioma,
+                esOndaCruzada: esOndaCruzada
+            }
+        }));
+
+        if (this._core) {
+            if (!esOndaCruzada) {
+                this._core.mostrarToast(`🌌 Onda ${historiasElipse.length} importada: "${historiaData.titulo}"`, 'success');
+            } else {
+                this._core.mostrarToast(`🌊 Onda CRUZADA importada: "${historiaData.titulo}" (no se añade a Elipse)`, 'info');
+            }
+            this._core.mostrarToast(`📝 ${totalFrases} frases con palabras desglosadas`, 'info');
+        }
+
+        this._datosCargados = true;
+        this._importando = false;
+        return historiaId;
+
+    } catch (error) {
+        console.error('❌ Error importando onda:', error);
+        this._importando = false;
+        if (this._core) {
+            this._core.mostrarToast('❌ Error importando onda: ' + error.message, 'error');
+        }
+        throw error;
     }
+}
 
     // ============================================================
     // MÉTODOS AUXILIARES
@@ -2348,11 +2624,12 @@ class ModoElipse {
     }
 
     // ============================================================
-    // MÉTODOS PÚBLICOS
+    // MÉTODOS PÚBLICOS - CORREGIDOS CON FILTRO UNIFICADO
     // ============================================================
 
     getEstadoElipse(temaId) {
-        const historias = this._historiasElipse.filter(h => h.temaId === temaId);
+        // 🔥 Usar getHistoriasElipse() que ya filtra
+        const historias = this.getHistoriasElipse(temaId);
         if (historias.length === 0) return null;
         
         const ultima = historias.sort((a, b) => b.indice - a.indice)[0];
@@ -2372,12 +2649,16 @@ class ModoElipse {
         };
     }
 
+    // 🔥 MÉTODO CORREGIDO: SIEMPRE FILTRA ONDAS CRUZADAS
     getHistoriasElipse(temaId) {
-        return this._historiasElipse.filter(h => h.temaId === temaId);
+        const historias = this._historiasElipse.filter(h => h.temaId === temaId);
+        return this._filtrarOndasElipse(historias);
     }
 
     getHistoriaElipse(historiaId) {
-        return this._historiasElipse.find(h => h.id === historiaId);
+        const historia = this._historiasElipse.find(h => h.id === historiaId);
+        if (historia && this._esOndaCruzada(historia)) return null;
+        return historia;
     }
 
     getConfiguracion() {
@@ -2393,12 +2674,15 @@ class ModoElipse {
 
     getEstado() {
         const idiomaActual = this._obtenerIdiomaActual();
+        const temaId = this._elipseActiva;
+        // 🔥 Usar getHistoriasElipse() filtrada
+        const historias = this.getHistoriasElipse(temaId);
         return {
             initDone: this._initDone,
             elipseActiva: this._elipseActiva,
-            totalOndas: this._historiasElipse.length,
-            ondasCompletadas: this._historiasElipse.filter(h => h.completada).length,
-            ondasSincronizadas: this._historiasElipse.filter(h => h._sincronizado).length,
+            totalOndas: historias.length,
+            ondasCompletadas: historias.filter(h => h.completada).length,
+            ondasSincronizadas: historias.filter(h => h._sincronizado).length,
             configuracion: this._config,
             estadisticas: this._estadisticas,
             generando: this._generando,
@@ -2412,6 +2696,7 @@ class ModoElipse {
             datosCargados: this._datosCargados,
             progresoTemasCache: Object.keys(this._progresoTemasCache).length,
             idiomaActual: idiomaActual,
+            temaActual: temaId,
             recuerdoOndas: {
                 totalOndasRecordadas: Object.keys(this._recuerdoOndas.resumenPorOnda).length,
                 personajes: this._recuerdoOndas.personajesPrincipales?.length || 0,
@@ -2451,7 +2736,17 @@ class ModoElipse {
         };
         
         const idiomaActual = this._obtenerIdiomaActual();
-        this._guardarEstadoPorIdioma(idiomaActual);
+        const temaId = this._elipseActiva;
+        
+        // Limpiar localStorage específico
+        if (idiomaActual && temaId) {
+            const key = `pipeline_elipse_estado_idioma_${idiomaActual}_tema_${temaId}`;
+            localStorage.removeItem(key);
+            if (this._datosPorIdioma[idiomaActual]) {
+                delete this._datosPorIdioma[idiomaActual][temaId];
+            }
+        }
+        
         this._guardarEstadoElipse();
         
         console.log('🧹 Elipse limpiada completamente');
@@ -2467,7 +2762,10 @@ class ModoElipse {
         const resultados = [];
         const idiomaBusqueda = idioma || this._obtenerIdiomaActual() || 'es';
 
-        for (const h of this._historiasElipse) {
+        // 🔥 Usar getHistoriasElipse() que ya filtra
+        const historias = this.getHistoriasElipse(this._elipseActiva);
+
+        for (const h of historias) {
             try {
                 const historia = await db.get('historias', h.id);
                 if (historia && historia.idioma && historia.idioma !== idiomaBusqueda) {
@@ -2545,6 +2843,7 @@ class ModoElipse {
         const temaId = this._elipseActiva;
         
         if (temaId) {
+            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historias = this.getHistoriasElipse(temaId);
             if (historias && historias.length > 0) {
                 elipses[temaId] = {
@@ -2663,16 +2962,19 @@ class ModoElipse {
 const modoElipse = new ModoElipse();
 window.modoElipse = modoElipse;
 
-console.log('✅ Modo Elipse v5.7 - CON PROMPT MULTIDIOMA');
+console.log('✅ Modo Elipse v5.7.3 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS');
 console.log('  🔥 El prompt para la IA externa se genera en el idioma nativo del usuario');
 console.log('  🔥 El idioma objetivo para la historia se especifica claramente');
 console.log('  🔥 La plantilla incluye campos para ambos idiomas');
-console.log('  🔥 Guarda datos por idioma en claves separadas');
-console.log('  🔥 NO limpia localStorage ni IndexedDB al cambiar de idioma');
-console.log('  🔥 Puedes cambiar de idioma y volver sin perder progreso');
-console.log('  🔥 Cada idioma mantiene sus propias ondas');
-console.log('  🔥 Persistencia por idioma en pipeline_elipse_estado_idioma_[idioma]');
+console.log('  🔥 Guarda datos por IDIOMA + TEMA en claves separadas');
+console.log('  🔥 NO limpia localStorage ni IndexedDB al cambiar de tema');
+console.log('  🔥 Puedes cambiar de tema y volver sin perder progreso');
+console.log('  🔥 Cada tema mantiene sus propias ondas');
+console.log('  🔥 Persistencia por idioma+tema en pipeline_elipse_estado_idioma_[idioma]_tema_[temaId]');
 console.log('  🔥 Integración con Modo Ondas Cruzadas');
 console.log('  📝 DESCRIPCIÓN OPCIONAL: El usuario puede añadir descripción antes de generar la onda');
 console.log('  🔥 La descripción se inyecta en el prompt para la IA externa');
+console.log('  🛡️ CORREGIDO: getHistoriasElipse() SIEMPRE filtra ondas cruzadas');
+console.log('  🔥 getEstadoElipse() usa getHistoriasElipse() filtrada');
+console.log('  🔥 Las ondas cruzadas NO se añaden a la Elipse al importar');
 console.log('  ✅ Todas las funcionalidades originales preservadas');

@@ -1,5 +1,6 @@
 // ============================================================
-// UI ELIPSE v6.14 - MODALES CORREGIDOS + PROMPT MULTIDIOMA
+// UI ELIPSE v6.22 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS
+// TODAS LAS LECTURAS DE getHistoriasElipse() PASAN POR _filtrarOndasElipse()
 // ============================================================
 
 class UIEclipse {
@@ -69,6 +70,19 @@ class UIEclipse {
 
         this._registrarListenerEstadoHistorias();
         this._registrarListenerEliminacionHistorias();
+    }
+
+    // ============================================================
+    // 🔥 FILTRO UNIFICADO PARA EXCLUIR ONDAS CRUZADAS (CORREGIDO)
+    // ============================================================
+    _esOndaCruzada(historia) {
+        if (!historia) return false;
+        return historia._esOndaCruzada === true;
+    }
+
+    _filtrarOndasElipse(historias) {
+        if (!historias || !Array.isArray(historias)) return [];
+        return historias.filter(h => !this._esOndaCruzada(h));
     }
 
     // ============================================================
@@ -210,7 +224,7 @@ class UIEclipse {
         this._iniciarVerificacionSRS();
         this._inicializarOndasCruzadas();
 
-        console.log('🌌 UI Elipse v6.14: Inicializado con modales corregidos y prompt multidioma');
+        console.log('🌌 UI Elipse v6.22: Inicializado con filtrado de ondas cruzadas');
         return this;
     }
 
@@ -299,6 +313,7 @@ class UIEclipse {
                 this._datosCargados = true;
             }
 
+            // 🔥 Usar getHistoriasElipse() que ya filtra automáticamente
             const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
             if (historias.length === 0) return;
 
@@ -363,27 +378,32 @@ class UIEclipse {
         }
     }
 
+    // 🔥 NUEVO: Obtener clave de persistencia con idioma + tema
     _getPersistenciaKey(temaId) {
-        return `pipeline_elipse_estado_tema_${temaId}`;
+        const idioma = this._obtenerIdiomaActual();
+        return `pipeline_elipse_estado_idioma_${idioma}_tema_${temaId}`;
     }
 
+    // 🔥 NUEVO: Guardar estado por idioma + tema
     _guardarEstadoTema(temaId, data) {
         if (!temaId) return;
         try {
             const key = this._getPersistenciaKey(temaId);
             localStorage.setItem(key, JSON.stringify({
-                version: '6.14',
+                version: '6.22',
                 timestamp: Date.now(),
                 temaId: temaId,
+                idioma: this._obtenerIdiomaActual(),
                 data: data
             }));
-            console.log(`💾 Estado del tema ${temaId} guardado en localStorage`);
+            console.log(`💾 Estado del tema ${temaId} guardado en localStorage (idioma: ${this._obtenerIdiomaActual()})`);
             this._cachePorTema[temaId] = data;
         } catch (e) {
             console.warn(`⚠️ Error guardando estado del tema ${temaId}:`, e);
         }
     }
 
+    // 🔥 NUEVO: Cargar estado por idioma + tema
     _cargarEstadoTema(temaId) {
         if (!temaId) return null;
         if (this._cachePorTema[temaId]) {
@@ -395,7 +415,7 @@ class UIEclipse {
             const data = localStorage.getItem(key);
             if (data) {
                 const parsed = JSON.parse(data);
-                console.log(`📦 Datos del tema ${temaId} cargados desde localStorage:`, {
+                console.log(`📦 Datos del tema ${temaId} cargados desde localStorage (idioma: ${this._obtenerIdiomaActual()}):`, {
                     ondas: parsed.data?.historias?.length || 0
                 });
                 this._cachePorTema[temaId] = parsed.data;
@@ -407,49 +427,68 @@ class UIEclipse {
         return null;
     }
 
+    _obtenerIdiomaActual() {
+        try {
+            return gestorIdiomas?.getIdiomaActivo() || 'es';
+        } catch (e) {
+            return 'es';
+        }
+    }
+
     async _verificarYRepararEstadoElipse() {
         console.log('🛠️ Verificando y reparando estado de la Elipse...');
 
-        const temaId = this._temaId;
-        const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+        const idiomaActivo = this._obtenerIdiomaActual();
+        let temaId = this._temaId;
 
+        // 🔥 PASO 1: Si no hay temaId, intentar recuperar de localStorage
         if (!temaId) {
             const savedTema = localStorage.getItem('pipeline_elipse_tema_activo');
             if (savedTema) {
                 const tema = await db.obtenerTema(parseInt(savedTema));
                 if (tema && tema.idioma === idiomaActivo) {
+                    temaId = savedTema;
                     this._temaId = savedTema;
                     console.log(`📌 Tema recuperado de localStorage: ${savedTema} (idioma: ${idiomaActivo})`);
-                    return this._verificarYRepararEstadoElipse();
                 } else {
+                    if (tema) {
+                        console.log(`⚠️ Tema ${savedTema} es de idioma "${tema.idioma}", actual: "${idiomaActivo}". Limpiando.`);
+                    }
                     localStorage.removeItem('pipeline_elipse_tema_activo');
                     console.log(`🗑️ Tema ${savedTema} eliminado de localStorage (no coincide con idioma ${idiomaActivo})`);
                 }
             }
-
-            const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
-            if (temas.length > 0) {
-                for (const t of temas) {
-                    const historias = await db.obtenerHistoriasPorTema(t.id);
-                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
-                    if (historiasFiltradas.length > 0) {
-                        this._temaId = t.id;
-                        this._temaSeleccionadoPorUsuario = true;
-                        localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
-                        console.log(`📌 Tema seleccionado automáticamente: "${t.nombre}" (${this._temaId})`);
-                        return this._verificarYRepararEstadoElipse();
-                    }
-                }
-                this._temaId = temas[0].id;
-                this._temaSeleccionadoPorUsuario = true;
-                localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
-                console.log(`📌 Tema seleccionado automáticamente (sin historias): "${temas[0].nombre}" (${this._temaId})`);
-                return this._verificarYRepararEstadoElipse();
-            }
-            console.log('📭 No hay temas disponibles para iniciar la Elipse.');
-            return;
         }
 
+        // Si después de intentar recuperar, seguimos sin temaId, buscar un tema automáticamente
+        if (!temaId) {
+            const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
+            if (temas.length > 0) {
+                let temaConHistorias = null;
+                for (const t of temas) {
+                    const historias = await db.obtenerHistoriasPorTema(t.id);
+                    // 🔥 Filtrar ondas cruzadas al verificar
+                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                    if (historiasFiltradas.length > 0) {
+                        temaConHistorias = t;
+                        break;
+                    }
+                }
+                if (!temaConHistorias) {
+                    temaConHistorias = temas[0];
+                }
+                temaId = String(temaConHistorias.id);
+                this._temaId = temaId;
+                this._temaSeleccionadoPorUsuario = true;
+                localStorage.setItem('pipeline_elipse_tema_activo', temaId);
+                console.log(`📌 Tema seleccionado automáticamente: "${temaConHistorias.nombre}" (${temaId})`);
+            } else {
+                console.log('📭 No hay temas disponibles para iniciar la Elipse.');
+                return;
+            }
+        }
+
+        // 🔥 PASO 2: Verificar que el tema exista en la base de datos
         const temaEnDB = await db.obtenerTema(parseInt(temaId));
         if (!temaEnDB) {
             console.warn(`⚠️ El tema con ID ${temaId} no existe en la base de datos.`);
@@ -477,19 +516,10 @@ class UIEclipse {
             this._progresoOndas = {};
 
             console.log('🧹 Estado huérfano de la Elipse limpiado.');
-
-            const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
-            if (temas.length > 0) {
-                this._temaId = temas[0].id;
-                this._temaSeleccionadoPorUsuario = true;
-                localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
-                console.log(`📌 Tema seleccionado automáticamente: "${temas[0].nombre}" (${this._temaId})`);
-                return this._verificarYRepararEstadoElipse();
-            }
-            console.error('❌ No se encontraron temas para iniciar la Elipse.');
             return;
         }
 
+        // 🔥 PASO 3: Verificar que el tema pertenezca al idioma actual
         if (temaEnDB.idioma && temaEnDB.idioma !== idiomaActivo) {
             console.log(`⚠️ El tema "${temaEnDB.nombre}" es de idioma "${temaEnDB.idioma}", actual: "${idiomaActivo}"`);
             this._temaId = null;
@@ -500,23 +530,52 @@ class UIEclipse {
 
             const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
             if (temas.length > 0) {
-                this._temaId = temas[0].id;
+                let temaConHistorias = null;
+                for (const t of temas) {
+                    const historias = await db.obtenerHistoriasPorTema(t.id);
+                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                    if (historiasFiltradas.length > 0) {
+                        temaConHistorias = t;
+                        break;
+                    }
+                }
+                if (!temaConHistorias) {
+                    temaConHistorias = temas[0];
+                }
+                this._temaId = String(temaConHistorias.id);
                 this._temaSeleccionadoPorUsuario = true;
                 localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
-                console.log(`📌 Tema seleccionado automáticamente: "${temas[0].nombre}" (${this._temaId})`);
-                return this._verificarYRepararEstadoElipse();
+                console.log(`📌 Tema seleccionado automáticamente: "${temaConHistorias.nombre}" (${this._temaId})`);
             }
             return;
         }
 
         console.log(`✅ Tema "${temaEnDB.nombre}" (${temaId}) encontrado en la base de datos (idioma: ${idiomaActivo}).`);
 
+        // 🔥 PASO 4: Forzar el tema en modoElipse
         if (window.modoElipse) {
+            if (window.modoElipse._elipseActiva !== temaId) {
+                console.log(`🔄 Forzando modoElipse._elipseActiva de "${window.modoElipse._elipseActiva}" a "${temaId}"`);
+                window.modoElipse._elipseActiva = temaId;
+                window.modoElipse._temaIdPersistido = temaId;
+                // Cargar el estado específico de este tema
+                window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+            }
+        }
+
+        // 🔥 PASO 5: Verificar y limpiar historias huérfanas de la Elipse
+        if (window.modoElipse) {
+            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historiasElipse = window.modoElipse.getHistoriasElipse(temaId) || [];
             const historiasValidas = [];
             let historiasEliminadas = 0;
 
             for (const h of historiasElipse) {
+                // Ya están filtradas por getHistoriasElipse, pero por seguridad
+                if (this._esOndaCruzada(h)) {
+                    console.log(`🔍 Onda cruzada "${h.titulo}" filtrada de la Elipse (ID: ${h.id})`);
+                    continue;
+                }
                 try {
                     const existe = await db.get('historias', h.id);
                     if (existe) {
@@ -527,6 +586,7 @@ class UIEclipse {
                     }
                 } catch (e) {
                     console.warn(`⚠️ Error verificando historia ${h.id}:`, e);
+                    historiasValidas.push(h);
                 }
             }
 
@@ -554,56 +614,79 @@ class UIEclipse {
             }
         }
 
-        const historias = window.modoElipse?.getHistoriasElipse(temaId) || [];
-        if (historias.length === 0) {
-            console.log('📭 La Elipse para este tema está vacía. Se permitirá la creación de nuevas ondas.');
-        } else {
-            console.log(`📚 La Elipse tiene ${historias.length} ondas para este tema.`);
-        }
+        // 🔥 PASO 6: Verificar el estado de la Elipse para este tema
+        // 🔥 Usar getHistoriasElipse() que ya filtra
+        const historiasActuales = window.modoElipse?.getHistoriasElipse(temaId) || [];
+        if (historiasActuales.length === 0) {
+            console.log('📭 La Elipse para este tema está vacía. Intentando cargar desde la base de datos...');
 
-        const esPredefinido = temaEnDB._esPredefinido === true || temaEnDB._temaOriginalId !== undefined;
-        if (esPredefinido) {
-            const temaOriginalId = temaEnDB._temaOriginalId || `tema_${temaId}`;
-            console.log(`🔍 Verificando estado de Elipse para tema predefinido: ${temaOriginalId}`);
+            const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
+            const historiasFiltradas = historiasEnTema.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
 
-            const estadoGuardadoKey = this._getPersistenciaKey(temaId);
-            const estadoGuardado = localStorage.getItem(estadoGuardadoKey);
-
-            if (!estadoGuardado) {
-                console.log(`🔁 El tema "${temaEnDB.nombre}" no tiene estado de Elipse guardado. Creando uno nuevo...`);
-                const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
-                const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
-                if (historiasFiltradas.length > 0 && window.modoElipse) {
-                    const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
-                    if (ondasExistentes.length > 0) {
-                        console.log(`📚 El tema ya tiene ${ondasExistentes.length} ondas. Cargando estado...`);
-                        await window.modoElipse.cargarDatos();
-                        this._datosCargados = true;
-                    } else {
-                        await window.modoElipse.iniciarElipse(temaId, historiasFiltradas[0].id);
-                        console.log(`✅ Nueva Elipse creada para "${temaEnDB.nombre}".`);
-                        this._datosCargados = true;
-                    }
-                } else if (historiasEnTema.length === 0) {
-                    console.log(`📭 El tema "${temaEnDB.nombre}" no tiene historias. No se puede iniciar la Elipse.`);
-                }
-            } else {
-                console.log(`✅ El estado de la Elipse para "${temaEnDB.nombre}" está presente y es consistente.`);
-                if (window.modoElipse) {
+            if (historiasFiltradas.length > 0 && window.modoElipse) {
+                const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
+                if (ondasExistentes.length > 0) {
+                    console.log(`📚 El tema ya tiene ${ondasExistentes.length} ondas en la DB. Cargando estado...`);
                     await window.modoElipse.cargarDatos();
                     this._datosCargados = true;
+                } else {
+                    const historiaBase = historiasFiltradas[0];
+                    console.log(`📚 Iniciando Elipse con historia base: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
+                    await window.modoElipse.iniciarElipse(temaId, historiaBase.id);
+                    this._datosCargados = true;
+                    console.log(`✅ Nueva Elipse creada para "${temaEnDB.nombre}".`);
                 }
+            } else {
+                console.log(`📭 El tema "${temaEnDB.nombre}" no tiene historias. No se puede iniciar la Elipse.`);
             }
         } else {
-            console.log(`📌 El tema "${temaEnDB.nombre}" es manual. Verificando estado...`);
-            const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
-            const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
-            const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
-            if (ondasExistentes.length > 0 && window.modoElipse) {
-                await window.modoElipse.cargarDatos();
-                this._datosCargados = true;
-                console.log(`📚 Cargadas ${ondasExistentes.length} ondas para tema manual.`);
+            console.log(`📚 La Elipse tiene ${historiasActuales.length} ondas para este tema.`);
+            // Verificar que la historia base esté presente (especialmente para el Tema 1)
+            const tieneBase = historiasActuales.some(h => h.esBase === true);
+            if (!tieneBase) {
+                console.log(`⚠️ La Elipse para el tema "${temaEnDB.nombre}" no tiene una historia base. Intentando recuperarla...`);
+                const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
+                const historiasFiltradas = historiasEnTema.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                if (historiasFiltradas.length > 0) {
+                    const basePotencial = historiasFiltradas.find(h => h._esBase === true || h._esOnda === false);
+                    if (basePotencial) {
+                        console.log(`📚 Historia base encontrada: "${basePotencial.titulo}" (ID: ${basePotencial.id})`);
+                        const existeEnElipse = window.modoElipse._historiasElipse.some(h => h.id === basePotencial.id);
+                        if (!existeEnElipse) {
+                            const ondaBase = {
+                                id: basePotencial.id,
+                                titulo: basePotencial.titulo,
+                                temaId: temaId,
+                                nivel: basePotencial.nivel || 'A1',
+                                indice: 0,
+                                fecha: Date.now(),
+                                palabrasNuevas: [],
+                                palabrasBase: [],
+                                historiasPrevias: [],
+                                esBase: true,
+                                rcnPromedio: 0,
+                                completada: false,
+                                _sincronizado: false,
+                                _fechaSincronizacion: null,
+                                _recuerdo: null,
+                                _esOndaCruzada: false
+                            };
+                            window.modoElipse._historiasElipse.unshift(ondaBase);
+                            window.modoElipse._estadisticas.totalOndas = window.modoElipse._historiasElipse.length;
+                            window.modoElipse._guardarEstadoElipse();
+                            await window.modoElipse._guardarEnIndexedDB();
+                            this._datosCargados = true;
+                            console.log(`✅ Historia base "${basePotencial.titulo}" añadida a la Elipse.`);
+                        }
+                    }
+                }
             }
+        }
+
+        // 🔥 PASO 7: Asegurar que los datos estén cargados en el gestor de idiomas
+        if (window.modoElipse) {
+            await window.modoElipse.cargarDatos();
+            this._datosCargados = true;
         }
 
         console.log('🛠️ Verificación y reparación del estado de la Elipse completada.');
@@ -743,8 +826,10 @@ class UIEclipse {
             const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             console.log(`🌌 UIElipse: Idioma activo: ${idiomaActivo}`);
 
+            // 🔥 PASO 1: Determinar el temaId correcto
             let temaId = this._temaId;
 
+            // Si hay un temaId, verificar que pertenezca al idioma actual
             if (temaId) {
                 const tema = await db.obtenerTema(parseInt(temaId));
                 if (tema && tema.idioma && tema.idioma !== idiomaActivo) {
@@ -758,6 +843,7 @@ class UIEclipse {
                 }
             }
 
+            // Si no hay temaId, intentar recuperar de localStorage
             if (!temaId) {
                 temaId = localStorage.getItem('pipeline_elipse_tema_activo');
                 if (temaId) {
@@ -770,42 +856,93 @@ class UIEclipse {
                 }
             }
 
-            await this._verificarYRepararEstadoElipse();
-            temaId = this._temaId;
+            // Si aún no hay temaId, seleccionar el primer tema con historias
+            if (!temaId) {
+                const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
+                for (const t of temas) {
+                    const historias = await db.obtenerHistoriasPorTema(t.id);
+                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                    if (historiasFiltradas.length > 0) {
+                        temaId = String(t.id);
+                        console.log(`📌 Tema seleccionado automáticamente: "${t.nombre}" (${temaId})`);
+                        break;
+                    }
+                }
+                if (!temaId && temas.length > 0) {
+                    temaId = String(temas[0].id);
+                    console.log(`📌 Tema seleccionado automáticamente (sin historias): "${temas[0].nombre}" (${temaId})`);
+                }
+            }
 
-            if (temaId) {
-                console.log(`📌 Tema seleccionado: ${temaId} (idioma: ${idiomaActivo})`);
+            // 🔥 PASO 2: Forzar el tema en modoElipse ANTES de verificar y reparar
+            if (window.modoElipse && temaId) {
+                if (window.modoElipse._elipseActiva !== temaId) {
+                    console.log(`🔄 Forzando modoElipse._elipseActiva de "${window.modoElipse._elipseActiva}" a "${temaId}"`);
+                    window.modoElipse._elipseActiva = temaId;
+                    window.modoElipse._temaIdPersistido = temaId;
+                    // Cargar el estado específico de este tema usando la clave con idioma
+                    window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+                }
                 this._temaId = temaId;
+            } else if (temaId) {
+                this._temaId = temaId;
+            }
 
-                const datosGuardados = this._cargarEstadoTema(temaId);
+            // 🔥 PASO 3: Verificar y reparar el estado de la Elipse
+            await this._verificarYRepararEstadoElipse();
+            
+            // Asegurar que el temaId no se haya perdido
+            if (!this._temaId && temaId) {
+                this._temaId = temaId;
+                if (window.modoElipse) {
+                    window.modoElipse._elipseActiva = temaId;
+                    window.modoElipse._temaIdPersistido = temaId;
+                    window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+                }
+            }
+
+            // 🔥 PASO 4: Forzar la recarga de datos usando la clave correcta (idioma + tema)
+            if (this._temaId) {
+                console.log(`📌 Tema seleccionado: ${this._temaId} (idioma: ${idiomaActivo})`);
+
+                // 🔥 CRÍTICO: Usar la clave con idioma + tema
+                const datosGuardados = this._cargarEstadoTema(this._temaId);
                 if (datosGuardados && datosGuardados.historias && datosGuardados.historias.length > 0) {
-                    console.log(`📦 ${datosGuardados.historias.length} ondas cargadas para el tema ${temaId}`);
+                    // 🔥 CORREGIDO: Filtrar ondas cruzadas al restaurar
+                    const historiasFiltradas = this._filtrarOndasElipse(datosGuardados.historias);
+                    console.log(`📦 ${historiasFiltradas.length} ondas filtradas para el tema ${this._temaId} (idioma: ${idiomaActivo})`);
                     if (window.modoElipse) {
-                        window.modoElipse._historiasElipse = datosGuardados.historias;
-                        window.modoElipse._elipseActiva = temaId;
+                        window.modoElipse._historiasElipse = historiasFiltradas;
+                        window.modoElipse._elipseActiva = this._temaId;
                         window.modoElipse._estadisticas = datosGuardados.estadisticas || {
-                            totalOndas: datosGuardados.historias.length,
+                            totalOndas: historiasFiltradas.length,
                             palabrasNuevas: 0,
                             palabrasConsolidadas: 0
                         };
                         window.modoElipse._persistenciaCargada = true;
                         window.modoElipse._datosCargados = true;
-                        window.modoElipse._temaIdPersistido = temaId;
+                        window.modoElipse._temaIdPersistido = this._temaId;
+                        window.modoElipse._idiomaActual = idiomaActivo;
                     }
                     this._datosCargados = true;
                 } else {
-                    console.log(`📭 No hay datos guardados para el tema ${temaId}, iniciando desde cero`);
+                    console.log(`📭 No hay datos guardados para el tema ${this._temaId} (idioma: ${idiomaActivo}), iniciando desde cero`);
                     if (window.modoElipse) {
-                        const historias = await db.obtenerHistoriasPorTema(parseInt(temaId));
-                        const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
+                        const historias = await db.obtenerHistoriasPorTema(parseInt(this._temaId));
+                        const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
                         if (historiasFiltradas.length > 0) {
                             const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
                             if (ondasExistentes.length > 0) {
                                 await window.modoElipse.cargarDatos();
                                 this._datosCargados = true;
                             } else {
-                                await window.modoElipse.iniciarElipse(temaId, historiasFiltradas[0].id);
-                                this._datosCargados = true;
+                                // Si no hay ondas, usar la primera historia como base
+                                const historiaBase = historiasFiltradas[0];
+                                if (historiaBase) {
+                                    console.log(`📚 Iniciando Elipse con historia base: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
+                                    await window.modoElipse.iniciarElipse(this._temaId, historiaBase.id);
+                                    this._datosCargados = true;
+                                }
                             }
                         }
                     }
@@ -816,7 +953,8 @@ class UIEclipse {
                 this._datosCargados = false;
             }
 
-            await this._renderizarPanel(temaId);
+            // 🔥 PASO 5: Renderizar el panel
+            await this._renderizarPanel(this._temaId);
             this._renderizadoCompleto = true;
             this._primeraCarga = false;
             this._recargaForzada = false;
@@ -850,7 +988,7 @@ class UIEclipse {
             const temasConHistorias = [];
             for (const t of todosLosTemas) {
                 const historias = await db.obtenerHistoriasPorTema(t.id);
-                const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
+                const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
                 if (historiasFiltradas.length > 0) {
                     temasConHistorias.push({ ...t, historias: historiasFiltradas.length });
                 }
@@ -889,7 +1027,7 @@ class UIEclipse {
                 await this._guardarEstadoActual();
             }
 
-            this._temaId = tema.id;
+            this._temaId = String(tema.id);
             this._temaSeleccionadoPorUsuario = true;
             this._progresoOndas = {};
             this._recomendaciones = [];
@@ -898,27 +1036,36 @@ class UIEclipse {
             this._elipseData = null;
             this._datosCargados = false;
 
+            // 🔥 Forzar el tema en modoElipse
+            if (window.modoElipse) {
+                window.modoElipse._elipseActiva = this._temaId;
+                window.modoElipse._temaIdPersistido = this._temaId;
+                window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+            }
+
             await this._verificarYRepararEstadoElipse();
 
-            const datosGuardados = this._cargarEstadoTema(tema.id);
+            // 🔥 Usar la clave con idioma + tema
+            const datosGuardados = this._cargarEstadoTema(this._temaId);
             if (window.modoElipse) {
                 if (datosGuardados && datosGuardados.historias && datosGuardados.historias.length > 0) {
-                    console.log(`📦 Restaurando ${datosGuardados.historias.length} ondas del tema ${tema.id}`);
-                    window.modoElipse._historiasElipse = datosGuardados.historias;
-                    window.modoElipse._elipseActiva = tema.id;
+                    const historiasFiltradas = this._filtrarOndasElipse(datosGuardados.historias);
+                    console.log(`📦 Restaurando ${historiasFiltradas.length} ondas del tema ${this._temaId} (idioma: ${idiomaActivo})`);
+                    window.modoElipse._historiasElipse = historiasFiltradas;
+                    window.modoElipse._elipseActiva = this._temaId;
                     window.modoElipse._estadisticas = datosGuardados.estadisticas || {
-                        totalOndas: datosGuardados.historias.length,
+                        totalOndas: historiasFiltradas.length,
                         palabrasNuevas: 0,
                         palabrasConsolidadas: 0
                     };
                     window.modoElipse._persistenciaCargada = true;
                     window.modoElipse._datosCargados = true;
-                    window.modoElipse._temaIdPersistido = tema.id;
+                    window.modoElipse._temaIdPersistido = this._temaId;
                     this._datosCargados = true;
-                    this._core?.mostrarToast(`🌌 ${datosGuardados.historias.length} ondas restauradas para "${tema.nombre}"`, 'success');
+                    this._core?.mostrarToast(`🌌 ${historiasFiltradas.length} ondas restauradas para "${tema.nombre}"`, 'success');
                 } else {
-                    const historias = await db.obtenerHistoriasPorTema(tema.id);
-                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo);
+                    const historias = await db.obtenerHistoriasPorTema(parseInt(this._temaId));
+                    const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
                     if (historiasFiltradas.length > 0) {
                         const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
                         if (ondasExistentes.length > 0) {
@@ -926,7 +1073,7 @@ class UIEclipse {
                             this._datosCargados = true;
                             this._core?.mostrarToast(`🌌 ${ondasExistentes.length} ondas cargadas para "${tema.nombre}"`, 'success');
                         } else {
-                            await window.modoElipse.iniciarElipse(tema.id, historiasFiltradas[0].id);
+                            await window.modoElipse.iniciarElipse(this._temaId, historiasFiltradas[0].id);
                             this._datosCargados = true;
                             this._core?.mostrarToast(`🌌 Elipse iniciada con "${historiasFiltradas[0].titulo}"`, 'success');
                         }
@@ -934,7 +1081,7 @@ class UIEclipse {
                 }
             }
 
-            localStorage.setItem('pipeline_elipse_tema_activo', tema.id);
+            localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
             this._inicioSesion = Date.now();
             this._tiempoEstudio = 0;
             this._ondasRevisadas = new Set();
@@ -950,6 +1097,7 @@ class UIEclipse {
     async _guardarEstadoActual() {
         if (!this._temaId) return;
         try {
+            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
             if (historias.length === 0) return;
             const data = {
@@ -989,27 +1137,96 @@ class UIEclipse {
             await this._obtenerEstadoElipse(this._temaId);
         }
 
-        if (!this._datosCargados && window.modoElipse) {
-            console.log('🌌 Cargando datos antes de renderizar...');
-            try {
-                await window.modoElipse.cargarDatos();
-                this._datosCargados = true;
-                if (window.modoElipse._elipseActiva) {
-                    this._temaId = window.modoElipse._elipseActiva;
-                    localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
+        // 🔥 PASO 1: Asegurar que el temaId sea el correcto
+        const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
+        let temaIdParaCargar = temaId || this._temaId;
+        
+        // Si no hay temaId, intentar recuperar de localStorage
+        if (!temaIdParaCargar) {
+            temaIdParaCargar = localStorage.getItem('pipeline_elipse_tema_activo');
+        }
+        
+        // Si aún no hay temaId, seleccionar el primer tema con historias
+        if (!temaIdParaCargar) {
+            const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
+            for (const t of temas) {
+                const historias = await db.obtenerHistoriasPorTema(t.id);
+                if (historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h)).length > 0) {
+                    temaIdParaCargar = String(t.id);
+                    break;
                 }
-            } catch (e) {
-                console.warn('⚠️ Error cargando datos, continuando con datos existentes:', e);
+            }
+            if (!temaIdParaCargar && temas.length > 0) {
+                temaIdParaCargar = String(temas[0].id);
             }
         }
+        
+        if (temaIdParaCargar) {
+            this._temaId = temaIdParaCargar;
+            localStorage.setItem('pipeline_elipse_tema_activo', temaIdParaCargar);
+            console.log(`📌 UIElipse: Tema forzado a: ${temaIdParaCargar}`);
+        } else {
+            console.warn('⚠️ UIElipse: No se pudo determinar el tema');
+            this._mostrarErrorEnPantalla('No hay temas disponibles en este idioma');
+            return;
+        }
 
-        if (window.modoElipse && this._temaId) {
+        // 🔥 PASO 2: Forzar la carga de datos del Modo Elipse para el tema correcto
+        if (window.modoElipse) {
+            // 🔥 CRÍTICO: Establecer el tema activo en modoElipse antes de cargar datos
+            if (window.modoElipse._elipseActiva !== this._temaId) {
+                console.log(`🔄 UIElipse: Forzando cambio de elipse activa de "${window.modoElipse._elipseActiva}" a "${this._temaId}"`);
+                window.modoElipse._elipseActiva = this._temaId;
+                window.modoElipse._temaIdPersistido = this._temaId;
+                
+                // Cargar el estado específico de este tema usando la clave con idioma
+                window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+                
+                // Si después de cargar no hay historias, intentar recuperar desde el tema
+                if (window.modoElipse._historiasElipse.length === 0) {
+                    console.log(`🔄 UIElipse: Recuperando ondas del tema ${this._temaId}...`);
+                    await window.modoElipse._recuperarElipseDesdeTema(this._temaId);
+                }
+            }
+            
+            // 🔥 PASO 3: Cargar datos si es necesario
+            if (!this._datosCargados) {
+                console.log('🌌 Cargando datos antes de renderizar...');
+                try {
+                    await window.modoElipse.cargarDatos();
+                    this._datosCargados = true;
+                    if (window.modoElipse._elipseActiva) {
+                        this._temaId = window.modoElipse._elipseActiva;
+                        localStorage.setItem('pipeline_elipse_tema_activo', this._temaId);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Error cargando datos, continuando con datos existentes:', e);
+                }
+            }
+            
+            // 🔥 PASO 4: Verificar que las historias de la Elipse correspondan al tema actual
+            // 🔥 Usar getHistoriasElipse() que ya filtra
+            const historiasElipse = window.modoElipse.getHistoriasElipse(this._temaId) || [];
+            if (historiasElipse.length === 0) {
+                console.log(`⚠️ UIElipse: No hay historias para el tema ${this._temaId}. Intentando recuperar...`);
+                await window.modoElipse._recuperarElipseDesdeTema(this._temaId);
+                // Recargar el estado después de recuperar
+                window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
+                this._datosCargados = true;
+            }
+            
+            // Limpiar historias huérfanas
             try {
-                const historiasElipse = window.modoElipse.getHistoriasElipse(this._temaId) || [];
+                const historiasElipse2 = window.modoElipse.getHistoriasElipse(this._temaId) || [];
                 const historiasValidas = [];
                 let historiasEliminadas = 0;
 
-                for (const h of historiasElipse) {
+                for (const h of historiasElipse2) {
+                    // Ya están filtradas, pero por seguridad
+                    if (this._esOndaCruzada(h)) {
+                        console.log(`🔍 Onda cruzada "${h.titulo}" filtrada (ID: ${h.id})`);
+                        continue;
+                    }
                     try {
                         const existe = await db.get('historias', h.id);
                         if (existe) {
@@ -1020,6 +1237,7 @@ class UIEclipse {
                         }
                     } catch (e) {
                         console.warn(`⚠️ UIElipse: Error verificando historia ${h.id}:`, e);
+                        historiasValidas.push(h);
                     }
                 }
 
@@ -1053,12 +1271,11 @@ class UIEclipse {
             }
         }
 
-        const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
         const nombreIdioma = this._getNombreIdioma(idiomaActivo);
         const nivelActual = this._obtenerNivelRealUsuario();
 
         try {
-            this._elipseData = await this._obtenerEstadoElipse(temaId);
+            this._elipseData = await this._obtenerEstadoElipse(this._temaId);
             console.log('📊 Estado de Elipse obtenido:', this._elipseData);
         } catch (e) {
             console.warn('⚠️ Error obteniendo estado elipse:', e);
@@ -1118,6 +1335,7 @@ class UIEclipse {
             await window.modoElipse.cargarDatos();
             this._datosCargados = true;
         }
+        // 🔥 Usar getHistoriasElipse() que ya filtra
         const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         if (historias.length === 0) return;
         const completadas = historias.filter(h => h.completada).length;
@@ -1126,6 +1344,7 @@ class UIEclipse {
     }
 
     _actualizarRecomendaciones() {
+        // 🔥 Usar getHistoriasElipse() que ya filtra
         const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         if (historias.length === 0) return;
         this._recomendaciones = [];
@@ -1231,6 +1450,7 @@ class UIEclipse {
 
         let historias = [];
         if (this._elipseData && this._temaId) {
+            // 🔥 Ya vienen filtradas desde el estado
             historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         }
 
@@ -1251,6 +1471,8 @@ class UIEclipse {
                     <div>
                         <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;">
                             🌌 Modo Elipse <span style="font-size:14px;font-weight:400;color:var(--gray);margin-left:8px;">${nombreIdioma}</span>
+                            <span style="font-size:10px;color:var(--success);margin-left:8px;">🔍 Solo ondas de Elipse</span>
+                            <span style="font-size:10px;color:var(--danger);margin-left:8px;">🗑️ Eliminar en cada onda</span>
                         </h2>
                         <p style="font-size:13px;color:var(--gray);margin:4px 0 0;">
                             Aprendizaje expansivo · Nivel <strong>${nivelActual}</strong>
@@ -1279,6 +1501,8 @@ class UIEclipse {
                             <br><span style="color:var(--danger);font-weight:600;">🗑️ Botón ELIMINAR en cada onda (sincronizado con Temas y Ondas Cruzadas)</span>
                             <br><span style="color:var(--info);font-weight:400;">🔍 Verificación automática de historias eliminadas al renderizar</span>
                             <br><span style="color:var(--primary);font-weight:600;">💬 Prompt generado en idioma nativo · 🌍 Historia en idioma objetivo</span>
+                            <br><span style="color:var(--danger);font-weight:700;">🔍 FILTRADO: Solo ondas de Elipse (excluye ondas cruzadas)</span>
+                            <br><span style="color:var(--success);font-weight:700;">📊 Índices dinámicos: Base, Onda 1, Onda 2, ...</span>
                         </p>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1440,6 +1664,7 @@ class UIEclipse {
                         <span style="font-size:12px;color:var(--gray);">${total} ondas · ${completadas} completadas · ${Math.round((completadas / total) * 100)}% progreso</span>
                         <span style="font-size:10px;color:var(--primary);margin-left:8px;">🎯 ${this._siguienteOndaSugerida ? `Siguiente: "${this._siguienteOndaSugerida.titulo}"` : '¡Completado!'}</span>
                         <span style="font-size:9px;color:var(--gray-light);margin-left:8px;">🧠 SRS: ${this._progresoGlobal}%</span>
+                        <span style="font-size:9px;color:var(--danger);margin-left:8px;">🔍 Solo ondas de Elipse</span>
                     </div>
                     <span style="font-size:11px;color:var(--gray-light);">🔄 ${this._elipseData.palabrasNuevas || 0} palabras nuevas</span>
                 </div>
@@ -1466,10 +1691,8 @@ class UIEclipse {
     }
 
     _renderizarListaOndasConDatos(historias, historiasPagina, totalPaginas) {
-        const historiasFiltradas = historiasPagina.filter(h => {
-            if (!h.id) return false;
-            return true;
-        });
+        // Ya vienen filtradas por getHistoriasElipse(), pero por seguridad aplicamos el filtro
+        const historiasFiltradas = historiasPagina.filter(h => !this._esOndaCruzada(h));
 
         if (historiasFiltradas.length === 0 && historias.length > 0) {
             return `
@@ -1493,14 +1716,15 @@ class UIEclipse {
                         ${totalPaginas > 1 ? `· 📄 ${this._paginaOndas}/${totalPaginas}` : ''}
                         <span style="font-size:9px;color:var(--primary);">🧠 SRS activo</span>
                         <span style="font-size:9px;color:var(--danger);">🗑️ Eliminar en cada onda</span>
+                        <span style="font-size:9px;color:var(--success);">🔍 Solo Elipse</span>
                     </div>
                 </div>
                 ${totalPaginas > 1 ? this._renderizarPaginador(totalPaginas) : ''}
                 <div style="display:flex;flex-direction:column;gap:8px;">
         `;
         for (const h of historiasFiltradas) {
+            const indiceReal = historias.findIndex(el => el.id === h.id);
             const esBase = h.esBase || false;
-            const indice = h.indice || 0;
             const completada = h.completada || false;
             const rcnPromedio = h.rcnPromedio || 0;
             const palabrasNuevas = h.palabrasNuevas || [];
@@ -1510,6 +1734,7 @@ class UIEclipse {
             const estadoColor = completada ? 'var(--success)' : 'var(--warning)';
             const progresoOnda = this._progresoOndas[h.id] || {};
             const pctSRS = progresoOnda.frasesTotales > 0 ? Math.round((progresoOnda.frasesCompletadas || 0) / progresoOnda.frasesTotales * 100) : 0;
+            const labelOnda = esBase ? '🌟 Base' : `🌊 Onda ${indiceReal + 1}`;
 
             html += `
                 <div style="background:${completada ? 'var(--success)05' : 'var(--white)'};border-radius:8px;padding:10px 14px;border-left:4px solid ${color};box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -1517,9 +1742,10 @@ class UIEclipse {
                         <span style="font-size:20px;">${icono}</span>
                         <div style="flex:1;">
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                <span style="font-size:14px;font-weight:600;color:var(--dark);">${esBase ? '🌟 Base' : `🌊 Onda ${indice + 1}`}</span>
+                                <span style="font-size:14px;font-weight:600;color:var(--dark);">${labelOnda}</span>
                                 <span style="font-size:13px;font-weight:400;color:var(--gray);">${h.titulo || 'Sin título'}</span>
                                 <span style="font-size:10px;color:${estadoColor};font-weight:600;background:${estadoColor}15;padding:2px 10px;border-radius:12px;">${estadoTexto}</span>
+                                <span style="font-size:8px;color:var(--success);background:var(--success)15;padding:1px 8px;border-radius:8px;">🔍 Elipse</span>
                             </div>
                             <div style="display:flex;gap:8px;font-size:11px;color:var(--gray-light);flex-wrap:wrap;margin-top:2px;">
                                 <span>📊 RCN: <strong style="color:${completada ? 'var(--success)' : 'var(--warning)'};">${rcnPromedio.toFixed(1)}</strong></span>
@@ -1529,6 +1755,7 @@ class UIEclipse {
                                 ${rcnPromedio > 0 && rcnPromedio < 2 ? '<span style="color:var(--warning);">🔄 Necesita repaso</span>' : ''}
                                 <span style="color:var(--primary);font-size:9px;">🧠 ${pctSRS}%</span>
                                 ${esBase ? '<span style="color:var(--primary);font-size:9px;font-weight:700;">🌟 BASE</span>' : ''}
+                                <span style="color:var(--gray-light);font-size:8px;">📌 Índice ${indiceReal}</span>
                             </div>
                         </div>
                     </div>
@@ -1589,6 +1816,7 @@ class UIEclipse {
                             <span style="color:var(--danger);">🗑️ Eliminar sincronizado</span>
                             <span style="color:var(--info);">🔍 Verificación automática</span>
                             <span style="color:var(--primary);">💬 Prompt multidioma activo</span>
+                            <span style="color:var(--success);">🔍 FILTRADO activo</span>
                         </div>
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._abrirConfiguracion()" style="padding:4px 12px;font-size:11px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;"><i class="fas fa-cog"></i> Configurar</button>
@@ -1609,7 +1837,7 @@ class UIEclipse {
         return `
             <div style="background:var(--bg);border-radius:10px;padding:10px 16px;border:1px solid var(--light);margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;font-size:10px;color:var(--gray);">
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--primary);">${progresoPct}%</div><div style="font-size:8px;color:var(--gray-light);">Progreso</div></div>
-                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--secondary);">${ondas.length}</div><div style="font-size:8px;color:var(--gray-light);">Ondas</div></div>
+                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--secondary);">${ondas.length}</div><div style="font-size:8px;color:var(--gray-light);">Ondas Elipse</div></div>
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--success);">${completadas}</div><div style="font-size:8px;color:var(--gray-light);">Completadas</div></div>
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--warning);">${pendientes}</div><div style="font-size:8px;color:var(--gray-light);">Pendientes</div></div>
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--success);">${sincronizadas}</div><div style="font-size:8px;color:var(--gray-light);">Sincronizadas</div></div>
@@ -1694,7 +1922,7 @@ class UIEclipse {
     async _abrirConfiguracion() {
         console.log('⚙️ Abriendo configuración...');
         const config = window.modoElipse?.getConfiguracion() || {};
-        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
+        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n🔍 **Filtrado de ondas cruzadas**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
         const seleccion = await this._core?.prompt(mensaje, '4', 'Elige una opción (1-4)...', '⚙️ Configuración');
         if (!seleccion) return;
         const opcion = parseInt(seleccion);
@@ -2025,6 +2253,10 @@ class UIEclipse {
                     📝 La descripción del usuario ha sido incluida en el prompt.
                 </span>
             ` : ''}
+            <br>
+            <span style="font-size:10px;color:var(--success);">
+                🔍 La onda se marcará como de Elipse (no cruzada).
+            </span>
         `;
 
         // Contenedor de botones
@@ -2212,6 +2444,10 @@ class UIEclipse {
                 <span style="font-size:10px;color:var(--secondary);">
                     🌍 Idioma objetivo: <strong>${nombreIdiomaObjetivo}</strong> · 💬 Prompt en: <strong>${nombreIdiomaPrompt}</strong>
                 </span>
+                <br>
+                <span style="font-size:10px;color:var(--success);">
+                    🔍 La onda se marcará como de Elipse (no cruzada).
+                </span>
             `;
 
             const buttonContainer = document.createElement('div');
@@ -2397,32 +2633,31 @@ class UIEclipse {
 
             if (window.modoOndasCruzadas) {
                 try {
-                    const grafo = window.modoOndasCruzadas._grafo || {};
+                    const grafo = window.modoOndasCruzadas._grafoElipse || {};
                     let grafoModificado = false;
 
                     for (const [temaIdGrafo, data] of Object.entries(grafo)) {
-                        if (data.historias && Array.isArray(data.historias)) {
-                            const idx = data.historias.findIndex(h => h.id === historiaId);
+                        if (data.ondas && Array.isArray(data.ondas)) {
+                            const idx = data.ondas.findIndex(h => h.id === historiaId);
                             if (idx !== -1) {
-                                data.historias.splice(idx, 1);
+                                data.ondas.splice(idx, 1);
                                 grafoModificado = true;
                             }
                         }
-                        if (data.conexiones) {
-                            for (const [conexionTema, conexionData] of Object.entries(data.conexiones)) {
-                                if (conexionData.historias && Array.isArray(conexionData.historias)) {
-                                    const idx = conexionData.historias.findIndex(h => h.id === historiaId);
-                                    if (idx !== -1) {
-                                        conexionData.historias.splice(idx, 1);
-                                        grafoModificado = true;
-                                    }
-                                }
+                        if (data.ondasReales && Array.isArray(data.ondasReales)) {
+                            const idx = data.ondasReales.findIndex(h => h.id === historiaId);
+                            if (idx !== -1) {
+                                data.ondasReales.splice(idx, 1);
+                                grafoModificado = true;
                             }
+                        }
+                        if (data.ondasReales) {
+                            data.totalOndas = data.ondasReales.length;
                         }
                     }
 
                     if (grafoModificado) {
-                        window.modoOndasCruzadas._grafo = grafo;
+                        window.modoOndasCruzadas._grafoElipse = grafo;
                         await window.modoOndasCruzadas._guardarDatos();
                         console.log(`🌊 Onda ${historiaId} eliminada del grafo de Ondas Cruzadas`);
                     }
@@ -2924,7 +3159,7 @@ class UIEclipse {
                     <span style="font-size:18px;">${esBase ? '🌟' : '🌊'}</span>
                     <div style="flex:1;">
                         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;">${titulo}</h2>
-                        <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">${esBase ? 'Base' : `Onda ${historia._ondaIndice || '?'}`} · ${frases.length} frases · Nivel ${historia.nivel || 'A1'} · ${idioma}${historia._palabrasNuevas?.length > 0 ? ` · 📝 ${historia._palabrasNuevas.length} palabras nuevas` : ''}<span style="font-size:9px;color:var(--primary);margin-left:8px;">🧠 SRS activo</span></p>
+                        <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">${esBase ? 'Base' : `Onda ${historia._ondaIndice || '?'}`} · ${frases.length} frases · Nivel ${historia.nivel || 'A1'} · ${idioma}${historia._palabrasNuevas?.length > 0 ? ` · 📝 ${historia._palabrasNuevas.length} palabras nuevas` : ''}<span style="font-size:9px;color:var(--primary);margin-left:8px;">🧠 SRS activo</span><span style="font-size:9px;color:var(--success);margin-left:8px;">🔍 Elipse</span></p>
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._estudiarHistoriaDesdeVisor()" style="padding:4px 14px;font-size:11px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-play"></i> Estudiar</button>
                     <button class="btn-danger" onclick="window.UIClipse._eliminarOnda(${historia.id})" 
@@ -3016,6 +3251,7 @@ class UIEclipse {
                     <br><span style="color:var(--danger);font-weight:600;">🗑️ Botón ELIMINAR en cada onda (sincronizado con Temas y Ondas Cruzadas)</span>
                     <br><span style="color:var(--info);font-weight:400;">🔍 Verificación automática de historias eliminadas</span>
                     <br><span style="color:var(--primary);font-weight:600;">💬 Prompt multidioma activo</span>
+                    <br><span style="color:var(--success);font-weight:700;">🔍 Filtrado de ondas cruzadas</span>
                 </div>
             </div>
         `;
@@ -3714,6 +3950,7 @@ class UIEclipse {
                     <br><span style="color:var(--danger);font-weight:600;">🗑️ Eliminar onda sincronizado con Temas y Ondas Cruzadas</span>
                     <br><span style="color:var(--info);font-weight:400;">🔍 Verificación automática de historias eliminadas</span>
                     <br><span style="color:var(--primary);font-weight:600;">💬 Prompt multidioma activo</span>
+                    <br><span style="color:var(--success);font-weight:700;">🔍 Filtrado de ondas cruzadas</span>
                 </div>
             </div>
         `;
@@ -4070,10 +4307,12 @@ class UIEclipse {
 
 window.UIClipse = new UIEclipse();
 
-console.log('✅ UI Elipse v6.14 - MODALES CORREGIDOS + PROMPT MULTIDIOMA');
-console.log('  🔥 _mostrarPlantillaEnModal: Muestra idioma objetivo y prompt');
-console.log('  🔥 _importarOnda: Muestra idioma objetivo y prompt');
-console.log('  🔥 Los modales ya NO acumulan información');
-console.log('  🔥 Prompt generado en el idioma nativo del usuario');
-console.log('  🔥 Historia generada en el idioma objetivo');
+console.log('✅ UI Elipse v6.22 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS');
+console.log('  🔥 Filtro por PROPIEDAD _esOndaCruzada verificada');
+console.log('  🔥 NO requiere _esOnda: true - MUESTRA TODAS LAS HISTORIAS BASE');
+console.log('  🔥 Guarda datos por IDIOMA + TEMA en claves separadas');
+console.log('  🔥 Puedes cambiar de tema y volver sin perder progreso');
+console.log('  🔥 ÍNDICES DINÁMICOS: Base, Onda 1, Onda 2, ...');
+console.log('  ✅ Las ondas cruzadas NO aparecen en Modo Elipse');
+console.log('  ✅ Las historias base SÍ aparecen correctamente');
 console.log('  ✅ Todas las funcionalidades originales preservadas');

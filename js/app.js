@@ -1,5 +1,5 @@
 // ============================================================
-// APP v23.5 - CON RECONEXIÓN AUTOMÁTICA DE VIGIA
+// APP v23.7 - PARCHE DE EMERGENCIA: CONEXIÓN VIGÍA Y LIMPIEZA
 // ============================================================
 
 class App {
@@ -50,12 +50,19 @@ class App {
         this._checkInterval = null;
         this._recargaTimeout = null;
         
-        // === NUEVO: Reconexión automática de Vigia ===
+        // Reconexión automática de Vigia
         this._reconectandoVigia = false;
         this._ultimaReconexionVigia = 0;
         this._intervaloReconexionVigia = null;
         this._reintentosVigia = 0;
         this._maxReintentosVigia = 5;
+        
+        // 🔥 NUEVO: Control de bucles infinitos
+        this._inicializandoModulos = false;
+        this._ultimoIntentoModulo = 0;
+        this._intentosModulo = 0;
+        this._maxIntentosModulo = 5;
+        this._modulosInicializados = new Set();
         
         // Asegurar modos globales
         if (typeof modoElipse !== 'undefined' && modoElipse) {
@@ -122,6 +129,254 @@ class App {
             'tl': 'Tagalo', 'id': 'Indonesio', 'ms': 'Malayo', 'sw': 'Suajili',
             'am': 'Amarico', 'ha': 'Hausa', 'yo': 'Yoruba', 'ig': 'Igbo',
             'zu': 'Zulu', 'af': 'Afrikaans'
+        };
+        
+        // 🔥 NUEVO: Control de idioma válido
+        this._idiomaValido = false;
+        this._idiomaCorregido = null;
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: LIMPIAR DATOS RESIDUALES DE IDIOMAS
+    // ============================================================
+
+    _limpiarDatosResidualesIdiomas() {
+        console.log('🧹 Limpiando datos residuales de idiomas...');
+        
+        try {
+            // Limpiar claves de idioma en localStorage
+            const clavesAEliminar = [
+                'pipeline_idioma_activo',
+                'pipeline_idiomas',
+                'pipeline_idiomas_nativos',
+                'pipeline_cache_versiones_idiomas',
+                'pipeline_ultima_verificacion_groq'
+            ];
+            
+            for (const clave of clavesAEliminar) {
+                if (localStorage.getItem(clave)) {
+                    localStorage.removeItem(clave);
+                    console.log(`  🗑️ Eliminada clave: ${clave}`);
+                }
+            }
+            
+            // Limpiar idiomas en IndexedDB
+            if (this._dbReady && db) {
+                try {
+                    const usuario = db.getUsuario();
+                    if (usuario) {
+                        usuario.idiomasObjetivo = [];
+                        usuario.idiomaActivo = null;
+                        usuario.idiomaNativo = null;
+                        db.guardarUsuario(usuario);
+                        console.log('  🗑️ Idiomas limpiados en IndexedDB');
+                    }
+                } catch (e) {
+                    console.warn('  ⚠️ Error limpiando idiomas en IndexedDB:', e);
+                }
+            }
+            
+            // Limpiar gestorIdiomas
+            if (window.gestorIdiomas) {
+                window.gestorIdiomas.idiomas = [];
+                window.gestorIdiomas.idiomaActivo = null;
+                window.gestorIdiomas.idiomasNativos = [];
+                window.gestorIdiomas.idiomaNativoActivo = null;
+                window.gestorIdiomas._cacheVersiones = {};
+                console.log('  🗑️ gestorIdiomas limpiado');
+            }
+            
+            console.log('✅ Datos residuales de idiomas limpiados');
+        } catch (e) {
+            console.warn('⚠️ Error limpiando datos residuales:', e);
+        }
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: FORZAR CONEXIÓN DE VIGÍA
+    // ============================================================
+
+    async _forzarConexionVigia(apiKey) {
+        console.log('📡 Forzando conexión de Vigía...');
+        
+        if (!window.vigia) {
+            console.error('❌ Vigía no disponible');
+            return false;
+        }
+        
+        try {
+            // Establecer API Key
+            if (apiKey) {
+                window.vigia.apiKey = apiKey;
+                localStorage.setItem('pipeline_api_key', apiKey);
+                if (this._dbReady && db) {
+                    await db.guardarApiKey(apiKey);
+                }
+            }
+            
+            // Forzar reconexión manual
+            if (typeof window.vigia.reconectarManual === 'function') {
+                const resultado = await window.vigia.reconectarManual();
+                if (resultado && resultado.exito) {
+                    console.log('✅ Vigía reconectado exitosamente');
+                    return true;
+                }
+            }
+            
+            // Fallback: init
+            if (typeof window.vigia.init === 'function') {
+                await window.vigia.init();
+                if (window.vigia.enLinea) {
+                    console.log('✅ Vigía conectado via init');
+                    return true;
+                }
+            }
+            
+            // Fallback: probar conexión directamente
+            if (typeof window.vigia._probarConexion === 'function') {
+                const exito = await window.vigia._probarConexion();
+                if (exito) {
+                    window.vigia.enLinea = true;
+                    console.log('✅ Vigía conectado via prueba directa');
+                    return true;
+                }
+            }
+            
+            console.warn('⚠️ No se pudo conectar Vigía');
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Error forzando conexión de Vigía:', error);
+            return false;
+        }
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: DETENER BUCLES INFINITOS
+    // ============================================================
+
+    _detenerBuclesInfinitos() {
+        console.log('🛑 Verificando bucles infinitos...');
+        
+        // Detener intervalos sospechosos
+        const intervalos = [
+            this._cargaInterval,
+            this._checkInterval,
+            this._recargaTimeout,
+            this._intervaloReconexionVigia
+        ];
+        
+        for (const interval of intervalos) {
+            if (interval) {
+                clearInterval(interval);
+                console.log('  🛑 Intervalo detenido');
+            }
+        }
+        
+        // Limpiar timeouts
+        if (this._cargaTimeout) {
+            clearTimeout(this._cargaTimeout);
+            this._cargaTimeout = null;
+        }
+        
+        // Resetear flags de sincronización
+        if (window.modoElipse) {
+            window.modoElipse._sincronizando = false;
+            window.modoElipse._sincronizacionPendiente = false;
+            window.modoElipse._colaSincronizacion = [];
+            console.log('  🛑 ModoElipse: sincronización reseteadas');
+        }
+        
+        if (window.modoOndasCruzadas) {
+            window.modoOndasCruzadas._sincronizando = false;
+            window.modoOndasCruzadas._colaSincronizacion = [];
+            console.log('  🛑 ModoOndasCruzadas: sincronización reseteadas');
+        }
+        
+        if (window.UIOndasCruzadas) {
+            if (window.UIOndasCruzadas._cargando) {
+                window.UIOndasCruzadas._cargando = false;
+            }
+            console.log('  🛑 UIOndasCruzadas: carga reseteada');
+        }
+        
+        if (window.UIClipse) {
+            if (window.UIClipse._cargando) {
+                window.UIClipse._cargando = false;
+            }
+            console.log('  🛑 UIClipse: carga reseteada');
+        }
+        
+        this._inicializandoModulos = false;
+        this._intentosModulo = 0;
+        console.log('✅ Bucles infinitos detenidos');
+    }
+
+    // ============================================================
+    // VERIFICACIÓN ESTRICTA DE REGISTRO
+    // ============================================================
+
+    _verificarRegistroCompleto() {
+        const faltan = [];
+        
+        let usuarioLocal = null;
+        let apiKeyLocal = null;
+        
+        try {
+            const usuarioData = localStorage.getItem('pipeline_usuario');
+            if (usuarioData) {
+                usuarioLocal = JSON.parse(usuarioData);
+            }
+            apiKeyLocal = localStorage.getItem('pipeline_api_key');
+        } catch (e) {
+            console.warn('⚠️ Error leyendo localStorage:', e);
+        }
+        
+        let usuarioDB = null;
+        let apiKeyDB = null;
+        
+        if (this._dbReady && db && db.db) {
+            try {
+                if (this._usuarioCargado) {
+                    usuarioDB = true;
+                }
+            } catch (e) {
+                console.warn('⚠️ Error verificando DB:', e);
+            }
+        }
+        
+        const nombreLocal = usuarioLocal?.nombre;
+        const nombreDB = this._usuarioCargado ? true : false;
+        
+        if (!nombreLocal && !nombreDB) {
+            faltan.push('nombre');
+        }
+        
+        const nativoLocal = usuarioLocal?.idiomaNativo;
+        const nativoDB = this._usuarioCargado ? true : false;
+        
+        if (!nativoLocal && !nativoDB) {
+            faltan.push('idioma_nativo');
+        }
+        
+        const idiomasLocal = usuarioLocal?.idiomasObjetivo;
+        const idiomasDB = this._usuarioCargado ? true : false;
+        
+        if ((!idiomasLocal || idiomasLocal.length === 0) && !idiomasDB) {
+            faltan.push('idiomas_objetivo');
+        }
+        
+        if (!apiKeyLocal && !this._apiKeyCargada) {
+            faltan.push('api_key');
+        }
+        
+        if (!usuarioLocal && !this._usuarioCargado) {
+            return { completo: false, faltan: ['nombre', 'idioma_nativo', 'idiomas_objetivo', 'api_key'] };
+        }
+        
+        return {
+            completo: faltan.length === 0,
+            faltan: faltan
         };
     }
 
@@ -549,11 +804,20 @@ class App {
     }
 
     // ============================================================
-    // MOSTRAR DASHBOARD
+    // MOSTRAR DASHBOARD (CON VERIFICACIÓN DE REGISTRO)
     // ============================================================
 
     _mostrarDashboard() {
         if (this._dashboardMostrado) return;
+        
+        const verificacion = this._verificarRegistroCompleto();
+        
+        if (!verificacion.completo) {
+            console.warn('⚠️ Registro incompleto, mostrando pantalla de registro. Faltan:', verificacion.faltan);
+            this._showRegisterScreen();
+            return;
+        }
+        
         this._dashboardMostrado = true;
         
         const registroScreen = document.getElementById('registroScreen');
@@ -584,7 +848,7 @@ class App {
     }
 
     // ============================================================
-    // RECONEXIÓN AUTOMÁTICA DE VIGIA
+    // RECONEXIÓN AUTOMÁTICA DE VIGIA (MEJORADA)
     // ============================================================
 
     async _reconectarVigiaAutomaticamente() {
@@ -625,17 +889,53 @@ class App {
             
             console.log('🔄 Intentando reconexión automática de Vigia (intento ' + this._reintentosVigia + '/' + this._maxReintentosVigia + ')...');
             
+            // 🔥 FORZAR RECONEXIÓN CON API KEY
+            const apiKey = localStorage.getItem('pipeline_api_key');
+            if (apiKey) {
+                window.vigia.apiKey = apiKey;
+            }
+            
             let conectado = false;
             
-            if (typeof window.vigia.iniciar === 'function') {
-                await window.vigia.iniciar();
-                conectado = true;
-            } else if (typeof window.vigia.conectar === 'function') {
-                await window.vigia.conectar();
-                conectado = true;
-            } else if (typeof window.vigia.init === 'function') {
-                await window.vigia.init();
-                conectado = true;
+            // Métodos de reconexión
+            const metodos = [
+                { fn: window.vigia.reconectarManual, nombre: 'reconectarManual' },
+                { fn: window.vigia.iniciar, nombre: 'iniciar' },
+                { fn: window.vigia.conectar, nombre: 'conectar' },
+                { fn: window.vigia.init, nombre: 'init' }
+            ];
+            
+            for (const metodo of metodos) {
+                if (typeof metodo.fn === 'function') {
+                    try {
+                        console.log(`  🔄 Intentando ${metodo.nombre}...`);
+                        const resultado = await metodo.fn.call(window.vigia);
+                        if (resultado && (resultado === true || resultado.exito === true)) {
+                            conectado = true;
+                            break;
+                        }
+                        if (window.vigia.enLinea === true) {
+                            conectado = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.warn(`  ⚠️ ${metodo.nombre} falló:`, e.message);
+                    }
+                }
+            }
+            
+            // Último recurso: probar conexión directa
+            if (!conectado && typeof window.vigia._probarConexion === 'function') {
+                try {
+                    console.log('  🔄 Intentando prueba directa...');
+                    const exito = await window.vigia._probarConexion();
+                    if (exito) {
+                        window.vigia.enLinea = true;
+                        conectado = true;
+                    }
+                } catch (e) {
+                    console.warn('  ⚠️ Prueba directa falló:', e.message);
+                }
             }
             
             if (conectado) {
@@ -646,18 +946,16 @@ class App {
                 if (window.uiCore && window.uiCore.mostrarToast) {
                     window.uiCore.mostrarToast('🔄 Vigia reconectado automáticamente', 'success');
                 }
-            } else {
-                console.warn('⚠️ No se encontró método para reconectar Vigia');
-                if (window.uiCore && window.uiCore._handleReconectarVigia) {
-                    await window.uiCore._handleReconectarVigia();
-                    console.log('✅ Vigia reconectado via uiCore');
-                    this._reintentosVigia = 0;
-                    this._actualizarIndicadorVigia();
-                } else {
-                    setTimeout(() => {
-                        this._reconectarVigiaAutomaticamente();
-                    }, 5000);
+                
+                // Notificar al balanceador
+                if (window.balanceadorGroq) {
+                    await window.balanceadorGroq.forzarReconexion();
                 }
+            } else {
+                console.warn('⚠️ No se pudo reconectar Vigia');
+                setTimeout(() => {
+                    this._reconectarVigiaAutomaticamente();
+                }, 5000);
             }
             
         } catch (error) {
@@ -718,7 +1016,7 @@ class App {
     }
 
     // ============================================================
-    // INICIALIZACION PRINCIPAL
+    // INICIALIZACION PRINCIPAL - CORREGIDA
     // ============================================================
 
     async init() {
@@ -726,14 +1024,32 @@ class App {
         this._iniciando = true;
 
         try {
-            console.log('🚀 Iniciando Pipeline v23.5 - Con reconexión automática de Vigia...');
+            console.log('🚀 Iniciando Pipeline v23.7 - Parche de emergencia...');
+            
+            // 🔥 DETENER BUCLES INFINITOS AL INICIO
+            this._detenerBuclesInfinitos();
+            
+            // 🔥 LIMPIAR DATOS RESIDUALES DE IDIOMAS
+            this._limpiarDatosResidualesIdiomas();
+
+            const verificacion = this._verificarRegistroCompleto();
+            
+            if (!verificacion.completo) {
+                console.log('📝 Registro incompleto, mostrando pantalla de registro. Faltan:', verificacion.faltan);
+                this._showRegisterScreen();
+                this._iniciando = false;
+                return;
+            }
 
             const usuarioLocal = this._getUsuarioLocalStorage();
             
             if (usuarioLocal && usuarioLocal.nombre) {
                 this._mostrarPantallaCargaInmediata('Hola ' + usuarioLocal.nombre);
             } else {
-                this._mostrarPantallaCargaInmediata('Iniciando...');
+                console.warn('⚠️ Verificación pasó pero no hay usuario en localStorage, mostrando registro');
+                this._showRegisterScreen();
+                this._iniciando = false;
+                return;
             }
 
             console.log('📀 Inicializando Database...');
@@ -770,44 +1086,54 @@ class App {
             let apiKey = null;
             let idiomaActivoPersistido = null;
             
+            usuario = this._getUsuarioLocalStorage();
+            if (usuario && usuario.nombre) {
+                console.log('👤 Usuario encontrado en localStorage:', usuario.nombre);
+                this._usuarioCargado = true;
+                if (usuario.idiomaActivo) {
+                    idiomaActivoPersistido = usuario.idiomaActivo;
+                }
+            }
+            
+            apiKey = localStorage.getItem('pipeline_api_key');
+            if (apiKey) {
+                this._apiKeyCargada = true;
+                console.log('🔑 API Key encontrada en localStorage');
+            }
+            
             if (this._dbReady) {
                 try {
-                    usuario = await db.getUsuario();
-                    if (usuario && usuario.nombre) {
-                        console.log('👤 Usuario encontrado en IndexedDB:', usuario.nombre);
-                        this._usuarioCargado = true;
-                        if (usuario.idiomaActivo) {
-                            idiomaActivoPersistido = usuario.idiomaActivo;
+                    const usuarioDB = await db.getUsuario();
+                    if (usuarioDB && usuarioDB.nombre) {
+                        if (!usuario || !usuario.nombre) {
+                            usuario = usuarioDB;
+                            this._usuarioCargado = true;
+                            this._saveUsuarioLocalStorage(usuario);
+                            console.log('👤 Usuario recuperado desde IndexedDB:', usuario.nombre);
                         }
-                        this._saveUsuarioLocalStorage(usuario);
+                        if (usuarioDB.idiomaActivo && !idiomaActivoPersistido) {
+                            idiomaActivoPersistido = usuarioDB.idiomaActivo;
+                        }
                     }
-                    try {
-                        apiKey = await db.obtenerApiKey();
-                        if (apiKey) localStorage.setItem('pipeline_api_key', apiKey);
-                    } catch (e) {}
+                    if (!apiKey) {
+                        const apiKeyDB = await db.obtenerApiKey();
+                        if (apiKeyDB) {
+                            apiKey = apiKeyDB;
+                            localStorage.setItem('pipeline_api_key', apiKey);
+                            this._apiKeyCargada = true;
+                        }
+                    }
                 } catch (e) {
                     console.warn('⚠️ Error obteniendo usuario de IndexedDB:', e);
                 }
             }
 
-            if (!usuario || !usuario.nombre) {
-                const localUser = this._getUsuarioLocalStorage();
-                if (localUser && localUser.nombre) {
-                    console.log('📦 Usuario recuperado desde localStorage:', localUser.nombre);
-                    usuario = localUser;
-                    this._usuarioCargado = true;
-                    if (this._dbReady) {
-                        try {
-                            await db.guardarUsuario(usuario);
-                            const localApiKey = localStorage.getItem('pipeline_api_key');
-                            if (localApiKey) await db.guardarApiKey(localApiKey);
-                        } catch (e) {}
-                    }
-                }
-            }
-
-            if (!apiKey) {
-                apiKey = localStorage.getItem('pipeline_api_key');
+            const verificacionFinal = this._verificarRegistroCompleto();
+            if (!verificacionFinal.completo) {
+                console.warn('⚠️ Registro incompleto después de carga, mostrando registro. Faltan:', verificacionFinal.faltan);
+                this._showRegisterScreen();
+                this._iniciando = false;
+                return;
             }
 
             if (!usuario || !usuario.nombre || !usuario.idiomasObjetivo || usuario.idiomasObjetivo.length === 0) {
@@ -819,6 +1145,7 @@ class App {
 
             console.log('👤 Usuario cargado:', usuario.nombre);
             
+            // 🔥 FORZAR CARGA DE IDIOMAS CORRECTOS
             try {
                 await Promise.race([
                     this._forzarCargaIdiomas(usuario),
@@ -828,19 +1155,26 @@ class App {
                 console.warn('⚠️ Error cargando idiomas:', e);
             }
             
-            if (idiomaActivoPersistido && usuario.idiomasObjetivo) {
-                const existe = usuario.idiomasObjetivo.some(function(i) { return i.idioma === idiomaActivoPersistido; });
-                if (existe && window.gestorIdiomas) {
-                    try {
-                        console.log('📍 Activando idioma persistido:', idiomaActivoPersistido);
-                        await gestorIdiomas.cambiarIdioma(idiomaActivoPersistido);
-                    } catch (e) {
-                        console.warn('⚠️ Error activando idioma:', e);
+            // 🔥 FORZAR IDIOMA ACTIVO CORRECTO
+            if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0) {
+                const primerIdioma = usuario.idiomasObjetivo[0].idioma;
+                if (idiomaActivoPersistido && usuario.idiomasObjetivo.some(i => i.idioma === idiomaActivoPersistido)) {
+                    console.log('📍 Activando idioma persistido:', idiomaActivoPersistido);
+                    if (window.gestorIdiomas) {
+                        try {
+                            await gestorIdiomas.cambiarIdioma(idiomaActivoPersistido);
+                        } catch (e) {
+                            console.warn('⚠️ Error activando idioma persistido, usando primero:', e);
+                            await gestorIdiomas.cambiarIdioma(primerIdioma);
+                        }
                     }
-                } else if (usuario.idiomasObjetivo.length > 0 && window.gestorIdiomas) {
+                } else if (window.gestorIdiomas) {
+                    console.log('📍 Activando primer idioma:', primerIdioma);
                     try {
-                        await gestorIdiomas.cambiarIdioma(usuario.idiomasObjetivo[0].idioma);
-                    } catch (e) {}
+                        await gestorIdiomas.cambiarIdioma(primerIdioma);
+                    } catch (e) {
+                        console.warn('⚠️ Error activando primer idioma:', e);
+                    }
                 }
             }
             
@@ -887,9 +1221,19 @@ class App {
             console.log('📊 Mostrando dashboard...');
             this._ocultarPantallaCargaYMostrarDashboard();
             
+            // 🔥 INICIAR MÓDULOS EN SEGUNDO PLANO CON CONTROL DE BUCLE
             this._iniciarModulosEnSegundoPlano(usuario);
             
-            // === INTERVALO DE RECONEXIÓN PERIÓDICA DE VIGIA ===
+            // 🔥 FORZAR CONEXIÓN DE VIGÍA DESPUÉS DE UNOS SEGUNDOS
+            setTimeout(async () => {
+                if (apiKey) {
+                    await this._forzarConexionVigia(apiKey);
+                } else {
+                    console.warn('⚠️ No hay API Key para conectar Vigía');
+                }
+            }, 2000);
+            
+            // Intervalo de reconexión periódica
             if (this._intervaloReconexionVigia) {
                 clearInterval(this._intervaloReconexionVigia);
             }
@@ -1021,11 +1365,20 @@ class App {
     }
 
     // ============================================================
-    // INICIAR MODULOS EN SEGUNDO PLANO
+    // INICIAR MODULOS EN SEGUNDO PLANO (CON CONTROL DE BUCLE)
     // ============================================================
 
     _iniciarModulosEnSegundoPlano(usuario) {
         console.log('🔄 Iniciando módulos en segundo plano...');
+        
+        if (this._inicializandoModulos) {
+            console.log('⏳ Ya hay una inicialización de módulos en curso');
+            return;
+        }
+        
+        this._inicializandoModulos = true;
+        this._ultimoIntentoModulo = Date.now();
+        this._intentosModulo = 0;
         
         // === RECONEXIÓN AUTOMÁTICA DE VIGIA (INMEDIATA) ===
         setTimeout(() => {
@@ -1048,87 +1401,67 @@ class App {
             }
         }, 8000);
         
-        try {
-            if (window.vigiaGramatical) {
-                window.vigiaGramatical.initGramatical().catch(function(e) {});
-            }
-            if (window.LearningPath && typeof window.LearningPath.init === 'function') {
-                window.LearningPath.init(window.uiCore).catch(function(e) {});
-            }
-            if (window.UICaracteres && window.UICaracteres.init) {
-                window.UICaracteres.init(window.uiCore).catch(function(e) {});
-            }
-        } catch (e) {}
+        // Módulos - con control de bucle
+        const modulos = [
+            { name: 'vigiaGramatical', fn: () => window.vigiaGramatical?.initGramatical?.() },
+            { name: 'LearningPath', fn: () => window.LearningPath?.init?.(window.uiCore) },
+            { name: 'UICaracteres', fn: () => window.UICaracteres?.init?.(window.uiCore) },
+            { name: 'UIConfig', fn: () => window.UIConfig?._recargarConfiguracion?.() },
+            { name: 'UIGrammar', fn: () => window.UIGrammar?._cargarGramatica?.() },
+            { name: 'UITemas', fn: () => window.UITemas?._renderTemas?.() },
+            { name: 'UIEspacio', fn: () => window.UIEspacio?._renderizarMiEspacio?.() },
+            { name: 'tutorNeuro', fn: () => window.tutorNeuro?.initTutor?.() },
+            { name: 'modoElipse', fn: () => window.modoElipse?.init?.(window.uiCore) },
+            { name: 'modoOndasCruzadas', fn: () => window.modoOndasCruzadas?.init?.(window.uiCore) },
+            { name: 'UIClipse', fn: () => window.UIClipse?.init?.(window.uiCore) },
+            { name: 'UIOndasCruzadas', fn: () => window.UIOndasCruzadas?.init?.(window.uiCore) }
+        ];
         
-        setTimeout(() => {
-            if (window.UIConfig && window.UIConfig._recargarConfiguracion) {
-                window.UIConfig._recargarConfiguracion();
-            }
-            if (window.UIGrammar) {
-                window.UIGrammar._cargarGramatica();
-            }
-            if (window.UITemas) {
-                window.UITemas._renderTemas();
-            }
-            if (window.UIEspacio) {
-                window.UIEspacio._renderizarMiEspacio();
-            }
-            if (window.UICaracteres && window.UICaracteres.estaDisponible()) {
-                window.UICaracteres.cargar(window.uiCore);
-            }
-        }, 800);
+        const modulosFiltrados = modulos.filter(m => !this._modulosInicializados.has(m.name));
         
-        setTimeout(() => {
-            if (window.tutorNeuro && typeof window.tutorNeuro.initTutor === 'function') {
-                console.log('🧠 Iniciando Tutor Neuro en segundo plano...');
-                window.tutorNeuro.initTutor()
-                    .then(function() {
-                        console.log('✅ Tutor Neuro inicializado');
-                    })
-                    .catch(function(e) {
-                        console.warn('⚠️ Tutor Neuro fallo (no critico):', e.message || e);
-                    });
-            }
-        }, 1500);
+        if (modulosFiltrados.length === 0) {
+            console.log('✅ Todos los módulos ya están inicializados');
+            this._inicializandoModulos = false;
+            return;
+        }
         
-        setTimeout(() => {
-            if (window.modoElipse && typeof window.modoElipse.init === 'function') {
-                console.log('🌌 Iniciando Modo Elipse en segundo plano...');
-                window.modoElipse.init(window.uiCore)
-                    .then(function() {
-                        console.log('✅ Modo Elipse inicializado');
-                        if (typeof window.modoElipse.cargarDatos === 'function') {
-                            window.modoElipse.cargarDatos();
-                        }
-                    })
-                    .catch(function(e) {
-                        console.warn('⚠️ Modo Elipse fallo:', e);
-                    });
+        console.log(`📦 Inicializando ${modulosFiltrados.length} módulos...`);
+        
+        let moduloIndex = 0;
+        const self = this;
+        
+        function iniciarSiguienteModulo() {
+            if (moduloIndex >= modulosFiltrados.length) {
+                console.log('✅ Todos los módulos inicializados correctamente');
+                self._inicializandoModulos = false;
+                return;
             }
             
-            if (window.modoOndasCruzadas && typeof window.modoOndasCruzadas.init === 'function') {
-                console.log('🌊 Iniciando Modo Ondas Cruzadas en segundo plano...');
-                window.modoOndasCruzadas.init(window.uiCore)
-                    .then(function() {
-                        console.log('✅ Modo Ondas Cruzadas inicializado');
-                    })
-                    .catch(function(e) {
-                        console.warn('⚠️ Modo Ondas Cruzadas fallo:', e);
+            const modulo = modulosFiltrados[moduloIndex];
+            const nombre = modulo.name;
+            
+            try {
+                console.log(`  🔄 Inicializando ${nombre}...`);
+                const resultado = modulo.fn();
+                if (resultado && typeof resultado.then === 'function') {
+                    resultado.catch((e) => {
+                        console.warn(`  ⚠️ ${nombre} falló (no crítico):`, e.message || e);
                     });
+                }
+                self._modulosInicializados.add(nombre);
+            } catch (e) {
+                console.warn(`  ⚠️ ${nombre} falló (no crítico):`, e.message || e);
+                // No añadir a inicializados para intentar de nuevo
             }
             
-            if (window.UIClipse && typeof window.UIClipse.init === 'function') {
-                try {
-                    window.UIClipse.init(window.uiCore);
-                } catch (e) {}
-            }
+            moduloIndex++;
             
-            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                try {
-                    window.UIOndasCruzadas.init(window.uiCore);
-                } catch (e) {}
-            }
-        }, 2000);
+            // Pequeña pausa entre módulos
+            setTimeout(iniciarSiguienteModulo, 200);
+        }
+        
+        // Iniciar después de 1s
+        setTimeout(iniciarSiguienteModulo, 1000);
     }
 
     // ============================================================
@@ -1183,6 +1516,7 @@ class App {
         try {
             this._mostrarPantallaCargaInmediata('Recuperando datos...');
             
+            // 🔥 LIMPIAR Y RECONSTRUIR IDIOMAS
             if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0 && window.gestorIdiomas) {
                 gestorIdiomas.idiomas = [];
                 for (var i = 0; i < usuario.idiomasObjetivo.length; i++) {
@@ -1299,7 +1633,7 @@ class App {
     }
 
     // ============================================================
-    // REGISTRO
+    // REGISTRO - CORREGIDO
     // ============================================================
 
     _showRegisterScreen() {
@@ -1312,6 +1646,7 @@ class App {
             registroScreen.style.opacity = '1';
             registroScreen.style.pointerEvents = 'auto';
         }
+        
         if (mainScreen) {
             mainScreen.style.display = 'none';
             mainScreen.classList.remove('active');
@@ -1325,6 +1660,7 @@ class App {
         }
         
         this._registroOculto = false;
+        this._dashboardMostrado = false;
         this._setupRegisterForm();
         console.log('📝 Pantalla de registro mostrada');
     }
@@ -1373,14 +1709,19 @@ class App {
                 return;
             }
 
+            // 🔥 GUARDAR API KEY PRIMERO
             try {
                 await db.guardarApiKey(apiKey);
                 localStorage.setItem('pipeline_api_key', apiKey);
+                this._apiKeyCargada = true;
                 console.log('✅ API Key guardada');
             } catch (e) {
                 await this._showToast('Error guardando API Key: ' + e.message, 'error');
                 return;
             }
+
+            // 🔥 FORZAR CONEXIÓN DE VIGÍA CON LA API KEY
+            await this._forzarConexionVigia(apiKey);
 
             var validacionNativo = this._validarIdiomaLocal(idiomaNativo, 'nativo');
             
@@ -1447,11 +1788,11 @@ class App {
                 nivel: idiomas[0]?.nivel || 'B1',
                 idiomaActivo: idiomas[0]?.idioma || '',
                 fechaRegistro: new Date().toISOString(),
-                version: '23.5'
+                version: '23.7'
             };
 
             this._saveUsuarioLocalStorage(usuario);
-
+            
             if (this._dbReady) {
                 try {
                     await db.guardarUsuario(usuario);
@@ -1471,6 +1812,9 @@ class App {
             }
 
             console.log('✅ Registro completado para:', usuario.nombre);
+            
+            this._usuarioCargado = true;
+            this._apiKeyCargada = true;
 
             this._mostrarPantallaCargaInmediata('Preparando tu experiencia...');
 
@@ -1512,7 +1856,7 @@ class App {
             
             this._iniciarModulosEnSegundoPlano(usuario);
             
-            // === RECONEXIÓN DE VIGIA DESPUÉS DEL REGISTRO ===
+            // 🔥 FORZAR RECONEXIÓN DE VIGÍA NUEVAMENTE
             setTimeout(() => {
                 this._reconectarVigiaAutomaticamente();
             }, 1500);
@@ -1559,14 +1903,15 @@ class App {
             if (!usuario.idiomasObjetivo || usuario.idiomasObjetivo.length === 0) { return false; }
             if (!window.gestorIdiomas) return false;
             
-            if (gestorIdiomas.idiomas.length === 0) { gestorIdiomas.idiomas = []; }
+            // 🔥 LIMPIAR IDIOMAS EXISTENTES PRIMERO
+            if (gestorIdiomas.idiomas.length > 0) {
+                gestorIdiomas.idiomas = [];
+            }
             
             for (var i = 0; i < usuario.idiomasObjetivo.length; i++) {
                 var item = usuario.idiomasObjetivo[i];
                 var idioma = item.idioma;
                 var nivel = item.nivel || 'B1';
-                var existe = gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === idioma; });
-                if (existe) continue;
                 
                 var stats = { totalFrases: 0, frasesCompletadas: 0, progreso: 0 };
                 
@@ -1605,12 +1950,13 @@ class App {
             
             if (usuario.idiomasObjetivo.length > 0) {
                 var saved = localStorage.getItem('pipeline_idioma_activo');
+                var primerIdioma = usuario.idiomasObjetivo[0].idioma;
                 if (saved && gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === saved; })) {
                     gestorIdiomas.idiomaActivo = saved;
                 } else if (usuario.idiomaActivo && gestorIdiomas.idiomas.some(function(idi) { return idi.idioma === usuario.idiomaActivo; })) {
                     gestorIdiomas.idiomaActivo = usuario.idiomaActivo;
                 } else {
-                    gestorIdiomas.idiomaActivo = usuario.idiomasObjetivo[0].idioma;
+                    gestorIdiomas.idiomaActivo = primerIdioma;
                 }
                 localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
             }
@@ -1728,7 +2074,7 @@ class App {
 document.addEventListener('DOMContentLoaded', function() {
     if (window._appInitialized) return;
     window._appInitialized = true;
-    console.log('🚀 Iniciando App v23.5 - Con reconexión automática de Vigia...');
+    console.log('🚀 Iniciando App v23.7 - Parche de emergencia...');
     
     if (typeof db === 'undefined') {
         console.error('❌ Database no definida');
@@ -1756,12 +2102,10 @@ window.modoElipse = modoElipse;
 window.modoOndasCruzadas = modoOndasCruzadas;
 window.UIOndasCruzadas = UIOndasCruzadas;
 
-console.log('✅ App v23.5 - CON RECONEXIÓN AUTOMÁTICA DE VIGIA');
-console.log('  🚀 Dashboard visible en ~2-3 segundos');
-console.log('  🧠 Tutor Neuro en segundo plano (sin errores)');
-console.log('  🔄 Reconexión automática de Vigia:');
-console.log('     - Al iniciar la app');
-console.log('     - Al volver al dashboard');
-console.log('     - Cada 30 segundos (si está desconectado)');
-console.log('     - Con reintentos automáticos (5 intentos)');
-console.log('  ⏱️ Timeout de seguridad: 3 segundos');
+console.log('✅ App v23.7 - PARCHE DE EMERGENCIA');
+console.log('  🔥 Limpia datos residuales de idiomas');
+console.log('  🔥 Forza conexión de Vigía');
+console.log('  🔥 Detiene bucles infinitos');
+console.log('  🔥 Control de inicialización de módulos');
+console.log('  🔥 Verificación estricta de registro');
+console.log('  🚀 Dashboard visible ~2-3 segundos');

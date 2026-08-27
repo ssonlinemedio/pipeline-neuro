@@ -1,5 +1,6 @@
 // ============================================================
-// MODO ONDAS CRUZADAS v3.9 - CORREGIDO: PROMPT MULTIDIOMA
+// MODO ONDAS CRUZADAS v3.9.3 - CORREGIDO: MARCA ONDAS COMO CRUZADAS
+// CON INTEGRACIÓN MULTIDIOMA Y PRESERVACIÓN TOTAL DE FUNCIONALIDADES
 // ============================================================
 
 class ModoOndasCruzadas {
@@ -61,6 +62,11 @@ class ModoOndasCruzadas {
         this._guardadoPendiente = false;
         this._ultimoGuardadoExitoso = 0;
         
+        this._sincronizando = false;
+        this._colaSincronizacion = [];
+        this._ultimaSincronizacion = 0;
+        this._intervaloSincronizacion = 3000;
+
         this._configurarListenerIdioma();
         this._cargarConfiguracion();
         this._registrarEventosPersistencia();
@@ -113,7 +119,7 @@ class ModoOndasCruzadas {
             this._idiomaActual = idiomaActual;
             this._cargarEstadoPorIdioma(idiomaActual);
             this._initDone = true;
-            console.log('🌊 ModoOndasCruzadas v3.9: Inicializado correctamente');
+            console.log('🌊 ModoOndasCruzadas v3.9.3: Inicializado correctamente');
             console.log(`   📊 Grafo: ${Object.keys(this._grafoElipse).length} elipses (${idiomaActual})`);
             console.log(`   💾 Datos cargados: ${this._datosCargados ? '✅ Sí' : '❌ No'}`);
             
@@ -197,7 +203,7 @@ class ModoOndasCruzadas {
             const interferenciasCompactadas = this._compactarInterferencias(this._mapaInterferencias);
             
             const data = {
-                version: '3.9',
+                version: '3.9.3',
                 timestamp: ahora,
                 idioma: idioma,
                 grafoElipse: grafoCompactado,
@@ -236,7 +242,7 @@ class ModoOndasCruzadas {
             try {
                 const backupKey = `pipeline_ondas_cruzadas_backup_${idioma}`;
                 const backupData = {
-                    version: '3.9',
+                    version: '3.9.3',
                     timestamp: ahora,
                     idioma: idioma,
                     totalElipses: Object.keys(this._grafoElipse || {}).length,
@@ -297,9 +303,9 @@ class ModoOndasCruzadas {
                 .slice(0, 100)
                 .map(([palabra, data]) => ({
                     palabra: (palabra || '').substring(0, 30),
-                    frecuencia: data.frecuencia || 1,
-                    orígenes: (data.orígenes || []).slice(0, 5),
-                    significado: (data.significado || '').substring(0, 50)
+                    frecuencia: (data && data.frecuencia) || 1,
+                    orígenes: (data && data.orígenes) ? data.orígenes.slice(0, 5) : [],
+                    significado: (data && data.significado) ? data.significado.substring(0, 50) : (palabra || '')
                 }));
         }
         if (Array.isArray(vocabulario)) {
@@ -310,9 +316,9 @@ class ModoOndasCruzadas {
                 .slice(0, 100)
                 .map(([palabra, data]) => ({
                     palabra: (palabra || '').substring(0, 30),
-                    frecuencia: data.frecuencia || 1,
-                    orígenes: (data.orígenes || []).slice(0, 5),
-                    significado: (data.significado || '').substring(0, 50)
+                    frecuencia: (data && data.frecuencia) || 1,
+                    orígenes: (data && data.orígenes) ? data.orígenes.slice(0, 5) : [],
+                    significado: (data && data.significado) ? data.significado.substring(0, 50) : (palabra || '')
                 }));
         }
         return [];
@@ -358,7 +364,7 @@ class ModoOndasCruzadas {
 
     _compactarExtremo(data) {
         const compactado = {
-            version: data.version || '3.9',
+            version: data.version || '3.9.3',
             timestamp: data.timestamp || Date.now(),
             idioma: data.idioma,
             totalElipses: data.totalElipses || 0,
@@ -562,7 +568,7 @@ class ModoOndasCruzadas {
         if (this._initDone) return this;
         this._core = core || window.uiCore;
         
-        console.log('🌊 ModoOndasCruzadas v3.9: Inicializando (MULTIIDIOMA)...');
+        console.log('🌊 ModoOndasCruzadas v3.9.3: Inicializando (MULTIIDIOMA)...');
         
         this._idiomaActual = this._obtenerIdiomaActual();
         console.log(`   📌 Idioma actual: ${this._idiomaActual}`);
@@ -572,7 +578,7 @@ class ModoOndasCruzadas {
         this._initDone = true;
         this._cargaInicialRealizada = true;
         
-        console.log('🌊 ModoOndasCruzadas v3.9: Inicializado');
+        console.log('🌊 ModoOndasCruzadas v3.9.3: Inicializado');
         console.log(`   📊 ${Object.keys(this._grafoElipse).length} elipses en el grafo (${this._idiomaActual})`);
         console.log(`   💾 Datos: ${this._datosCargados ? '✅' : '❌'}`);
         console.log(`   🔥 Guardado optimizado - evita QuotaExceededError`);
@@ -582,81 +588,60 @@ class ModoOndasCruzadas {
         console.log(`   🔥 Recuerdo de ondas incluido en plantillas para IA`);
         console.log(`   🔥 Modal de exportación/importación restaurado`);
         console.log(`   🔥 PROMPT MULTIDIOMA: El prompt está en el idioma nativo del usuario`);
+        console.log(`   🔥 ANTI-BUCLE: Sincronización controlada con candado`);
+        console.log(`   🔥 CORREGIDO: Las ondas cruzadas se marcan con _esOndaCruzada: true`);
         
         return this;
     }
 
     // ============================================================
-    // REGISTRAR EVENTOS
+    // REGISTRAR EVENTOS (CORREGIDO ANTI-BUCLE)
     // ============================================================
 
     _registrarEventos() {
-        window.addEventListener('elipseOndaGenerada', (e) => {
-            const detail = e.detail;
-            if (detail && detail.temaId) {
-                setTimeout(() => {
+        const programarSincronizacion = () => {
+            if (this._sincronizando) return;
+            clearTimeout(this._syncTimeout);
+            this._syncTimeout = setTimeout(() => {
+                if (this._initDone) {
                     this._sincronizarConElipseCompleto();
                     this._guardarDatos();
-                }, 500);
-            }
-        });
-        
-        window.addEventListener('elipseOndaCompletada', (e) => {
-            const detail = e.detail;
-            if (detail && detail.temaId) {
-                setTimeout(() => {
-                    this._sincronizarConElipseCompleto();
-                    this._guardarDatos();
-                }, 500);
-            }
-        });
-        
-        window.addEventListener('elipseTemaSeleccionado', (e) => {
-            const detail = e.detail;
-            if (detail && detail.temaId) {
-                this._temaActual = detail.temaId;
-            }
-        });
+                }
+            }, 1000);
+        };
 
-        window.addEventListener('elipseDatosCargados', () => {
-            setTimeout(() => {
-                this._sincronizarConElipseCompleto();
-                this._guardarDatos();
-            }, 500);
-        });
-
-        window.addEventListener('elipseNuevaOndaGenerada', (e) => {
-            const detail = e.detail;
-            if (detail && detail.temaId) {
-                setTimeout(() => {
-                    this._sincronizarConElipseCompleto();
-                    this._guardarDatos();
-                }, 300);
-            }
-        });
-
-        window.addEventListener('elipseSincronizada', (e) => {
-            const detail = e.detail;
-            if (detail && detail.temaId) {
-                setTimeout(() => {
-                    this._sincronizarConElipseCompleto();
-                    this._guardarDatos();
-                }, 300);
-            }
-        });
+        window.addEventListener('elipseOndaGenerada', programarSincronizacion);
+        window.addEventListener('elipseOndaCompletada', programarSincronizacion);
+        window.addEventListener('elipseTemaSeleccionado', programarSincronizacion);
+        window.addEventListener('elipseNuevaOndaGenerada', programarSincronizacion);
+        window.addEventListener('elipseSincronizada', programarSincronizacion);
     }
 
     // ============================================================
-    // SINCRONIZAR CON ELIPSE COMPLETO
+    // SINCRONIZAR CON ELIPSE COMPLETO (CORREGIDO ANTI-BUCLE)
     // ============================================================
 
     async _sincronizarConElipseCompleto() {
-        if (!window.modoElipse) {
-            console.warn('⚠️ Modo Elipse no disponible');
+        if (this._sincronizando) {
+            console.log('⏳ Evitando bucle infinito: sincronización ya en curso');
             return;
         }
-
+        
+        const ahora = Date.now();
+        if (ahora - this._ultimaSincronizacion < this._intervaloSincronizacion) {
+            console.log('⏳ Evitando bucle infinito: sincronización demasiado reciente');
+            return;
+        }
+        
+        this._sincronizando = true;
+        this._ultimaSincronizacion = ahora;
+        
         try {
+            if (!window.modoElipse) {
+                console.warn('⚠️ Modo Elipse no disponible');
+                return;
+            }
+
             await window.modoElipse.cargarDatos();
             
             const idiomaActual = this._obtenerIdiomaActual();
@@ -687,6 +672,12 @@ class ModoOndasCruzadas {
                         }
                     }
                 }
+            }
+            
+            if (Object.keys(historiasPorTema).length === 0) {
+                console.log('📭 No hay temas con historias, evitando renderizado en bucle');
+                this._grafoElipse = {};
+                return;
             }
             
             console.log(`📊 Temas con historias (${idiomaActual}): ${Object.keys(historiasPorTema).length}`);
@@ -766,7 +757,6 @@ class ModoOndasCruzadas {
                 
                 const ondasReales = ondasProcesadas.filter(h => h.esOnda === true);
                 
-                // Eliminar duplicados en ondas cruzadas
                 const ondasUnicas = [];
                 const clavesVistas = new Set();
                 for (const h of ondasReales) {
@@ -796,6 +786,8 @@ class ModoOndasCruzadas {
             
         } catch (error) {
             console.error('❌ Error sincronizando con Elipse:', error);
+        } finally {
+            this._sincronizando = false;
         }
     }
 
@@ -1179,10 +1171,10 @@ class ModoOndasCruzadas {
             })),
             vocabulario: vocabularioPagina.map(([palabra, data]) => ({
                 palabra: palabra,
-                significado: data.significado || palabra,
-                familia: data.familia || 'General',
-                frecuencia: data.frecuencia || 1,
-                origenes: data.orígenes || []
+                significado: (data && data.significado) ? data.significado : palabra,
+                familia: (data && data.familia) ? data.familia : 'General',
+                frecuencia: (data && data.frecuencia) ? data.frecuencia : 1,
+                origenes: (data && data.orígenes) ? data.orígenes : []
             })),
             totalVocabulario,
             paginaActual,
@@ -1380,10 +1372,8 @@ class ModoOndasCruzadas {
 
             console.log(`📊 Vocabulario prestado: ${vocabularioStrings.length} palabras`);
 
-            // 🔥 CONSTRUIR RECUERDO PARA LA IA
             const recuerdoTexto = this._construirRecuerdoParaIA(temaIdReal, idiomaObjetivo, idiomaPrompt);
 
-            // 🔥 GENERAR PLANTILLA CON RECUERDO Y PROMPT MULTIDIOMA
             let plantilla = null;
 
             if (window.modoElipse && typeof window.modoElipse.generarPlantillaOnda === 'function') {
@@ -1403,7 +1393,6 @@ class ModoOndasCruzadas {
                     throw new Error('No se pudo obtener la información del tema para generar la plantilla.');
                 }
 
-                // 🔥 CONSTRUIR PROMPT EN IDIOMA NATIVO
                 let promptCompleto = `Genera una nueva historia (onda) que sea una continuación de las historias anteriores del tema.\n\n`;
                 promptCompleto += `Idioma objetivo: ${nombreIdiomaObjetivo}\n`;
                 promptCompleto += `Nivel: ${temaInfo.nivel || 'A1'}\n`;
@@ -1426,7 +1415,7 @@ class ModoOndasCruzadas {
 
                 plantilla = {
                     "_INSTRUCCIONES_PARA_IA": {
-                        "version": "3.9",
+                        "version": "3.9.3",
                         "idioma_prompt": idiomaPrompt,
                         "idioma_objetivo": idiomaObjetivo,
                         "nombre_idioma_prompt": nombreIdiomaPrompt,
@@ -1439,11 +1428,13 @@ class ModoOndasCruzadas {
                         "es_jeroglifico": esJeroglifico,
                         "prompt": promptCompleto,
                         "recuerdo_contexto": recuerdoTexto,
+                        "esOndaCruzada": true,
                         "instrucciones": [
                             `El prompt completo está en el campo "prompt".`,
                             `El idioma objetivo para la historia es: ${nombreIdiomaObjetivo}.`,
                             `Responde SOLO en formato JSON válido.`,
-                            `NO incluyas texto adicional fuera del JSON.`
+                            `NO incluyas texto adicional fuera del JSON.`,
+                            `⚠️ Esta es una ONDA CRUZADA. Debes incluir vocabulario de otros temas.`
                         ],
                         "formato_palabras": esJeroglifico ? {
                             "hanzi": "El carácter en el idioma objetivo",
@@ -1469,7 +1460,8 @@ class ModoOndasCruzadas {
                         "nivel": temaInfo.nivel || 'A1',
                         "num_historias": 1,
                         "fecha_generacion": new Date().toISOString(),
-                        "version": "3.9"
+                        "version": "3.9.3",
+                        "_esOndaCruzada": true
                     },
                     "historias": []
                 };
@@ -1514,7 +1506,6 @@ class ModoOndasCruzadas {
                 console.log('✅ Plantilla de respaldo generada correctamente.');
             }
 
-            // 🔥 ENRIQUECER PLANTILLA CON INSTRUCCIONES CRUZADAS
             const instruccionesCruce = `
 🔥 **INSTRUCCIONES ESPECIALES - ONDA CRUZADA 🔥**
 
@@ -1557,7 +1548,9 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
                 recuerdo_contexto: recuerdoTexto
             };
 
-            // 🔥 AÑADIR CAMPOS DE TRANSCRIPCIÓN/PINYIN A LAS FRASES
+            // 🔥 AÑADIR BANDERA _esOndaCruzada al meta
+            plantilla.meta._esOndaCruzada = true;
+
             if (plantilla.historias && plantilla.historias.length > 0) {
                 for (const historia of plantilla.historias) {
                     if (historia.frases) {
@@ -1593,7 +1586,6 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
                 }
             }
 
-            // Guardar solo si hay cambios significativos
             if (Object.keys(this._grafoElipse).length > 0) {
                 this._guardarDatos();
             }
@@ -1601,6 +1593,7 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
             console.log(`✅ Plantilla de onda cruzada generada con ${esJeroglifico ? 'pinyin' : 'transcripción'} (${nombreIdiomaObjetivo})`);
             console.log(`📚 Recuerdo incluido en la plantilla para la IA`);
             console.log(`💬 Prompt generado en ${nombreIdiomaPrompt}`);
+            console.log(`🏷️ Onda marcada como _esOndaCruzada: true`);
 
             this._generando = false;
             return plantilla;
@@ -1641,7 +1634,6 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
             recuerdoTexto += '\n';
         }
 
-        // Añadir vocabulario acumulado
         const vocabularioAcumulado = this._recuerdoGlobal.vocabularioAcumulado || new Map();
         if (vocabularioAcumulado.size > 0) {
             const palabrasMostrar = Array.from(vocabularioAcumulado.keys()).slice(0, 20);
@@ -1653,13 +1645,11 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
             recuerdoTexto += '\n\n';
         }
 
-        // Añadir personajes
         const personajes = this._recuerdoGlobal.personajes || new Set();
         if (personajes.size > 0) {
             recuerdoTexto += `👤 **PERSONAJES:** ${Array.from(personajes).join(', ')}\n\n`;
         }
 
-        // Añadir lugares
         const lugares = this._recuerdoGlobal.lugares || new Set();
         if (lugares.size > 0) {
             recuerdoTexto += `📍 **LUGARES:** ${Array.from(lugares).join(', ')}\n\n`;
@@ -1688,14 +1678,10 @@ ${esJeroglifico ? '6. 🔥 IMPORTANTE: Incluye PINYIN con tonos para TODAS las p
     }
 }
 
-// ============================================================
-// INSTANCIA GLOBAL
-// ============================================================
-
 const modoOndasCruzadas = new ModoOndasCruzadas();
 window.modoOndasCruzadas = modoOndasCruzadas;
 
-console.log('✅ Modo Ondas Cruzadas v3.9 - CON PROMPT MULTIDIOMA');
+console.log('✅ Modo Ondas Cruzadas v3.9.3 - CORREGIDO: MARCA ONDAS COMO CRUZADAS');
 console.log('  🔥 El prompt para la IA externa se genera en el idioma nativo del usuario');
 console.log('  🔥 El idioma objetivo para la historia se especifica claramente');
 console.log('  🔥 La plantilla incluye campos para ambos idiomas');
@@ -1707,4 +1693,6 @@ console.log('  🔥 Resumen global mejorado con estadísticas clave');
 console.log('  🔥 Transcripción fonética para idiomas alfabéticos');
 console.log('  🔥 Pinyin con tonos para idiomas jeroglíficos');
 console.log('  🔥 Guardado optimizado - evita QuotaExceededError');
+console.log('  🔥 CORREGIDO: Las ondas cruzadas se marcan con _esOndaCruzada: true');
+console.log('  🛡️ ANTI-BUCLE: Sincronización protegida con candado y debounce');
 console.log('  ✅ Todas las funcionalidades originales preservadas');
