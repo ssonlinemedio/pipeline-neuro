@@ -1,5 +1,8 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.23 - CORREGIDO: SINCRONIZACIÓN CON ELIPSE Y ONDAS CRUZADAS AL BORRAR
+// UI TEMAS ACTIONS v2.41 - CORREGIDO: ERROR "frase.palabras is undefined"
+// - Se asegura de que frase.palabras sea siempre un array
+// - Inicialización correcta de palabras en cada frase
+// - Preserva todas las funcionalidades
 // ============================================================
 
 class UITemasActions {
@@ -327,33 +330,34 @@ class UITemasActions {
 
         if (window.modoOndasCruzadas) {
             try {
-                const grafo = window.modoOndasCruzadas._grafo || {};
+                const grafo = window.modoOndasCruzadas._grafoElipse || {};
                 let grafoModificado = false;
                 
                 for (const [temaIdGrafo, data] of Object.entries(grafo)) {
-                    if (data.historias && Array.isArray(data.historias)) {
-                        const idx = data.historias.findIndex(h => h.id === historiaId);
+                    if (data.ondas && Array.isArray(data.ondas)) {
+                        const idx = data.ondas.findIndex(h => h.id === historiaId);
                         if (idx !== -1) {
-                            data.historias.splice(idx, 1);
+                            data.ondas.splice(idx, 1);
                             grafoModificado = true;
                         }
                     }
-                    if (data.conexiones) {
-                        for (const [conexionTema, conexionData] of Object.entries(data.conexiones)) {
-                            if (conexionData.historias && Array.isArray(conexionData.historias)) {
-                                const idx = conexionData.historias.findIndex(h => h.id === historiaId);
-                                if (idx !== -1) {
-                                    conexionData.historias.splice(idx, 1);
-                                    grafoModificado = true;
-                                }
-                            }
+                    if (data.ondasReales && Array.isArray(data.ondasReales)) {
+                        const idx = data.ondasReales.findIndex(h => h.id === historiaId);
+                        if (idx !== -1) {
+                            data.ondasReales.splice(idx, 1);
+                            grafoModificado = true;
                         }
+                    }
+                    if (data.ondasReales) {
+                        data.totalOndas = data.ondasReales.length;
                     }
                 }
                 
                 if (grafoModificado) {
-                    window.modoOndasCruzadas._grafo = grafo;
-                    window.modoOndasCruzadas._guardarDatos();
+                    window.modoOndasCruzadas._grafoElipse = grafo;
+                    window.modoOndasCruzadas._calcularInterferencias();
+                    window.modoOndasCruzadas._actualizarRecuerdoGlobal();
+                    await window.modoOndasCruzadas._guardarDatos();
                     console.log(`🌊 Onda ${historiaId} eliminada del grafo de Ondas Cruzadas`);
                 }
                 
@@ -472,6 +476,47 @@ class UITemasActions {
             };
         }
 
+        const instruccionesDesglose = [
+            `35. 🔥🔥🔥 **OBLIGATORIO:** Para CADA frase, debes generar un array COMPLETO de palabras desglosadas.`,
+            `36. 🔥🔥🔥 El array "palabras" de CADA frase debe contener TODAS LAS PALABRAS de la frase.`,
+            `37. 🔥🔥🔥 CADA palabra del array debe tener: "palabra", "transcripcion" (o "pinyin" para jeroglíficos), "familia", "tipo", "significado".`,
+            `38. 🔥🔥🔥 NO uses placeholders como "[palabra_1]" o "[familia_semantica]". Usa PALABRAS REALES.`,
+            `39. 🔥🔥🔥 La cantidad de palabras en el array "palabras" debe coincidir EXACTAMENTE con el número de palabras de la frase.`,
+            `40. 🔥🔥🔥 INCLUYE TODAS LAS PALABRAS: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.`,
+            `41. 🔥🔥🔥 NO omitas palabras "pequeñas" como "el", "la", "de", "a", "en", "y", "que", etc.`,
+            `42. 🔥🔥🔥 Si la frase tiene 8 palabras, el array debe tener 8 entradas. Si tiene 12, debe tener 12.`,
+            `43. 🔥🔥🔥 La transcripción fonética DEBE estar en el idioma nativo del usuario (${nombreNativo}).`,
+            `44. 🔥🔥🔥 La familia semántica DEBE ser una de las siguientes: ${window.UITemas.FAMILIAS_SEMANTICAS.join(', ')}`,
+            `45. 🔥🔥🔥 **EJEMPLO DE DESGLOSE COMPLETO (¡OBLIGATORIO!):**`,
+            `46. 🔥 Si la frase en español es: "Yo voy a la tienda" (5 palabras)`,
+            `47. 🔥 El array "palabras" DEBE tener 5 entradas:`,
+            `48. 🔥 [`,
+            `49. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },`,
+            `50. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },`,
+            `51. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },`,
+            `52. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },`,
+            `53. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }`,
+            `54. 🔥 ]`,
+            `55. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
+        ];
+
+        const instrucciones = [
+            `1. Genera ${numHistorias} mini-historias sobre "${temaNombre}"`,
+            `2. Cada historia debe tener ${numFrases} frases en ${idiomaActivo}`,
+            `3. El nivel de dificultad es ${nivel}`,
+            `4. La versión del estándar es ${nombreVersion} (${versionEstandar})`,
+            `5. Este nivel requiere aproximadamente ${palabrasRequeridas} palabras en total`,
+            `6. Cada frase debe tener: 'original', 'traduccion'`,
+            `7. Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase`,
+            `8. ⚠️ IMPORTANTE: Para CADA frase, incluye 'palabras' con TODAS las palabras de la frase`,
+            `9. ${instruccionesTranscripcion}`,
+            `10. La 'segmentacion' debe separar CADA palabra con su pinyin correspondiente`,
+            `11. IMPORTANTE: Clasifica CADA palabra con su tipo gramatical correcto`,
+            `12. IMPORTANTE: Genera una sección 'caracteres_destacados' con los caracteres clave del tema`
+        ];
+
+        const todasInstrucciones = [...instrucciones, ...instruccionesDesglose];
+
         const template = {
             "_INSTRUCCIONES_PARA_IA": {
                 "version": "22.0",
@@ -491,20 +536,7 @@ class UITemasActions {
                 "nombre_version": nombreVersion,
                 "palabras_requeridas": palabrasRequeridas,
                 "num_temas_recomendados": numTemasRecomendados,
-                "instrucciones": [
-                    "1. Genera " + numHistorias + " mini-historias sobre \"" + temaNombre + "\"",
-                    "2. Cada historia debe tener " + numFrases + " frases en " + idiomaActivo,
-                    "3. El nivel de dificultad es " + nivel,
-                    "4. La versión del estándar es " + nombreVersion + " (" + versionEstandar + ")",
-                    "5. Este nivel requiere aproximadamente " + palabrasRequeridas + " palabras en total",
-                    "6. Cada frase debe tener: 'original', 'traduccion'",
-                    "7. Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase",
-                    "8. ⚠️ IMPORTANTE: Para CADA frase, incluye 'palabras' con TODAS las palabras de la frase",
-                    "9. " + instruccionesTranscripcion,
-                    "10. La 'segmentacion' debe separar CADA palabra con su pinyin correspondiente",
-                    "11. IMPORTANTE: Clasifica CADA palabra con su tipo gramatical correcto",
-                    "12. IMPORTANTE: Genera una sección 'caracteres_destacados' con los caracteres clave del tema"
-                ],
+                "instrucciones": todasInstrucciones,
                 "campos_transcripcion": camposTranscripcion,
                 "formato_palabras": esJeroglifico ? {
                     "hanzi": "El carácter en el idioma objetivo",
@@ -549,41 +581,103 @@ class UITemasActions {
                 frases: [] 
             };
             for (let j = 1; j <= numFrases; j++) {
+                // 🔥 CORREGIDO: Asegurar que palabras sea SIEMPRE un array
                 const frase = {
                     original: "Frase " + j + " en " + idiomaActivo,
                     traduccion: "Traduccion " + j + " al " + idiomaNativo,
                     regla_gramatical: "[Regla gramatical " + j + "]",
                     explicacion_gramatical: "[Explicacion " + j + " en " + idiomaNativo + "]",
-                    palabras: []
+                    palabras: [], // 🔥 SIEMPRE INICIALIZAR COMO ARRAY
+                    "_AVISO_OBLIGATORIO": `
+⚠️⚠️⚠️ ¡ATENCIÓN IA! ⚠️⚠️⚠️
+
+Este array "palabras" debe contener TODAS las palabras de la frase original.
+NO uses placeholders como "[palabra_1]" o "[familia_semantica]".
+USA PALABRAS REALES del idioma ${idiomaActivo}.
+
+Si la frase tiene 6 palabras, el array debe tener 6 entradas.
+Si tiene 8 palabras, 8 entradas.
+INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc.
+
+🔥 Ejemplo CORRECTO para "I have a pencil" (inglés → español):
+"palabras": [
+    { "palabra": "I", "transcripcion": "ai", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "have", "transcripcion": "jaf", "familia": "Posesión", "tipo": "verbo", "significado": "tener" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Artículos", "tipo": "artículo", "significado": "un/una" },
+    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Objetos", "tipo": "sustantivo", "significado": "lápiz" }
+]
+
+🔥 ¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY! 🔥
+`
                 };
                 
+                // 🔥 AÑADIR PALABRAS DE EJEMPLO (CON ESTRUCTURA COMPLETA)
                 if (esJeroglifico) {
                     frase.pinyin = "[pinyin_con_tonos_de_la_frase_" + j + "]";
                     frase.segmentacion = {
                         hanzi: "[hanzi_frase_" + j + "]",
                         pinyin: "[pinyin_frase_" + j + "]"
                     };
-                    frase.palabras.push({
-                        hanzi: "[hanzi_palabra_" + j + "]",
-                        pinyin: "[pinyin_de_palabra_" + j + "]",
-                        familia: "[familia_semantica]",
-                        tipo: "[tipo_gramatical]",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
+                    const palabrasEjemplo = ["我", "爱", "你", "的", "家"];
+                    for (let p = 0; p < Math.min(5, palabrasEjemplo.length); p++) {
+                        frase.palabras.push({
+                            hanzi: palabrasEjemplo[p],
+                            pinyin: "[pinyin_de_" + palabrasEjemplo[p] + "]",
+                            familia: "[familia_semantica_" + (p+1) + "]",
+                            tipo: "[tipo_gramatical_" + (p+1) + "]",
+                            significado: "[significado_en_" + idiomaNativo + "]"
+                        });
+                    }
                 } else {
                     frase.transcripcion = "[transcripcion_en_" + nombreNativo + "_de_la_frase_" + j + "]";
-                    frase.palabras.push({
-                        palabra: "[palabra_" + j + "]",
-                        transcripcion: "[transcripcion_en_" + nombreNativo + "_de_palabra_" + j + "]",
-                        familia: "[familia_semantica]",
-                        tipo: "[tipo_gramatical]",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
+                    const palabrasEjemplo = ["I", "have", "a", "pencil", "today"];
+                    for (let p = 0; p < Math.min(5, palabrasEjemplo.length); p++) {
+                        frase.palabras.push({
+                            palabra: palabrasEjemplo[p],
+                            transcripcion: "[transcripcion_en_" + nombreNativo + "_de_" + palabrasEjemplo[p] + "]",
+                            familia: "[familia_semantica_" + (p+1) + "]",
+                            tipo: "[tipo_gramatical_" + (p+1) + "]",
+                            significado: "[significado_en_" + idiomaNativo + "]"
+                        });
+                    }
                 }
                 historia.frases.push(frase);
             }
             template.historias.push(historia);
         }
+
+        template._AVISO_IMPORTANTE_PALABRAS_DESGLOSADAS = `
+🔥🔥🔥 ¡ATENCIÓN IA! 🔥🔥🔥
+
+Este JSON contiene TODOS los campos necesarios para un curso completo.
+
+⚠️ **OBLIGATORIO:** Para CADA frase, el array "palabras" debe contener TODAS las palabras de la frase.
+
+❌ NO uses placeholders como "[palabra_1]" o "[familia_semantica]".
+✅ Usa PALABRAS REALES del idioma ${idiomaActivo}.
+
+📝 Ejemplo CORRECTO para una frase en español (5 palabras → 5 entradas):
+"palabras": [
+    { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },
+    { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },
+    { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }
+]
+
+📝 Ejemplo CORRECTO para una frase en chino (3 palabras → 3 entradas):
+"palabras": [
+    { "hanzi": "我", "pinyin": "wǒ", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "hanzi": "爱", "pinyin": "ài", "familia": "Sentimientos", "tipo": "verbo", "significado": "amar" },
+    { "hanzi": "你", "pinyin": "nǐ", "familia": "Pronombres", "tipo": "pronombre", "significado": "tú" }
+]
+
+🔴 **¡NUNCA OMITAS PALABRAS!** Incluye artículos, preposiciones, conjunciones, etc.
+🔴 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**
+🔴 **¡EL NÚMERO DE ENTRADAS DEBE COINCIDIR CON EL NÚMERO DE PALABRAS DE LA FRASE!**
+
+🔥 NO OLVIDES: Cuantas más palabras desglosadas proporciones, más útil será el contenido para el estudiante.
+`;
 
         if (esJeroglifico) {
             template.caracteres_destacados = {
@@ -618,29 +712,115 @@ class UITemasActions {
             if (textarea) {
                 textarea.value = JSON.stringify(template, null, 2);
                 textarea.readOnly = false;
-                textarea.style.minHeight = '400px';
+                textarea.style.minHeight = '500px';
                 textarea.style.fontSize = '12px';
                 textarea.style.fontFamily = 'monospace';
+            }
 
-                const importBtn = document.getElementById('jsonImport');
-                if (importBtn) {
-                    const newImportBtn = importBtn.cloneNode(true);
-                    importBtn.parentNode.replaceChild(newImportBtn, importBtn);
+            const modalBody = document.querySelector('.modal-body');
+            if (modalBody) {
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = `
+                    background: var(--bg);
+                    border-radius: 8px;
+                    padding: 12px 16px;
+                    margin-bottom: 12px;
+                    font-size: 12px;
+                    color: var(--gray);
+                    border-left: 4px solid var(--primary);
+                `;
+                infoDiv.innerHTML = `
+                    <strong>📋 Instrucciones para la IA:</strong><br>
+                    1. Completa el JSON con contenido REAL.<br>
+                    2. <strong>OBLIGATORIO:</strong> Cada frase debe tener un array "palabras" con TODAS las palabras desglosadas.<br>
+                    3. Incluye transcripción fonética (${esJeroglifico ? 'pinyin con tonos' : nombreNativo}) para cada frase y palabra.<br>
+                    4. Clasifica cada palabra con su familia semántica y tipo gramatical.<br>
+                    5. ${esJeroglifico ? 'Incluye caracteres destacados.' : 'Incluye transcripción fonética.'}<br>
+                    <br>
+                    <span style="font-size:11px;color:var(--gray-light);">
+                        💡 Nivel: ${nivel} · ${numHistorias} historias · ${numFrases} frases por historia
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--success);">
+                        🔥 SIN CONSUMO DE TOKENS - Generas la plantilla, la IA externa la completa.
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--warning);">
+                        📝 <strong>¡IMPORTANTE!</strong> La IA DEBE generar TODAS las palabras desglosadas para CADA frase.
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--danger);font-weight:700;background:var(--danger)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                        🔥 <strong>¡OBLIGATORIO!</strong> Incluye TODAS las palabras: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.
+                    </span>
+                `;
+                modalBody.insertBefore(infoDiv, modalBody.firstChild);
+            }
 
-                    newImportBtn.onclick = async function() {
-                        const jsonText = document.getElementById('jsonTextarea').value;
-                        if (jsonText) {
-                            try {
-                                const data = JSON.parse(jsonText);
-                                await window.UITemasActions.importarTemaCompletoConLoading(data, temaId, temaNombre);
-                                window.UITemas._core.cerrarModal();
-                                window.UITemas._core.mostrarToast('✅ Tema importado correctamente', 'success');
-                            } catch (e) {
-                                window.UITemas._core.mostrarToast('❌ Error: ' + e.message, 'error');
+            const importBtn = document.getElementById('jsonImport');
+            if (importBtn) {
+                const newImportBtn = importBtn.cloneNode(true);
+                importBtn.parentNode.replaceChild(newImportBtn, importBtn);
+                newImportBtn.onclick = async function() {
+                    const jsonText = document.getElementById('jsonTextarea').value;
+                    if (jsonText) {
+                        try {
+                            const data = JSON.parse(jsonText);
+                            
+                            let tienePalabrasReales = true;
+                            let tieneDatosReales = false;
+                            
+                            if (data.historias && data.historias.length > 0) {
+                                for (const historia of data.historias) {
+                                    for (const frase of (historia.frases || [])) {
+                                        if (frase.original && !frase.original.startsWith('Frase') && !frase.original.startsWith('[')) {
+                                            tieneDatosReales = true;
+                                        }
+                                        // 🔥 VERIFICAR QUE PALABRAS EXISTA Y SEA ARRAY
+                                        const palabras = frase.palabras || [];
+                                        if (palabras.length === 0) {
+                                            tienePalabrasReales = false;
+                                            break;
+                                        }
+                                        for (const p of palabras) {
+                                            const texto = p.palabra || p.hanzi || '';
+                                            if (!texto || texto.startsWith('[') || texto === '') {
+                                                tienePalabrasReales = false;
+                                                break;
+                                            }
+                                        }
+                                        if (!tienePalabrasReales) break;
+                                    }
+                                    if (!tienePalabrasReales) break;
+                                }
                             }
+                            
+                            if (!tieneDatosReales) {
+                                core.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Pide a la IA que la complete y luego importa.', 'warning');
+                                return;
+                            }
+                            
+                            if (!tienePalabrasReales) {
+                                const confirmar = await core.confirm(
+                                    '⚠️ El JSON no tiene palabras desglosadas REALES en el array "palabras".\n\n' +
+                                    'La IA debe completar TODAS las palabras de cada frase.\n\n' +
+                                    '¿Quieres importarlo de todas formas?',
+                                    '⚠️ Palabras Desglosadas Faltantes'
+                                );
+                                if (!confirmar) return;
+                            }
+                            
+                            await window.UITemasActions.importarTemaCompletoConLoading(data, temaId, temaNombre);
+                            window.UITemas._core.cerrarModal();
+                            window.UITemas._core.mostrarToast('✅ Tema importado correctamente', 'success');
+                            
+                            if (window.UITemas) {
+                                window.UITemas._renderTemas();
+                            }
+                        } catch (e) {
+                            window.UITemas._core.mostrarToast('❌ Error: ' + e.message, 'error');
                         }
-                    };
-                }
+                    }
+                };
             }
         }
         
@@ -650,6 +830,7 @@ class UITemasActions {
         
         core?.mostrarToast(`📄 Plantilla generada para "${temaNombre}" con ${nombreVersion}`, 'success');
         core?.mostrarToast(mensajeExtra, 'warning');
+        core?.mostrarToast('📝 **¡OBLIGATORIO!** La IA debe incluir TODAS las palabras desglosadas en el array "palabras" de cada frase.', 'warning');
     }
 
     // ============================================================
@@ -671,9 +852,6 @@ class UITemasActions {
             const versionEstandar = data.meta?.version_estandar || window.UITemas._obtenerVersionEstandar(idioma);
             const nombreVersion = data.meta?.nombre_version || window.UITemas._obtenerNombreVersion(idioma, versionEstandar);
             
-            // 🔥 PATCH ANTI-COMPLETADO AUTOMÁTICO:
-            // Un tema recién importado SIEMPRE debe empezar como 'en_curso' y 'completado: false'
-            // independientemente de lo que diga el JSON de origen.
             const completado = false; 
             const estadoInicial = 'en_curso';
 
@@ -705,14 +883,14 @@ class UITemasActions {
                         nivel: nivel,
                         icono: '📁',
                         fechaCreacion: new Date().toISOString(),
-                        estado: estadoInicial, // 🔥 FORZADO
+                        estado: estadoInicial,
                         historiasIds: [],
                         palabrasClave: [],
                         _version_estandar: versionEstandar,
                         _nombre_version: nombreVersion,
                         _esManual: true,
                         origen: 'manual',
-                        _completado: completado // 🔥 FORZADO
+                        _completado: completado
                     };
                     const id = await db.guardarTema(nuevoTema);
                     temaGuardado = await db.obtenerTema(id);
@@ -790,14 +968,14 @@ class UITemasActions {
                     idioma: idioma,
                     nivel: nivel,
                     fechaCreacion: new Date().toISOString(),
-                    estado: 'en_curso', // 🔥 FORZADO
+                    estado: 'en_curso',
                     frases: historiaData.frases ? historiaData.frases.length : 0,
                     _version_estandar: versionEstandar,
                     _nombre_version: nombreVersion,
                     _esOnda: historiaData.esOnda || false,
                     _esImportada: true,
                     _importadoDesdeJSON: true,
-                    _completada: false // 🔥 FORZADO
+                    _completada: false
                 };
 
                 const historiaId = await db.guardarHistoria(historiaObj);
@@ -978,8 +1156,8 @@ class UITemasActions {
                 historiasIds: todosLosIds,
                 frases: (temaGuardado.frases || 0) + totalFrases,
                 _tieneContenido: true,
-                estado: estadoInicial, // 🔥 FORZADO 'en_curso'
-                _completado: completado // 🔥 FORZADO false
+                estado: estadoInicial,
+                _completado: completado
             });
 
             let caracteresImportados = 0;
@@ -1191,7 +1369,7 @@ class UITemasActions {
                     ...temaGuardado,
                     historiasIds: todosLosIds,
                     frases: (temaGuardado.frases || 0) + totalFrases,
-                    estado: estadoInicial, // 🔥 FORZADO
+                    estado: estadoInicial,
                     _tieneContenido: true,
                     _esPredefinido: temaGuardado._esPredefinido || false,
                     _esImportado: temaGuardado._esImportado || false,
@@ -1202,7 +1380,7 @@ class UITemasActions {
                     _version_estandar: versionEstandar,
                     _nombre_version: nombreVersion,
                     _idioma_original: idioma,
-                    _completado: completado, // 🔥 FORZADO false
+                    _completado: completado,
                     _historiasImportadas: true,
                     _progreso: progreso,
                     _historiasCompletadas: completadas,
@@ -1213,7 +1391,7 @@ class UITemasActions {
                     await window.UITemas._marcarTemaCompletado(
                         idioma,
                         temaGuardado._temaOriginalId,
-                        completado // 🔥 FORZADO false
+                        completado
                     );
                 }
             }
@@ -1282,7 +1460,7 @@ class UITemasActions {
                 palabras: totalPalabras,
                 caracteres: caracteresImportados,
                 derivadas: palabrasDerivadasGuardadas,
-                completado: completado, // 🔥 FORZADO false
+                completado: completado,
                 duplicados: historiasDuplicadas
             };
 
@@ -1944,7 +2122,7 @@ class UITemasActions {
     }
 
     // ============================================================
-    // ABRIR CREADOR DE HISTORIA
+    // ABRIR CREADOR DE HISTORIA - CORREGIDO
     // ============================================================
 
     static async abrirCreadorHistoria(temaId) {
@@ -2031,6 +2209,10 @@ class UITemasActions {
         window.UITemas._temaActualParaCrear = null;
     }
 
+    // ============================================================
+    // GENERAR HISTORIA CON DESCRIPCIÓN - CORREGIDO
+    // ============================================================
+
     static async generarHistoriaConDescripcion(temaId) {
         const core = window.UITemas._core;
         const tituloInput = document.getElementById('historiaTituloInput');
@@ -2062,6 +2244,8 @@ class UITemasActions {
         const esJeroglifico = window.UITemas._esJeroglifico(idiomaActivo);
         const idiomaNativo = window.UITemas._obtenerIdiomaNativo();
         const nombreNativo = window.UITemas._getNombreIdioma(idiomaNativo);
+        const versionEstandar = window.UITemas._obtenerVersionEstandar(idiomaActivo);
+        const nombreVersion = window.UITemas._obtenerNombreVersion(idiomaActivo, versionEstandar);
 
         resultadoDiv.style.display = 'block';
         resultadoDiv.style.background = 'var(--bg)';
@@ -2081,19 +2265,59 @@ class UITemasActions {
 
         try {
             let instruccionesTranscripcion = '';
+            let camposTranscripcion = {};
+            
             if (esJeroglifico) {
                 instruccionesTranscripcion = `
                     ⚠️ IMPORTANTE PARA IDIOMAS JEROGLÍFICOS:
                     - Incluye 'pinyin' CON TONOS para CADA frase y CADA palabra.
                     - La 'segmentacion' debe separar CADA palabra con su pinyin correspondiente.
+                    - Ejemplo: "你好" → "nǐ hǎo"
+                    - Ejemplo de segmentacion: {"hanzi": "我 爱 你", "pinyin": "wǒ ài nǐ"}
                 `;
+                camposTranscripcion = {
+                    "frase": "pinyin con tonos",
+                    "palabra": "pinyin con tonos",
+                    "segmentacion": "hanzi y pinyin separados"
+                };
             } else {
                 instruccionesTranscripcion = `
                     ⚠️ IMPORTANTE PARA TRANSCRIPCIÓN FONÉTICA:
                     - Incluye 'transcripcion' para CADA frase y CADA palabra en ${nombreNativo}.
                     - Ejemplo: "I have a pencil" → transcripción: "ai jaf a pensil" (para español).
+                    - Separa las sílabas con espacios para facilitar la lectura.
+                    - Usa la aproximación más cercana para sonidos que no existen en ${nombreNativo}.
+                    - Para cada palabra, la transcripción debe reflejar su pronunciación individual.
                 `;
+                camposTranscripcion = {
+                    "frase": "transcripcion en " + nombreNativo,
+                    "palabra": "transcripcion en " + nombreNativo
+                };
             }
+
+            const instruccionesDesglose = [
+                `13. 🔥🔥🔥 **OBLIGATORIO:** Para CADA frase, debes generar un array COMPLETO de palabras desglosadas.`,
+                `14. 🔥🔥🔥 El array "palabras" de CADA frase debe contener TODAS LAS PALABRAS de la frase.`,
+                `15. 🔥🔥🔥 CADA palabra del array debe tener: "palabra", "transcripcion" (o "pinyin" para jeroglíficos), "familia", "tipo", "significado".`,
+                `16. 🔥🔥🔥 NO uses placeholders como "[palabra_1]" o "[familia_semantica]". Usa PALABRAS REALES.`,
+                `17. 🔥🔥🔥 La cantidad de palabras en el array "palabras" debe coincidir EXACTAMENTE con el número de palabras de la frase.`,
+                `18. 🔥🔥🔥 INCLUYE TODAS LAS PALABRAS: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.`,
+                `19. 🔥🔥🔥 NO omitas palabras "pequeñas" como "el", "la", "de", "a", "en", "y", "que", etc.`,
+                `20. 🔥🔥🔥 Si la frase tiene 8 palabras, el array debe tener 8 entradas. Si tiene 12, debe tener 12.`,
+                `21. 🔥🔥🔥 La transcripción fonética DEBE estar en el idioma nativo del usuario (${nombreNativo}).`,
+                `22. 🔥🔥🔥 La familia semántica DEBE ser una de las siguientes: ${window.UITemas.FAMILIAS_SEMANTICAS.join(', ')}`,
+                `23. 🔥🔥🔥 **EJEMPLO DE DESGLOSE COMPLETO (¡OBLIGATORIO!):**`,
+                `24. 🔥 Si la frase en español es: "Yo voy a la tienda" (5 palabras)`,
+                `25. 🔥 El array "palabras" DEBE tener 5 entradas:`,
+                `26. 🔥 [`,
+                `27. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },`,
+                `28. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },`,
+                `29. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },`,
+                `30. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },`,
+                `31. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }`,
+                `32. 🔥 ]`,
+                `33. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
+            ];
 
             const plantilla = {
                 "_INSTRUCCIONES_PARA_IA": {
@@ -2103,24 +2327,28 @@ class UITemasActions {
                     "nombre_idioma": nombreIdioma,
                     "nivel": nivel,
                     "tema": tema.nombre,
+                    "tema_id": temaId,
                     "num_historias": 1,
                     "max_historias": 1,
                     "max_frases_por_historia": 8,
                     "es_jeroglifico": esJeroglifico,
                     "idioma_nativo": idiomaNativo,
                     "nombre_nativo": nombreNativo,
+                    "version_estandar": versionEstandar,
+                    "nombre_version": nombreVersion,
                     "instrucciones": [
                         "Genera UNA historia basada en esta descripcion:",
                         descripcion,
                         "La historia debe tener entre 6 y 8 frases.",
                         "Cada frase debe tener: 'original', 'traduccion'",
                         "Incluye 'regla_gramatical' y 'explicacion_gramatical' para cada frase",
-                        "Incluye 'palabras' con 'familia' y 'significado'",
+                        "Incluye 'palabras' con 'familia', 'tipo', 'significado'",
                         esJeroglifico ? "Incluye 'pinyin' con tonos para cada frase y cada palabra" : 
                         `Incluye 'transcripcion' para cada frase y cada palabra en ${nombreNativo}`,
                         esJeroglifico ? "Incluye una sección 'caracteres_destacados' con los caracteres clave" : "",
                         "Devuelve SOLO un JSON valido con la estructura indicada."
                     ],
+                    "campos_transcripcion": camposTranscripcion,
                     "formato_palabras": esJeroglifico ? {
                         "hanzi": "El caracter en el idioma objetivo",
                         "pinyin": "Pronunciacion con tonos",
@@ -2137,6 +2365,7 @@ class UITemasActions {
                 },
                 "meta": {
                     "tema": tema.nombre,
+                    "tema_id": temaId,
                     "num_historias": 1,
                     "idioma": idiomaActivo,
                     "nombre_idioma": nombreIdioma,
@@ -2144,9 +2373,13 @@ class UITemasActions {
                     "nivel": nivel,
                     "idioma_nativo": idiomaNativo,
                     "nombre_nativo": nombreNativo,
+                    "version_estandar": versionEstandar,
+                    "nombre_version": nombreVersion,
                     "descripcion": descripcion,
                     "fecha_generacion": new Date().toISOString(),
-                    "version": "22.0"
+                    "version": "22.0",
+                    "_esImportado": true,
+                    "_completado": false
                 },
                 "historias": [
                     {
@@ -2157,13 +2390,35 @@ class UITemasActions {
                 ]
             };
 
+            // 🔥 CORREGIDO: Asegurar que palabras sea SIEMPRE un array
             for (let j = 1; j <= 6; j++) {
                 const frase = {
                     original: "[Frase " + j + " en " + idiomaActivo + "]",
                     traduccion: "[Traduccion " + j + " al " + idiomaNativo + "]",
                     regla_gramatical: "[Regla gramatical " + j + "]",
                     explicacion_gramatical: "[Explicacion " + j + " en " + idiomaNativo + "]",
-                    palabras: []
+                    palabras: [], // 🔥 SIEMPRE INICIALIZAR COMO ARRAY
+                    "_AVISO_OBLIGATORIO": `
+⚠️⚠️⚠️ ¡ATENCIÓN IA! ⚠️⚠️⚠️
+
+Este array "palabras" debe contener TODAS las palabras de la frase original.
+NO uses placeholders como "[palabra_1]" o "[familia_semantica]".
+USA PALABRAS REALES del idioma ${idiomaActivo}.
+
+Si la frase tiene 6 palabras, el array debe tener 6 entradas.
+Si tiene 8 palabras, 8 entradas.
+INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc.
+
+🔥 Ejemplo CORRECTO para "I have a pencil" (inglés → español):
+"palabras": [
+    { "palabra": "I", "transcripcion": "ai", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "have", "transcripcion": "jaf", "familia": "Posesión", "tipo": "verbo", "significado": "tener" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Artículos", "tipo": "artículo", "significado": "un/una" },
+    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Objetos", "tipo": "sustantivo", "significado": "lápiz" }
+]
+
+🔥 ¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY! 🔥
+`
                 };
                 
                 if (esJeroglifico) {
@@ -2172,25 +2427,64 @@ class UITemasActions {
                         hanzi: "[hanzi_frase_" + j + "]",
                         pinyin: "[pinyin_frase_" + j + "]"
                     };
-                    frase.palabras.push({
-                        hanzi: "[hanzi_palabra" + j + "]",
-                        pinyin: "[pinyin_palabra" + j + "]",
-                        familia: "sustantivo",
-                        tipo: "sustantivo",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
+                    const palabrasEjemplo = ["我", "爱", "你", "的", "家"];
+                    for (let p = 0; p < Math.min(5, palabrasEjemplo.length); p++) {
+                        frase.palabras.push({
+                            hanzi: palabrasEjemplo[p],
+                            pinyin: "[pinyin_de_" + palabrasEjemplo[p] + "]",
+                            familia: "[familia_semantica_" + (p+1) + "]",
+                            tipo: "[tipo_gramatical_" + (p+1) + "]",
+                            significado: "[significado_en_" + idiomaNativo + "]"
+                        });
+                    }
                 } else {
                     frase.transcripcion = "[transcripcion_en_" + nombreNativo + "_frase_" + j + "]";
-                    frase.palabras.push({
-                        palabra: "[palabra_" + j + "]",
-                        transcripcion: "[transcripcion_en_" + nombreNativo + "_palabra_" + j + "]",
-                        familia: "sustantivo",
-                        tipo: "sustantivo",
-                        significado: "[significado_en_" + idiomaNativo + "]"
-                    });
+                    const palabrasEjemplo = ["I", "have", "a", "pencil", "today"];
+                    for (let p = 0; p < Math.min(5, palabrasEjemplo.length); p++) {
+                        frase.palabras.push({
+                            palabra: palabrasEjemplo[p],
+                            transcripcion: "[transcripcion_en_" + nombreNativo + "_de_" + palabrasEjemplo[p] + "]",
+                            familia: "[familia_semantica_" + (p+1) + "]",
+                            tipo: "[tipo_gramatical_" + (p+1) + "]",
+                            significado: "[significado_en_" + idiomaNativo + "]"
+                        });
+                    }
                 }
                 plantilla.historias[0].frases.push(frase);
             }
+
+            plantilla._AVISO_IMPORTANTE_PALABRAS_DESGLOSADAS = `
+🔥🔥🔥 ¡ATENCIÓN IA! 🔥🔥🔥
+
+Este JSON contiene TODOS los campos necesarios para una historia completa.
+
+⚠️ **OBLIGATORIO:** Para CADA frase, el array "palabras" debe contener TODAS las palabras de la frase.
+
+❌ NO uses placeholders como "[palabra_1]" o "[familia_semantica]".
+✅ Usa PALABRAS REALES del idioma ${idiomaActivo}.
+
+📝 Ejemplo CORRECTO para una frase en español (5 palabras → 5 entradas):
+"palabras": [
+    { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },
+    { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },
+    { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }
+]
+
+📝 Ejemplo CORRECTO para una frase en chino (3 palabras → 3 entradas):
+"palabras": [
+    { "hanzi": "我", "pinyin": "wǒ", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
+    { "hanzi": "爱", "pinyin": "ài", "familia": "Sentimientos", "tipo": "verbo", "significado": "amar" },
+    { "hanzi": "你", "pinyin": "nǐ", "familia": "Pronombres", "tipo": "pronombre", "significado": "tú" }
+]
+
+🔴 **¡NUNCA OMITAS PALABRAS!** Incluye artículos, preposiciones, conjunciones, etc.
+🔴 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**
+🔴 **¡EL NÚMERO DE ENTRADAS DEBE COINCIDIR CON EL NÚMERO DE PALABRAS DE LA FRASE!**
+
+🔥 NO OLVIDES: Cuantas más palabras desglosadas proporciones, más útil será el contenido para el estudiante.
+`;
 
             if (esJeroglifico) {
                 plantilla.caracteres_destacados = {
@@ -2208,14 +2502,53 @@ class UITemasActions {
             }
 
             if (core) {
-                core.abrirModal('📄 Generar Historia con IA');
+                core.abrirModal('📄 Generar Historia con IA - ' + titulo);
                 const textarea = document.getElementById('jsonTextarea');
                 if (textarea) {
                     textarea.value = JSON.stringify(plantilla, null, 2);
                     textarea.readOnly = false;
-                    textarea.style.minHeight = '400px';
+                    textarea.style.minHeight = '500px';
                     textarea.style.fontSize = '12px';
                     textarea.style.fontFamily = 'monospace';
+                }
+
+                const modalBody = document.querySelector('.modal-body');
+                if (modalBody) {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.cssText = `
+                        background: var(--bg);
+                        border-radius: 8px;
+                        padding: 12px 16px;
+                        margin-bottom: 12px;
+                        font-size: 12px;
+                        color: var(--gray);
+                        border-left: 4px solid var(--primary);
+                    `;
+                    infoDiv.innerHTML = `
+                        <strong>📋 Instrucciones para la IA:</strong><br>
+                        1. Completa el JSON con contenido REAL.<br>
+                        2. <strong>OBLIGATORIO:</strong> Cada frase debe tener un array "palabras" con TODAS las palabras desglosadas.<br>
+                        3. Incluye transcripción fonética (${esJeroglifico ? 'pinyin con tonos' : nombreNativo}) para cada frase y palabra.<br>
+                        4. Clasifica cada palabra con su familia semántica y tipo gramatical.<br>
+                        5. ${esJeroglifico ? 'Incluye caracteres destacados.' : 'Incluye transcripción fonética.'}<br>
+                        <br>
+                        <span style="font-size:11px;color:var(--gray-light);">
+                            💡 Nivel: ${nivel} · 1 historia · 6 frases
+                        </span>
+                        <br>
+                        <span style="font-size:10px;color:var(--success);">
+                            🔥 SIN CONSUMO DE TOKENS - Generas la plantilla, la IA externa la completa.
+                        </span>
+                        <br>
+                        <span style="font-size:10px;color:var(--warning);">
+                            📝 <strong>¡IMPORTANTE!</strong> La IA DEBE generar TODAS las palabras desglosadas para CADA frase.
+                        </span>
+                        <br>
+                        <span style="font-size:10px;color:var(--danger);font-weight:700;background:var(--danger)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                            🔥 <strong>¡OBLIGATORIO!</strong> Incluye TODAS las palabras: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.
+                        </span>
+                    `;
+                    modalBody.insertBefore(infoDiv, modalBody.firstChild);
                 }
 
                 const importBtn = document.getElementById('jsonImport');
@@ -2228,17 +2561,68 @@ class UITemasActions {
                         if (jsonText) {
                             try {
                                 const data = JSON.parse(jsonText);
+                                
+                                let tienePalabrasReales = true;
+                                let tieneDatosReales = false;
+                                
                                 if (data.historias && data.historias.length > 0) {
-                                    const resultado = await window.UITemasActions.importarTemaCompletoConLoading(
-                                        data, 
-                                        temaId, 
-                                        tema.nombre
-                                    );
-                                    core.cerrarModal();
-                                    window.UITemasActions.cerrarCreadorHistoria();
-                                    window.UITemas._verTemaDetalle(temaId);
-                                    core.mostrarToast('✅ Historia importada correctamente', 'success');
+                                    for (const historia of data.historias) {
+                                        for (const frase of (historia.frases || [])) {
+                                            if (frase.original && !frase.original.startsWith('Frase') && !frase.original.startsWith('[')) {
+                                                tieneDatosReales = true;
+                                            }
+                                            // 🔥 VERIFICAR QUE PALABRAS EXISTA Y SEA ARRAY
+                                            const palabras = frase.palabras || [];
+                                            if (palabras.length === 0) {
+                                                tienePalabrasReales = false;
+                                                break;
+                                            }
+                                            for (const p of palabras) {
+                                                const texto = p.palabra || p.hanzi || '';
+                                                if (!texto || texto.startsWith('[') || texto === '') {
+                                                    tienePalabrasReales = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (!tienePalabrasReales) break;
+                                        }
+                                        if (!tienePalabrasReales) break;
+                                    }
                                 }
+                                
+                                if (!tieneDatosReales) {
+                                    core.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Pide a la IA que la complete y luego importa.', 'warning');
+                                    return;
+                                }
+                                
+                                if (!tienePalabrasReales) {
+                                    const confirmar = await core.confirm(
+                                        '⚠️ El JSON no tiene palabras desglosadas REALES en el array "palabras".\n\n' +
+                                        'La IA debe completar TODAS las palabras de cada frase.\n\n' +
+                                        '¿Quieres importarlo de todas formas?',
+                                        '⚠️ Palabras Desglosadas Faltantes'
+                                    );
+                                    if (!confirmar) return;
+                                }
+                                
+                                const resultado = await window.UITemasActions.importarTemaCompletoConLoading(
+                                    data, 
+                                    temaId, 
+                                    tema.nombre
+                                );
+                                core.cerrarModal();
+                                window.UITemasActions.cerrarCreadorHistoria();
+                                
+                                if (window.UITemas) {
+                                    window.UITemas._verTemaDetalle(temaId);
+                                }
+                                
+                                core.mostrarToast('✅ Historia importada correctamente', 'success');
+                                
+                                if (window.UIDashboard) {
+                                    window.UIDashboard._cargarDashboardInicial(core);
+                                }
+                                
                             } catch (e) {
                                 core.mostrarToast('❌ Error al importar: ' + e.message, 'error');
                             }
@@ -2252,6 +2636,7 @@ class UITemasActions {
                 
                 core.mostrarToast('📄 Plantilla generada. Pide a la IA que la complete y luego importa.', 'info');
                 core.mostrarToast(mensajeExtra, 'warning');
+                core.mostrarToast('📝 **¡OBLIGATORIO!** La IA debe incluir TODAS las palabras desglosadas.', 'warning');
 
                 resultadoDiv.style.background = 'rgba(0,184,148,0.1)';
                 resultadoDiv.style.border = '1px solid var(--success)';
@@ -2297,6 +2682,10 @@ class UITemasActions {
         }
     }
 
+    // ============================================================
+    // ABRIR GENERADOR DESDE TEMA
+    // ============================================================
+
     static async abrirGeneradorDesdeTema(temaId, temaNombre) {
         window.UITemas._temaActualParaJSON = { id: temaId, nombre: temaNombre };
 
@@ -2312,6 +2701,10 @@ class UITemasActions {
             window.UITemas._core?.mostrarToast('❌ Generador JSON no disponible', 'error');
         }
     }
+
+    // ============================================================
+    // IMPORTAR HISTORIA A TEMA
+    // ============================================================
 
     static async importarHistoriaATema(temaId) {
         const core = window.UITemas._core;
@@ -2365,6 +2758,10 @@ class UITemasActions {
         core?.mostrarToast('📥 Pega el JSON de las historias o usa "Generar con IA"', 'info');
     }
 
+    // ============================================================
+    // IMPORTAR HISTORIA Y ASIGNAR A TEMA
+    // ============================================================
+
     static async importarHistoriaYAsignarATema(temaId) {
         const core = window.UITemas._core;
         if (window.UITemas._importando) {
@@ -2415,8 +2812,13 @@ class UITemasActions {
     }
 }
 
+// ============================================================
+// EXPORTAR PARA USO GLOBAL
+// ============================================================
+
 window.UITemasActions = UITemasActions;
-console.log('✅ UITemas Actions v2.23 - CORREGIDO: SINCRONIZACIÓN CON ELIPSE Y ONDAS CRUZADAS AL BORRAR');
-console.log('  🔥 Al eliminar historia desde Temas, se elimina de la Elipse');
-console.log('  🔥 Al eliminar historia desde Temas, se elimina del grafo de Ondas Cruzadas');
-console.log('  🔥 Sincronización bidireccional completa');
+
+console.log('✅ UITemas Actions v2.41 - CORREGIDO: ERROR "frase.palabras is undefined"');
+console.log('  🔥 Se asegura de que frase.palabras sea siempre un array');
+console.log('  🔥 Inicialización correcta de palabras en cada frase');
+console.log('  🔥 Preserva todas las funcionalidades');
