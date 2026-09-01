@@ -1,10 +1,9 @@
 // ============================================================
-// UI ELIPSE v6.26 - CORREGIDO: BOTONES DE PLANTILLA FUNCIONALES
-// - Fix: botones "Copiar" e "Importar" aparecen correctamente
-// - Fix: modal body se encuentra correctamente
-// - Fix: generación de plantilla desde botón "Generar Plantilla"
-// - Fix: botón "Generar" en la propia onda ahora funciona
-// - Preserva todas las funcionalidades
+// UI ELIPSE v6.27 - CORREGIDO: BOTÓN DE ONDAS CRUZADAS FUNCIONAL
+// - Fix: _abrirOndasCruzadas ahora navega al módulo y carga datos
+// - Fix: Manejo robusto del placeholder de UIOndasCruzadas
+// - Fix: Inicialización bajo demanda si el módulo no está listo
+// - Preserva todas las funcionalidades originales
 // ============================================================
 
 class UIEclipse {
@@ -230,7 +229,7 @@ class UIEclipse {
         this._iniciarVerificacionSRS();
         this._inicializarOndasCruzadas();
 
-        console.log('🌌 UI Elipse v6.26: Inicializado con botones de plantilla funcionales');
+        console.log('🌌 UI Elipse v6.27: Inicializado con botón de Ondas Cruzadas funcional');
         return this;
     }
 
@@ -257,51 +256,101 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // 🔥 ABRIR ONDAS CRUZADAS - CORREGIDO: NAVEGA AL MÓDULO Y CARGA DATOS
+    // ============================================================
+
     _abrirOndasCruzadas() {
         console.log('🌊 Abriendo Ondas Cruzadas...');
 
-        if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.cargar === 'function') {
-            window.UIOndasCruzadas.cargar(this._core);
-            return;
-        }
-
-        if (typeof window.UIOndasCruzadas === 'undefined' || !window.UIOndasCruzadas) {
-            console.warn('⚠️ UIOndasCruzadas no está disponible, intentando inicializar...');
-            if (typeof UIOndasCruzadas !== 'undefined') {
-                window.UIOndasCruzadas = UIOndasCruzadas;
-                if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.init === 'function') {
-                    window.UIOndasCruzadas.init(this._core).then(() => {
-                        if (typeof window.UIOndasCruzadas.cargar === 'function') {
-                            window.UIOndasCruzadas.cargar(this._core);
-                        } else {
-                            this._core?.mostrarToast('⚠️ Error: El módulo Ondas Cruzadas no está disponible', 'error');
-                        }
-                    }).catch(() => {
-                        this._core?.mostrarToast('⚠️ Error al inicializar Ondas Cruzadas', 'error');
-                    });
-                    return;
-                }
+        // PASO 1: Asegurar que el módulo existe en el DOM
+        let moduleDiv = document.getElementById('ondasCruzadasModule');
+        if (!moduleDiv) {
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                moduleDiv = document.createElement('div');
+                moduleDiv.id = 'ondasCruzadasModule';
+                moduleDiv.className = 'module-view';
+                moduleDiv.innerHTML = `
+                    <div class="module-header">
+                        <button class="btn-back" onclick="window.uiCore.volverDashboard()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <h2>🌊 Modo Ondas Cruzadas</h2>
+                            <span class="module-breadcrumb">Dashboard / Ondas Cruzadas</span>
+                        </div>
+                    </div>
+                    <div class="module-content" id="ondasCruzadasContent">
+                    </div>
+                `;
+                mainContent.appendChild(moduleDiv);
+                console.log('📦 Módulo ondasCruzadasModule creado');
+            } else {
+                console.error('❌ No se encontró mainContent');
+                this._core?.mostrarToast('❌ Error: no se pudo crear el módulo', 'error');
+                return;
             }
-            this._core?.mostrarToast('⚠️ El módulo Ondas Cruzadas no está disponible', 'error');
-            return;
         }
 
-        if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.cargar !== 'function') {
-            console.warn('⚠️ UIOndasCruzadas.cargar no es una función, intentando inicializar...');
-            if (typeof window.UIOndasCruzadas.init === 'function') {
+        // PASO 2: Navegar al módulo usando el core
+        if (this._core && typeof this._core.irAModulo === 'function') {
+            this._core.irAModulo('ondasCruzadas');
+            console.log('🚀 Navegando al módulo Ondas Cruzadas');
+        }
+
+        // PASO 3: Cargar los datos en el módulo (con pequeño delay para la navegación)
+        setTimeout(() => {
+            // 1. INTENTO DIRECTO: usar la instancia que está funcionando
+            if (window.UIOndasCruzadas && typeof window.UIOndasCruzadas.cargar === 'function') {
+                console.log('✅ Usando window.UIOndasCruzadas.cargar()');
+                window.UIOndasCruzadas.cargar(this._core);
+                return;
+            }
+
+            // 2. INTENTO CON LA INSTANCIA REAL (si el placeholder la ocultó)
+            if (window._UIOndasCruzadasReal && typeof window._UIOndasCruzadasReal.cargar === 'function') {
+                console.log('✅ Usando window._UIOndasCruzadasReal.cargar()');
+                window.UIOndasCruzadas = window._UIOndasCruzadasReal;
+                window.UIOndasCruzadas.cargar(this._core);
+                return;
+            }
+
+            // 3. INTENTO CON LA VARIABLE GLOBAL (definida en ui.ondasCruzadas.js)
+            if (typeof UIOndasCruzadas !== 'undefined' && UIOndasCruzadas && typeof UIOndasCruzadas.cargar === 'function') {
+                console.log('✅ Usando UIOndasCruzadas (global).cargar()');
+                window.UIOndasCruzadas = UIOndasCruzadas;
+                window.UIOndasCruzadas.cargar(this._core);
+                return;
+            }
+
+            // 4. INTENTO CON LA INSTANCIA REAL DEL CONSTRUCTOR
+            if (typeof _realInstance !== 'undefined' && _realInstance && typeof _realInstance.cargar === 'function') {
+                console.log('✅ Usando _realInstance.cargar()');
+                window.UIOndasCruzadas = _realInstance;
+                window.UIOndasCruzadas.cargar(this._core);
+                return;
+            }
+
+            // 5. FALLBACK: Inicializar el módulo desde cero
+            console.warn('⚠️ No se encontró UIOndasCruzadas, inicializando...');
+            if (typeof window.UIOndasCruzadas !== 'undefined' && typeof window.UIOndasCruzadas.init === 'function') {
                 window.UIOndasCruzadas.init(this._core).then(() => {
                     if (typeof window.UIOndasCruzadas.cargar === 'function') {
                         window.UIOndasCruzadas.cargar(this._core);
                     } else {
                         this._core?.mostrarToast('⚠️ Error: El módulo Ondas Cruzadas no está disponible', 'error');
                     }
-                }).catch(() => {
+                }).catch((err) => {
+                    console.error('❌ Error inicializando Ondas Cruzadas:', err);
                     this._core?.mostrarToast('⚠️ Error al inicializar Ondas Cruzadas', 'error');
                 });
                 return;
             }
-            this._core?.mostrarToast('⚠️ El módulo Ondas Cruzadas no está disponible', 'error');
-        }
+
+            this._core?.mostrarToast('⚠️ El módulo Ondas Cruzadas no está disponible. Recarga la página.', 'error');
+            console.error('❌ No se pudo encontrar UIOndasCruzadas en ningún lugar');
+        }, 150);
     }
 
     _iniciarVerificacionSRS() {
@@ -393,7 +442,7 @@ class UIEclipse {
         try {
             const key = this._getPersistenciaKey(temaId);
             localStorage.setItem(key, JSON.stringify({
-                version: '6.26',
+                version: '6.27',
                 timestamp: Date.now(),
                 temaId: temaId,
                 idioma: this._obtenerIdiomaActual(),
@@ -1574,6 +1623,7 @@ class UIEclipse {
                             <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
                             <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
                             <br><span style="color:var(--success);font-weight:600;">✅ Botones "Copiar" e "Importar" visibles en la plantilla</span>
+                            <br><span style="color:var(--success);font-weight:700;">✅ Botón "Ondas Cruzadas" funcional y navega al módulo</span>
                         </p>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1892,6 +1942,7 @@ class UIEclipse {
                             <span style="color:var(--success);">✅ Modal SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
                             <span style="color:var(--success);">✅ Botón "Generar" en la propia onda funciona</span>
                             <span style="color:var(--success);">✅ Botones "Copiar" e "Importar" visibles</span>
+                            <span style="color:var(--success);">✅ Botón "Ondas Cruzadas" funcional</span>
                         </div>
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._abrirConfiguracion()" style="padding:4px 12px;font-size:11px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;"><i class="fas fa-cog"></i> Configurar</button>
@@ -1997,7 +2048,7 @@ class UIEclipse {
     async _abrirConfiguracion() {
         console.log('⚙️ Abriendo configuración...');
         const config = window.modoElipse?.getConfiguracion() || {};
-        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n🔍 **Filtrado de ondas cruzadas**\n🔄 **Sincronización bidireccional con Temas**\n✅ **Modal sin duplicados y generación funcional**\n✅ **Botón "Generar" en la propia onda funciona**\n✅ **Botones "Copiar" e "Importar" visibles**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
+        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n🔍 **Filtrado de ondas cruzadas**\n🔄 **Sincronización bidireccional con Temas**\n✅ **Modal sin duplicados y generación funcional**\n✅ **Botón "Generar" en la propia onda funciona**\n✅ **Botones "Copiar" e "Importar" visibles**\n✅ **Botón "Ondas Cruzadas" funcional y navega al módulo**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
         const seleccion = await this._core?.prompt(mensaje, '4', 'Elige una opción (1-4)...', '⚙️ Configuración');
         if (!seleccion) return;
         const opcion = parseInt(seleccion);
@@ -3429,6 +3480,7 @@ class UIEclipse {
                     <br><span style="color:var(--primary);font-weight:700;">🔄 Sincronización bidireccional con Temas</span>
                     <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
                     <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
+                    <br><span style="color:var(--success);font-weight:700;">✅ Botón "Ondas Cruzadas" funcional y navega al módulo</span>
                 </div>
             </div>
         `;
@@ -4135,6 +4187,7 @@ class UIEclipse {
                     <br><span style="color:var(--primary);font-weight:700;">🔄 Sincronización bidireccional con Temas</span>
                     <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
                     <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
+                    <br><span style="color:var(--success);font-weight:700;">✅ Botón "Ondas Cruzadas" funcional y navega al módulo</span>
                 </div>
             </div>
         `;
@@ -4503,11 +4556,8 @@ class UIEclipse {
 
 window.UIClipse = new UIEclipse();
 
-console.log('✅ UI Elipse v6.26 - CORREGIDO: BOTONES DE PLANTILLA FUNCIONALES');
-console.log('  🔥 Fix: botones "Copiar" e "Importar" aparecen correctamente');
-console.log('  🔥 Fix: modal body se encuentra correctamente');
-console.log('  🔥 Fix: generación de plantilla desde botón "Generar Plantilla"');
-console.log('  🔥 Fix: botón "Generar" en la propia onda ahora funciona');
-console.log('  🔥 Manejo de IDs de tema consistente');
-console.log('  🔥 Sincronización bidireccional con Temas');
-console.log('  🔥 Preserva todas las funcionalidades');
+console.log('✅ UI Elipse v6.27 - CORREGIDO: BOTÓN DE ONDAS CRUZADAS FUNCIONAL');
+console.log('  🔥 Fix: _abrirOndasCruzadas ahora navega al módulo y carga datos');
+console.log('  🔥 Fix: Manejo robusto del placeholder de UIOndasCruzadas');
+console.log('  🔥 Fix: Inicialización bajo demanda si el módulo no está listo');
+console.log('  🔥 Preserva todas las funcionalidades originales');
