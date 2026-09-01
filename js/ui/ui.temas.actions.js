@@ -1,7 +1,10 @@
 // ============================================================
-// UI TEMAS ACTIONS v2.41 - CORREGIDO: ERROR "frase.palabras is undefined"
-// - Se asegura de que frase.palabras sea siempre un array
-// - Inicialización correcta de palabras en cada frase
+// UI TEMAS ACTIONS v2.43 - CORREGIDO: MODAL DE GENERAR ONDA CON TÍTULO Y DESCRIPCIÓN
+// - Fix: Ahora pide título y descripción al generar onda desde Temas
+// - Fix: Evita duplicados usando el título proporcionado por el usuario
+// - Sincronización bidireccional con Modo Elipse
+// - Reapertura automática del tema si está completado
+// - Actualización de estado en tiempo real
 // - Preserva todas las funcionalidades
 // ============================================================
 
@@ -581,13 +584,12 @@ class UITemasActions {
                 frases: [] 
             };
             for (let j = 1; j <= numFrases; j++) {
-                // 🔥 CORREGIDO: Asegurar que palabras sea SIEMPRE un array
                 const frase = {
                     original: "Frase " + j + " en " + idiomaActivo,
                     traduccion: "Traduccion " + j + " al " + idiomaNativo,
                     regla_gramatical: "[Regla gramatical " + j + "]",
                     explicacion_gramatical: "[Explicacion " + j + " en " + idiomaNativo + "]",
-                    palabras: [], // 🔥 SIEMPRE INICIALIZAR COMO ARRAY
+                    palabras: [],
                     "_AVISO_OBLIGATORIO": `
 ⚠️⚠️⚠️ ¡ATENCIÓN IA! ⚠️⚠️⚠️
 
@@ -611,7 +613,6 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
 `
                 };
                 
-                // 🔥 AÑADIR PALABRAS DE EJEMPLO (CON ESTRUCTURA COMPLETA)
                 if (esJeroglifico) {
                     frase.pinyin = "[pinyin_con_tonos_de_la_frase_" + j + "]";
                     frase.segmentacion = {
@@ -775,7 +776,6 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                                         if (frase.original && !frase.original.startsWith('Frase') && !frase.original.startsWith('[')) {
                                             tieneDatosReales = true;
                                         }
-                                        // 🔥 VERIFICAR QUE PALABRAS EXISTA Y SEA ARRAY
                                         const palabras = frase.palabras || [];
                                         if (palabras.length === 0) {
                                             tienePalabrasReales = false;
@@ -1856,35 +1856,42 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
     }
 
     // ============================================================
-    // GENERAR ONDA ELIPSE CON REAPERTURA AUTOMÁTICA
+    // 🔥 GENERAR ONDA ELIPSE - CORREGIDO CON MODAL DE TÍTULO Y DESCRIPCIÓN
     // ============================================================
 
     static async generarOndaElipse(temaId) {
         const core = window.UITemas._core;
+        
+        // 🔥 VERIFICAR QUE EL MODO ELIPSE ESTÉ DISPONIBLE
         if (!window.modoElipse) {
             core?.mostrarToast('❌ Modo Elipse no disponible', 'error');
             return;
         }
 
+        // 🔥 OBTENER EL TEMA
         const tema = await db.obtenerTema(temaId);
         if (!tema) {
             core?.mostrarToast('❌ Tema no encontrado', 'error');
             return;
         }
 
+        // 🔥 VERIFICAR QUE EL TEMA TENGA HISTORIAS
         const historias = await db.obtenerHistoriasPorTema(temaId);
         if (historias.length === 0) {
             core?.mostrarToast('❌ El tema no tiene historias. Importa o genera contenido primero.', 'error');
             return;
         }
 
+        // 🔥 OBTENER EL ESTADO DE LA ELIPSE PARA ESTE TEMA
         const elipseEstado = window.modoElipse.getEstadoElipse(temaId);
         const ondasGeneradas = elipseEstado?.totalOndas || 0;
         const maxOndas = window.modoElipse._config?.maxOndas || 10;
 
+        // 🔥 VERIFICAR SI EL TEMA ESTÁ COMPLETADO O TIENE EL MÁXIMO DE ONDAS
         const estaCompletado = tema.estado === 'completado' || tema._completado === true;
         const todasOndasGeneradas = ondasGeneradas >= maxOndas;
 
+        // 🔥 SI ESTÁ COMPLETADO O TIENE EL MÁXIMO, REABRIR EL TEMA
         if (estaCompletado || todasOndasGeneradas) {
             const mensaje = estaCompletado 
                 ? `⚠️ El tema "${tema.nombre}" está completado.`
@@ -1898,11 +1905,13 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             );
             if (!confirmar) return;
             
+            // 🔥 REABRIR EL TEMA
             tema.estado = 'en_curso';
             tema._completado = false;
             delete tema._fechaCompletado;
             await db.update('temas', tema);
             
+            // 🔥 ACTUALIZAR CACHÉ DE TEMAS COMPLETADOS
             const idioma = tema.idioma || gestorIdiomas.getIdiomaActivo() || 'es';
             const temaOriginalId = tema._temaOriginalId || tema.id;
             const key = `${idioma}_${temaOriginalId}`;
@@ -1911,6 +1920,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                 window.UITemas._temasCompletadosPorIdioma[idioma][temaOriginalId] = false;
             }
             
+            // 🔥 DISPARAR EVENTO DE TEMA REABIERTO
             window.dispatchEvent(new CustomEvent('temaCompletado', {
                 detail: { 
                     idioma: idioma,
@@ -1926,104 +1936,150 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             core?.mostrarToast(`🔄 Tema "${tema.nombre}" reabierto`, 'info');
         }
 
+        // 🔥 MOSTRAR MODAL PARA TÍTULO Y DESCRIPCIÓN
+        const tituloYDescripcion = await UITemasActions._mostrarModalTituloDescripcion(tema.nombre);
+        
+        // 🔥 SI EL USUARIO CANCELÓ, SALIR
+        if (tituloYDescripcion === null) {
+            console.log('🌌 Generación de onda cancelada por el usuario');
+            return;
+        }
+
+        const { titulo, descripcion } = tituloYDescripcion;
+
+        // 🔥 GENERAR LA PLANTILLA DE ONDA CON TÍTULO Y DESCRIPCIÓN
         core?.mostrarToast(`🌌 Generando nueva onda para "${tema.nombre}" (${ondasGeneradas + 1}/${maxOndas})...`, 'info');
 
         try {
-            const plantilla = await window.modoElipse.generarPlantillaOnda(temaId);
+            // 🔥 PASAR LA DESCRIPCIÓN AL GENERAR LA PLANTILLA
+            const plantilla = await window.modoElipse.generarPlantillaOnda(temaId, null, descripcion);
             
             if (plantilla) {
+                // 🔥 SOBRESCRIBIR EL TÍTULO DE LA PLANTILLA CON EL TÍTULO DEL USUARIO
+                if (titulo && titulo.trim().length > 0) {
+                    plantilla.historias[0].titulo = titulo.trim();
+                    plantilla.meta.titulo_usuario = titulo.trim();
+                }
+                
                 core?.mostrarToast(`🌌 Plantilla de onda generada para "${tema.nombre}"`, 'success');
                 
-                if (core) {
-                    core.abrirModal('🌌 Plantilla de Onda Elipse - ' + tema.nombre);
-                    const textarea = document.getElementById('jsonTextarea');
-                    if (textarea) {
-                        textarea.value = JSON.stringify(plantilla, null, 2);
-                        textarea.readOnly = false;
-                        textarea.style.minHeight = '400px';
-                        textarea.style.fontSize = '12px';
-                        textarea.style.fontFamily = 'monospace';
-                    }
-                    
-                    const importBtn = document.getElementById('jsonImport');
-                    if (importBtn) {
-                        const newImportBtn = importBtn.cloneNode(true);
-                        importBtn.parentNode.replaceChild(newImportBtn, importBtn);
-                        newImportBtn.onclick = async function() {
-                            const jsonText = document.getElementById('jsonTextarea').value;
-                            if (jsonText) {
-                                try {
-                                    const data = JSON.parse(jsonText);
-                                    
-                                    const primeraFrase = data.historias?.[0]?.frases?.[0]?.original || '';
-                                    if (primeraFrase.includes('[') || primeraFrase.includes('Frase') || primeraFrase.includes('frase')) {
-                                        core?.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Completa el JSON con la IA y luego importa.', 'warning');
-                                        return;
-                                    }
-                                    
-                                    const historiaId = await window.modoElipse.importarOnda(temaId, data);
-                                    if (historiaId) {
-                                        core.cerrarModal();
-                                        core.mostrarToast('🌌 Onda importada correctamente', 'success');
-                                        
-                                        window.dispatchEvent(new CustomEvent('elipseNuevaOndaGenerada', {
-                                            detail: {
-                                                temaId: temaId,
-                                                historiaId: historiaId,
-                                                titulo: data.historias?.[0]?.titulo || 'Nueva Onda'
-                                            }
-                                        }));
-                                        
-                                        window.UITemas._verTemaDetalle(temaId);
-                                        if (window.UIDashboard) {
-                                            window.UIDashboard._cargarDashboardInicial(core);
-                                        }
-                                        if (window.UIClipse) {
-                                            setTimeout(() => {
-                                                window.UIClipse.cargar(core);
-                                            }, 500);
-                                        }
-                                    }
-                                } catch (e) {
-                                    core.mostrarToast('❌ Error: ' + e.message, 'error');
+                // 🔥 MOSTRAR LA PLANTILLA EN EL MODAL
+                core.abrirModal('🌌 Plantilla de Onda Elipse - ' + tema.nombre);
+                const textarea = document.getElementById('jsonTextarea');
+                if (textarea) {
+                    textarea.value = JSON.stringify(plantilla, null, 2);
+                    textarea.readOnly = false;
+                    textarea.style.minHeight = '400px';
+                    textarea.style.fontSize = '12px';
+                    textarea.style.fontFamily = 'monospace';
+                }
+                
+                // 🔥 CONFIGURAR EL BOTÓN DE IMPORTACIÓN
+                const importBtn = document.getElementById('jsonImport');
+                if (importBtn) {
+                    const newImportBtn = importBtn.cloneNode(true);
+                    importBtn.parentNode.replaceChild(newImportBtn, importBtn);
+                    newImportBtn.onclick = async function() {
+                        const jsonText = document.getElementById('jsonTextarea').value;
+                        if (jsonText) {
+                            try {
+                                const data = JSON.parse(jsonText);
+                                
+                                // 🔥 VALIDAR QUE NO SEA UNA PLANTILLA VACÍA
+                                const primeraFrase = data.historias?.[0]?.frases?.[0]?.original || '';
+                                if (primeraFrase.includes('[') || primeraFrase.includes('Frase') || primeraFrase.includes('frase')) {
+                                    core?.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Completa el JSON con la IA y luego importa.', 'warning');
+                                    return;
                                 }
+                                
+                                // 🔥 IMPORTAR LA ONDA EN EL MODO ELIPSE
+                                const historiaId = await window.modoElipse.importarOnda(temaId, data);
+                                if (historiaId) {
+                                    core.cerrarModal();
+                                    core.mostrarToast('🌌 Onda importada correctamente', 'success');
+                                    
+                                    // 🔥 DISPARAR EVENTO DE NUEVA ONDA GENERADA
+                                    window.dispatchEvent(new CustomEvent('elipseNuevaOndaGenerada', {
+                                        detail: {
+                                            temaId: temaId,
+                                            historiaId: historiaId,
+                                            titulo: data.historias?.[0]?.titulo || 'Nueva Onda'
+                                        }
+                                    }));
+                                    
+                                    // 🔥 ACTUALIZAR LA VISTA DEL TEMA
+                                    await window.UITemas._verTemaDetalle(temaId);
+                                    
+                                    // 🔥 ACTUALIZAR DASHBOARD
+                                    if (window.UIDashboard) {
+                                        window.UIDashboard._cargarDashboardInicial(core);
+                                    }
+                                    
+                                    // 🔥 ACTUALIZAR EL MODO ELIPSE
+                                    if (window.UIClipse) {
+                                        setTimeout(() => {
+                                            window.UIClipse.cargar(core);
+                                        }, 500);
+                                    }
+                                    
+                                    // 🔥 ACTUALIZAR ONDAS CRUZADAS
+                                    if (window.UIOndasCruzadas) {
+                                        setTimeout(() => {
+                                            window.UIOndasCruzadas._cargarDatos().then(() => {
+                                                window.UIOndasCruzadas._renderizarPanel();
+                                            });
+                                        }, 500);
+                                    }
+                                    
+                                    // 🔥 RECARGAR EL PROGRESO DEL TEMA
+                                    await window.UITemas._verificarYActualizarEstadoTema(temaId);
+                                }
+                            } catch (e) {
+                                core.mostrarToast('❌ Error: ' + e.message, 'error');
                             }
-                        };
-                    }
-                    
-                    const infoDiv = document.createElement('div');
-                    infoDiv.style.cssText = `
-                        background: var(--bg);
-                        border-radius: 8px;
-                        padding: 12px 16px;
-                        margin-bottom: 12px;
-                        font-size: 12px;
-                        color: var(--gray);
-                        border-left: 4px solid var(--primary);
-                    `;
-                    infoDiv.innerHTML = `
-                        <strong>📋 Instrucciones:</strong><br>
-                        1. Copia este JSON y envíalo a Groq/ChatGPT con las instrucciones que contiene.<br>
-                        2. La IA completará el JSON con una nueva historia (onda).<br>
-                        3. Cuando la IA te devuelva el JSON completado, pégalo aquí y pulsa <strong>"Importar"</strong>.<br>
-                        4. La nueva onda se añadirá automáticamente a la elipse.<br>
-                        <br>
-                        <span style="font-size:11px;color:var(--gray-light);">
-                            💡 Nivel: ${plantilla.meta?.nivel || 'A1'} · Palabras nuevas: ${plantilla.meta?.num_palabras_nuevas || 3}
-                        </span>
-                        <br>
-                        <span style="font-size:10px;color:var(--success);">
-                            🔥 SIN CONSUMO DE TOKENS - Solo generas la plantilla, la IA externa la completa.
-                        </span>
-                        <br>
-                        <span style="font-size:10px;color:var(--primary);">
-                            🔄 Al importar, el tema se REABRIRÁ automáticamente si estaba completado.
-                        </span>
-                    `;
-                    const modalBody = document.querySelector('.modal-body');
-                    if (modalBody) {
-                        modalBody.insertBefore(infoDiv, modalBody.firstChild);
-                    }
+                        }
+                    };
+                }
+                
+                // 🔥 AÑADIR INFORMACIÓN DE INSTRUCCIONES EN EL MODAL
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = `
+                    background: var(--bg);
+                    border-radius: 8px;
+                    padding: 12px 16px;
+                    margin-bottom: 12px;
+                    font-size: 12px;
+                    color: var(--gray);
+                    border-left: 4px solid var(--primary);
+                `;
+                infoDiv.innerHTML = `
+                    <strong>📋 Instrucciones:</strong><br>
+                    1. Copia este JSON y envíalo a Groq/ChatGPT con las instrucciones que contiene.<br>
+                    2. La IA completará el JSON con una nueva historia (onda).<br>
+                    3. Cuando la IA te devuelva el JSON completado, pégalo aquí y pulsa <strong>"Importar"</strong>.<br>
+                    4. La nueva onda se añadirá automáticamente a la elipse.<br>
+                    ${titulo && titulo.trim().length > 0 ? `<br>📌 <strong>Título:</strong> "${titulo.trim()}"` : ''}
+                    ${descripcion && descripcion.trim().length > 0 ? `<br>📝 <strong>Descripción:</strong> "${descripcion.trim()}"` : ''}
+                    <br>
+                    <span style="font-size:11px;color:var(--gray-light);">
+                        💡 Nivel: ${plantilla.meta?.nivel || 'A1'} · Palabras nuevas: ${plantilla.meta?.num_palabras_nuevas || 3}
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--success);">
+                        🔥 SIN CONSUMO DE TOKENS - Solo generas la plantilla, la IA externa la completa.
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--primary);">
+                        🔄 Al importar, el tema se REABRIRÁ automáticamente si estaba completado.
+                    </span>
+                    <br>
+                    <span style="font-size:10px;color:var(--warning);">
+                        🔄 La onda se sincronizará automáticamente con el Modo Elipse y Ondas Cruzadas.
+                    </span>
+                `;
+                const modalBody = document.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.insertBefore(infoDiv, modalBody.firstChild);
                 }
             } else {
                 core?.mostrarToast('❌ No se pudo generar la plantilla de onda', 'error');
@@ -2032,6 +2088,164 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             console.error('❌ Error generando onda:', error);
             core?.mostrarToast('❌ Error: ' + error.message, 'error');
         }
+    }
+
+    // ============================================================
+    // 🔥 MODAL DE TÍTULO Y DESCRIPCIÓN PARA GENERAR ONDA
+    // ============================================================
+
+    static _mostrarModalTituloDescripcion(temaNombre) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.id = 'modalTituloDescripcionOnda';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                backdrop-filter: blur(8px);
+                z-index: 100002;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+                animation: fadeIn 0.3s ease;
+            `;
+
+            const html = `
+                <div style="background: var(--white, #ffffff); border-radius: 20px; padding: 28px 24px; max-width: 520px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="font-size: 18px; font-weight: 700; color: var(--dark); margin: 0;">
+                            🌌 Nueva Onda para "${temaNombre}"
+                        </h3>
+                        <button id="closeModalTituloDescripcionOnda" style="background: none; border: none; font-size: 28px; color: var(--gray); cursor: pointer; transition: all 0.3s; padding: 0 8px;" 
+                                onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--gray)'">
+                            &times;
+                        </button>
+                    </div>
+                    <p style="font-size: 13px; color: var(--gray); margin-bottom: 12px;">
+                        💡 Personaliza la nueva onda que vas a generar.
+                        <br>El título y la descripción se incluirán en la plantilla.
+                    </p>
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 13px; font-weight: 600; color: var(--dark); display: block; margin-bottom: 4px;">
+                            📌 Título de la onda <span style="font-size: 11px; font-weight: 400; color: var(--gray-light);">(opcional)</span>
+                        </label>
+                        <input type="text" id="tituloOndaInput" 
+                               placeholder="Ej: La llegada de mi hermano pequeño"
+                               style="width: 100%; padding: 10px 14px; border: 2px solid var(--light); border-radius: 10px; font-size: 14px; font-family: var(--font); transition: all 0.3s;"
+                               onfocus="this.style.borderColor='var(--primary)'" 
+                               onblur="this.style.borderColor='var(--light)'">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-size: 13px; font-weight: 600; color: var(--dark); display: block; margin-bottom: 4px;">
+                            📝 Descripción <span style="font-size: 11px; font-weight: 400; color: var(--gray-light);">(opcional)</span>
+                        </label>
+                        <textarea id="descripcionOndaInput" rows="4" 
+                                  placeholder="Ej: La familia recibe una visita inesperada que cambiará sus vidas..."
+                                  style="width: 100%; padding: 10px 14px; border: 2px solid var(--light); border-radius: 10px; font-size: 14px; font-family: var(--font); resize: vertical; transition: all 0.3s;"
+                                  onfocus="this.style.borderColor='var(--primary)'" 
+                                  onblur="this.style.borderColor='var(--light)'"></textarea>
+                        <div style="font-size: 11px; color: var(--gray-light); margin-top: 4px;">
+                            📝 <span id="contadorDescripcionOnda">0</span> caracteres · Opcional
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btnContinuarOnda" 
+                                style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(135deg, #6C5CE7, #A29BFE); color: white; transition: all 0.3s;"
+                                onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 20px rgba(108,92,231,0.3)'" 
+                                onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-arrow-right"></i> Generar Plantilla
+                        </button>
+                        <button id="btnSaltarOnda" 
+                                style="padding: 12px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; background: var(--bg); color: var(--gray); transition: all 0.3s;"
+                                onmouseover="this.style.background='var(--light)'" 
+                                onmouseout="this.style.background='var(--bg)'">
+                            Saltar
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            overlay.innerHTML = html;
+            document.body.appendChild(overlay);
+
+            const tituloInput = document.getElementById('tituloOndaInput');
+            const descInput = document.getElementById('descripcionOndaInput');
+            const contador = document.getElementById('contadorDescripcionOnda');
+            const btnContinuar = document.getElementById('btnContinuarOnda');
+            const btnSaltar = document.getElementById('btnSaltarOnda');
+            const btnClose = document.getElementById('closeModalTituloDescripcionOnda');
+
+            if (descInput && contador) {
+                descInput.addEventListener('input', () => {
+                    contador.textContent = descInput.value.length;
+                });
+            }
+
+            const resolver = (resultado) => {
+                if (overlay.parentNode) overlay.remove();
+                resolve(resultado);
+            };
+
+            // 🔥 BOTÓN "GENERAR PLANTILLA"
+            if (btnContinuar) {
+                btnContinuar.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const titulo = tituloInput ? tituloInput.value.trim() : '';
+                    const descripcion = descInput ? descInput.value.trim() : '';
+                    console.log('📄 Botón "Generar Plantilla" pulsado. Título:', titulo, 'Descripción:', descripcion);
+                    resolver({ titulo, descripcion });
+                });
+            }
+
+            // 🔥 BOTÓN "SALTAR"
+            if (btnSaltar) {
+                btnSaltar.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('📄 Botón "Saltar" pulsado');
+                    resolver({ titulo: '', descripcion: '' });
+                });
+            }
+
+            // 🔥 BOTÓN DE CIERRE (X)
+            if (btnClose) {
+                btnClose.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('📄 Botón de cierre (X) pulsado');
+                    resolver(null);
+                });
+            }
+
+            // 🔥 CLICK EN EL OVERLAY
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    console.log('📄 Click fuera del modal');
+                    resolver(null);
+                }
+            });
+
+            // 🔥 TECLA ESCAPE
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    console.log('📄 Tecla ESC pulsada');
+                    resolver(null);
+                    document.removeEventListener('keydown', escapeHandler);
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
+            overlay._escapeHandler = escapeHandler;
+
+            // 🔥 ENFOQUE INICIAL EN EL TÍTULO
+            if (tituloInput) {
+                setTimeout(() => tituloInput.focus(), 100);
+            }
+        });
     }
 
     // ============================================================
@@ -2122,7 +2336,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
     }
 
     // ============================================================
-    // ABRIR CREADOR DE HISTORIA - CORREGIDO
+    // ABRIR CREADOR DE HISTORIA
     // ============================================================
 
     static async abrirCreadorHistoria(temaId) {
@@ -2210,7 +2424,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
     }
 
     // ============================================================
-    // GENERAR HISTORIA CON DESCRIPCIÓN - CORREGIDO
+    // GENERAR HISTORIA CON DESCRIPCIÓN
     // ============================================================
 
     static async generarHistoriaConDescripcion(temaId) {
@@ -2390,14 +2604,13 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                 ]
             };
 
-            // 🔥 CORREGIDO: Asegurar que palabras sea SIEMPRE un array
             for (let j = 1; j <= 6; j++) {
                 const frase = {
                     original: "[Frase " + j + " en " + idiomaActivo + "]",
                     traduccion: "[Traduccion " + j + " al " + idiomaNativo + "]",
                     regla_gramatical: "[Regla gramatical " + j + "]",
                     explicacion_gramatical: "[Explicacion " + j + " en " + idiomaNativo + "]",
-                    palabras: [], // 🔥 SIEMPRE INICIALIZAR COMO ARRAY
+                    palabras: [],
                     "_AVISO_OBLIGATORIO": `
 ⚠️⚠️⚠️ ¡ATENCIÓN IA! ⚠️⚠️⚠️
 
@@ -2571,7 +2784,6 @@ Este JSON contiene TODOS los campos necesarios para una historia completa.
                                             if (frase.original && !frase.original.startsWith('Frase') && !frase.original.startsWith('[')) {
                                                 tieneDatosReales = true;
                                             }
-                                            // 🔥 VERIFICAR QUE PALABRAS EXISTA Y SEA ARRAY
                                             const palabras = frase.palabras || [];
                                             if (palabras.length === 0) {
                                                 tienePalabrasReales = false;
@@ -2818,7 +3030,10 @@ Este JSON contiene TODOS los campos necesarios para una historia completa.
 
 window.UITemasActions = UITemasActions;
 
-console.log('✅ UITemas Actions v2.41 - CORREGIDO: ERROR "frase.palabras is undefined"');
-console.log('  🔥 Se asegura de que frase.palabras sea siempre un array');
-console.log('  🔥 Inicialización correcta de palabras en cada frase');
+console.log('✅ UITemas Actions v2.43 - CORREGIDO: MODAL DE GENERAR ONDA CON TÍTULO Y DESCRIPCIÓN');
+console.log('  🔥 Fix: Ahora pide título y descripción al generar onda desde Temas');
+console.log('  🔥 Fix: Evita duplicados usando el título proporcionado por el usuario');
+console.log('  🔥 Sincronización bidireccional con Modo Elipse');
+console.log('  🔥 Reapertura automática del tema si está completado');
+console.log('  🔥 Actualización de estado en tiempo real');
 console.log('  🔥 Preserva todas las funcionalidades');

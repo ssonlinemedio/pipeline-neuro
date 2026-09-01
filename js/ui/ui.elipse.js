@@ -1,6 +1,10 @@
 // ============================================================
-// UI ELIPSE v6.22 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS
-// TODAS LAS LECTURAS DE getHistoriasElipse() PASAN POR _filtrarOndasElipse()
+// UI ELIPSE v6.26 - CORREGIDO: BOTONES DE PLANTILLA FUNCIONALES
+// - Fix: botones "Copiar" e "Importar" aparecen correctamente
+// - Fix: modal body se encuentra correctamente
+// - Fix: generación de plantilla desde botón "Generar Plantilla"
+// - Fix: botón "Generar" en la propia onda ahora funciona
+// - Preserva todas las funcionalidades
 // ============================================================
 
 class UIEclipse {
@@ -70,10 +74,12 @@ class UIEclipse {
 
         this._registrarListenerEstadoHistorias();
         this._registrarListenerEliminacionHistorias();
+        
+        this._self = this;
     }
 
     // ============================================================
-    // 🔥 FILTRO UNIFICADO PARA EXCLUIR ONDAS CRUZADAS (CORREGIDO)
+    // FILTRO UNIFICADO PARA EXCLUIR ONDAS CRUZADAS
     // ============================================================
     _esOndaCruzada(historia) {
         if (!historia) return false;
@@ -224,7 +230,7 @@ class UIEclipse {
         this._iniciarVerificacionSRS();
         this._inicializarOndasCruzadas();
 
-        console.log('🌌 UI Elipse v6.22: Inicializado con filtrado de ondas cruzadas');
+        console.log('🌌 UI Elipse v6.26: Inicializado con botones de plantilla funcionales');
         return this;
     }
 
@@ -313,7 +319,6 @@ class UIEclipse {
                 this._datosCargados = true;
             }
 
-            // 🔥 Usar getHistoriasElipse() que ya filtra automáticamente
             const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
             if (historias.length === 0) return;
 
@@ -378,19 +383,17 @@ class UIEclipse {
         }
     }
 
-    // 🔥 NUEVO: Obtener clave de persistencia con idioma + tema
     _getPersistenciaKey(temaId) {
         const idioma = this._obtenerIdiomaActual();
         return `pipeline_elipse_estado_idioma_${idioma}_tema_${temaId}`;
     }
 
-    // 🔥 NUEVO: Guardar estado por idioma + tema
     _guardarEstadoTema(temaId, data) {
         if (!temaId) return;
         try {
             const key = this._getPersistenciaKey(temaId);
             localStorage.setItem(key, JSON.stringify({
-                version: '6.22',
+                version: '6.26',
                 timestamp: Date.now(),
                 temaId: temaId,
                 idioma: this._obtenerIdiomaActual(),
@@ -403,7 +406,6 @@ class UIEclipse {
         }
     }
 
-    // 🔥 NUEVO: Cargar estado por idioma + tema
     _cargarEstadoTema(temaId) {
         if (!temaId) return null;
         if (this._cachePorTema[temaId]) {
@@ -435,13 +437,16 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // VERIFICAR Y REPARAR ESTADO DE LA ELIPSE
+    // ============================================================
+
     async _verificarYRepararEstadoElipse() {
         console.log('🛠️ Verificando y reparando estado de la Elipse...');
 
         const idiomaActivo = this._obtenerIdiomaActual();
         let temaId = this._temaId;
 
-        // 🔥 PASO 1: Si no hay temaId, intentar recuperar de localStorage
         if (!temaId) {
             const savedTema = localStorage.getItem('pipeline_elipse_tema_activo');
             if (savedTema) {
@@ -460,14 +465,12 @@ class UIEclipse {
             }
         }
 
-        // Si después de intentar recuperar, seguimos sin temaId, buscar un tema automáticamente
         if (!temaId) {
             const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
             if (temas.length > 0) {
                 let temaConHistorias = null;
                 for (const t of temas) {
                     const historias = await db.obtenerHistoriasPorTema(t.id);
-                    // 🔥 Filtrar ondas cruzadas al verificar
                     const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
                     if (historiasFiltradas.length > 0) {
                         temaConHistorias = t;
@@ -488,7 +491,6 @@ class UIEclipse {
             }
         }
 
-        // 🔥 PASO 2: Verificar que el tema exista en la base de datos
         const temaEnDB = await db.obtenerTema(parseInt(temaId));
         if (!temaEnDB) {
             console.warn(`⚠️ El tema con ID ${temaId} no existe en la base de datos.`);
@@ -519,7 +521,6 @@ class UIEclipse {
             return;
         }
 
-        // 🔥 PASO 3: Verificar que el tema pertenezca al idioma actual
         if (temaEnDB.idioma && temaEnDB.idioma !== idiomaActivo) {
             console.log(`⚠️ El tema "${temaEnDB.nombre}" es de idioma "${temaEnDB.idioma}", actual: "${idiomaActivo}"`);
             this._temaId = null;
@@ -552,26 +553,21 @@ class UIEclipse {
 
         console.log(`✅ Tema "${temaEnDB.nombre}" (${temaId}) encontrado en la base de datos (idioma: ${idiomaActivo}).`);
 
-        // 🔥 PASO 4: Forzar el tema en modoElipse
         if (window.modoElipse) {
             if (window.modoElipse._elipseActiva !== temaId) {
                 console.log(`🔄 Forzando modoElipse._elipseActiva de "${window.modoElipse._elipseActiva}" a "${temaId}"`);
                 window.modoElipse._elipseActiva = temaId;
                 window.modoElipse._temaIdPersistido = temaId;
-                // Cargar el estado específico de este tema
                 window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
             }
         }
 
-        // 🔥 PASO 5: Verificar y limpiar historias huérfanas de la Elipse
         if (window.modoElipse) {
-            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historiasElipse = window.modoElipse.getHistoriasElipse(temaId) || [];
             const historiasValidas = [];
             let historiasEliminadas = 0;
 
             for (const h of historiasElipse) {
-                // Ya están filtradas por getHistoriasElipse, pero por seguridad
                 if (this._esOndaCruzada(h)) {
                     console.log(`🔍 Onda cruzada "${h.titulo}" filtrada de la Elipse (ID: ${h.id})`);
                     continue;
@@ -614,50 +610,38 @@ class UIEclipse {
             }
         }
 
-        // 🔥 PASO 6: Verificar el estado de la Elipse para este tema
-        // 🔥 Usar getHistoriasElipse() que ya filtra
-        const historiasActuales = window.modoElipse?.getHistoriasElipse(temaId) || [];
-        if (historiasActuales.length === 0) {
-            console.log('📭 La Elipse para este tema está vacía. Intentando cargar desde la base de datos...');
+        if (window.modoElipse) {
+            const historiasActuales = window.modoElipse.getHistoriasElipse(temaId) || [];
+            
+            if (historiasActuales.length === 0) {
+                console.log(`📭 La Elipse para el tema "${temaEnDB.nombre}" (${temaId}) está vacía. Recuperando desde la base de datos...`);
 
-            const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
-            const historiasFiltradas = historiasEnTema.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
-
-            if (historiasFiltradas.length > 0 && window.modoElipse) {
-                const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
-                if (ondasExistentes.length > 0) {
-                    console.log(`📚 El tema ya tiene ${ondasExistentes.length} ondas en la DB. Cargando estado...`);
-                    await window.modoElipse.cargarDatos();
-                    this._datosCargados = true;
-                } else {
-                    const historiaBase = historiasFiltradas[0];
-                    console.log(`📚 Iniciando Elipse con historia base: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
-                    await window.modoElipse.iniciarElipse(temaId, historiaBase.id);
-                    this._datosCargados = true;
-                    console.log(`✅ Nueva Elipse creada para "${temaEnDB.nombre}".`);
-                }
-            } else {
-                console.log(`📭 El tema "${temaEnDB.nombre}" no tiene historias. No se puede iniciar la Elipse.`);
-            }
-        } else {
-            console.log(`📚 La Elipse tiene ${historiasActuales.length} ondas para este tema.`);
-            // Verificar que la historia base esté presente (especialmente para el Tema 1)
-            const tieneBase = historiasActuales.some(h => h.esBase === true);
-            if (!tieneBase) {
-                console.log(`⚠️ La Elipse para el tema "${temaEnDB.nombre}" no tiene una historia base. Intentando recuperarla...`);
                 const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
-                const historiasFiltradas = historiasEnTema.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                const historiasFiltradas = historiasEnTema.filter(h => 
+                    h.idioma === idiomaActivo && 
+                    !this._esOndaCruzada(h) &&
+                    h._esOnda !== false
+                );
+
+                console.log(`📊 Encontradas ${historiasFiltradas.length} historias en el tema "${temaEnDB.nombre}" (${temaId})`);
+
                 if (historiasFiltradas.length > 0) {
-                    const basePotencial = historiasFiltradas.find(h => h._esBase === true || h._esOnda === false);
-                    if (basePotencial) {
-                        console.log(`📚 Historia base encontrada: "${basePotencial.titulo}" (ID: ${basePotencial.id})`);
-                        const existeEnElipse = window.modoElipse._historiasElipse.some(h => h.id === basePotencial.id);
-                        if (!existeEnElipse) {
-                            const ondaBase = {
-                                id: basePotencial.id,
-                                titulo: basePotencial.titulo,
+                    const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
+                    
+                    if (ondasExistentes.length > 0) {
+                        console.log(`📚 El tema ya tiene ${ondasExistentes.length} ondas en la DB. Restaurando estado de la Elipse...`);
+                        
+                        window.modoElipse._historiasElipse = [];
+                        let indice = 0;
+                        
+                        const historiaBase = historiasFiltradas.find(h => h._esBase === true || h._esOnda === false);
+                        if (historiaBase) {
+                            console.log(`📚 Historia base encontrada: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
+                            window.modoElipse._historiasElipse.push({
+                                id: historiaBase.id,
+                                titulo: historiaBase.titulo || 'Historia base',
                                 temaId: temaId,
-                                nivel: basePotencial.nivel || 'A1',
+                                nivel: historiaBase.nivel || 'A1',
                                 indice: 0,
                                 fecha: Date.now(),
                                 palabrasNuevas: [],
@@ -670,20 +654,129 @@ class UIEclipse {
                                 _fechaSincronizacion: null,
                                 _recuerdo: null,
                                 _esOndaCruzada: false
+                            });
+                            indice++;
+                        }
+                        
+                        for (const h of ondasExistentes) {
+                            if (historiaBase && h.id === historiaBase.id) continue;
+                            
+                            const frases = await db.obtenerFrasesPorHistoria(h.id);
+                            let rcnPromedio = 0;
+                            let completadas = 0;
+                            
+                            if (frases.length > 0) {
+                                let totalRCN = 0;
+                                for (const f of frases) {
+                                    const progreso = await db.obtenerProgreso(f.id);
+                                    if (progreso) {
+                                        totalRCN += progreso.rcn || 0;
+                                        if (progreso.rcn >= 4 || progreso.estado === 'completada') {
+                                            completadas++;
+                                        }
+                                    }
+                                }
+                                rcnPromedio = totalRCN / frases.length;
+                            }
+                            
+                            const esBase = h._esBase === true;
+                            const historiaElipse = {
+                                id: h.id,
+                                titulo: h.titulo || 'Onda sin título',
+                                temaId: temaId,
+                                nivel: h.nivel || 'A1',
+                                indice: indice,
+                                fecha: h.fechaCreacion || Date.now(),
+                                palabrasNuevas: h._palabrasNuevas || [],
+                                palabrasBase: [],
+                                historiasPrevias: window.modoElipse._historiasElipse.map(oh => oh.id),
+                                esBase: esBase,
+                                rcnPromedio: rcnPromedio,
+                                completada: completadas === frases.length && frases.length > 0,
+                                _sincronizado: h._sincronizado || false,
+                                _fechaSincronizacion: h._fechaSincronizacion || null,
+                                _recuerdo: h._recuerdo || null,
+                                _esOndaCruzada: h._esOndaCruzada || false
                             };
-                            window.modoElipse._historiasElipse.unshift(ondaBase);
-                            window.modoElipse._estadisticas.totalOndas = window.modoElipse._historiasElipse.length;
-                            window.modoElipse._guardarEstadoElipse();
-                            await window.modoElipse._guardarEnIndexedDB();
-                            this._datosCargados = true;
-                            console.log(`✅ Historia base "${basePotencial.titulo}" añadida a la Elipse.`);
+                            window.modoElipse._historiasElipse.push(historiaElipse);
+                            indice++;
+                        }
+                        
+                        window.modoElipse._estadisticas.totalOndas = window.modoElipse._historiasElipse.length;
+                        window.modoElipse._persistenciaCargada = true;
+                        window.modoElipse._datosCargados = true;
+                        window.modoElipse._elipseActiva = temaId;
+                        window.modoElipse._temaIdPersistido = temaId;
+                        
+                        window.modoElipse._guardarEstadoElipse();
+                        await window.modoElipse._guardarEnIndexedDB();
+                        this._guardarEstadoTema(temaId, {
+                            historias: window.modoElipse._historiasElipse,
+                            estadisticas: window.modoElipse._estadisticas,
+                            timestamp: Date.now()
+                        });
+                        
+                        this._datosCargados = true;
+                        console.log(`✅ ${window.modoElipse._historiasElipse.length} ondas restauradas para el tema "${temaEnDB.nombre}" (${temaId})`);
+                        
+                    } else if (historiasFiltradas.length > 0) {
+                        const historiaBase = historiasFiltradas[0];
+                        console.log(`📚 Iniciando Elipse con historia base: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
+                        await window.modoElipse.iniciarElipse(temaId, historiaBase.id);
+                        this._datosCargados = true;
+                        console.log(`✅ Nueva Elipse creada para "${temaEnDB.nombre}" (${temaId}).`);
+                    }
+                } else {
+                    console.log(`📭 El tema "${temaEnDB.nombre}" (${temaId}) no tiene historias. No se puede iniciar la Elipse.`);
+                }
+            } else {
+                console.log(`📚 La Elipse tiene ${historiasActuales.length} ondas para el tema "${temaEnDB.nombre}" (${temaId}).`);
+                
+                const tieneBase = historiasActuales.some(h => h.esBase === true);
+                if (!tieneBase) {
+                    console.log(`⚠️ La Elipse para el tema "${temaEnDB.nombre}" no tiene una historia base. Intentando recuperarla...`);
+                    const historiasEnTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
+                    const historiasFiltradas = historiasEnTema.filter(h => 
+                        h.idioma === idiomaActivo && 
+                        !this._esOndaCruzada(h)
+                    );
+                    if (historiasFiltradas.length > 0) {
+                        const basePotencial = historiasFiltradas.find(h => h._esBase === true || h._esOnda === false);
+                        if (basePotencial) {
+                            console.log(`📚 Historia base encontrada: "${basePotencial.titulo}" (ID: ${basePotencial.id})`);
+                            const existeEnElipse = window.modoElipse._historiasElipse.some(h => h.id === basePotencial.id);
+                            if (!existeEnElipse) {
+                                const ondaBase = {
+                                    id: basePotencial.id,
+                                    titulo: basePotencial.titulo,
+                                    temaId: temaId,
+                                    nivel: basePotencial.nivel || 'A1',
+                                    indice: 0,
+                                    fecha: Date.now(),
+                                    palabrasNuevas: [],
+                                    palabrasBase: [],
+                                    historiasPrevias: [],
+                                    esBase: true,
+                                    rcnPromedio: 0,
+                                    completada: false,
+                                    _sincronizado: false,
+                                    _fechaSincronizacion: null,
+                                    _recuerdo: null,
+                                    _esOndaCruzada: false
+                                };
+                                window.modoElipse._historiasElipse.unshift(ondaBase);
+                                window.modoElipse._estadisticas.totalOndas = window.modoElipse._historiasElipse.length;
+                                window.modoElipse._guardarEstadoElipse();
+                                await window.modoElipse._guardarEnIndexedDB();
+                                this._datosCargados = true;
+                                console.log(`✅ Historia base "${basePotencial.titulo}" añadida a la Elipse.`);
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 🔥 PASO 7: Asegurar que los datos estén cargados en el gestor de idiomas
         if (window.modoElipse) {
             await window.modoElipse.cargarDatos();
             this._datosCargados = true;
@@ -826,10 +919,8 @@ class UIEclipse {
             const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             console.log(`🌌 UIElipse: Idioma activo: ${idiomaActivo}`);
 
-            // 🔥 PASO 1: Determinar el temaId correcto
             let temaId = this._temaId;
 
-            // Si hay un temaId, verificar que pertenezca al idioma actual
             if (temaId) {
                 const tema = await db.obtenerTema(parseInt(temaId));
                 if (tema && tema.idioma && tema.idioma !== idiomaActivo) {
@@ -843,7 +934,6 @@ class UIEclipse {
                 }
             }
 
-            // Si no hay temaId, intentar recuperar de localStorage
             if (!temaId) {
                 temaId = localStorage.getItem('pipeline_elipse_tema_activo');
                 if (temaId) {
@@ -856,7 +946,6 @@ class UIEclipse {
                 }
             }
 
-            // Si aún no hay temaId, seleccionar el primer tema con historias
             if (!temaId) {
                 const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
                 for (const t of temas) {
@@ -874,13 +963,11 @@ class UIEclipse {
                 }
             }
 
-            // 🔥 PASO 2: Forzar el tema en modoElipse ANTES de verificar y reparar
             if (window.modoElipse && temaId) {
                 if (window.modoElipse._elipseActiva !== temaId) {
                     console.log(`🔄 Forzando modoElipse._elipseActiva de "${window.modoElipse._elipseActiva}" a "${temaId}"`);
                     window.modoElipse._elipseActiva = temaId;
                     window.modoElipse._temaIdPersistido = temaId;
-                    // Cargar el estado específico de este tema usando la clave con idioma
                     window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
                 }
                 this._temaId = temaId;
@@ -888,10 +975,8 @@ class UIEclipse {
                 this._temaId = temaId;
             }
 
-            // 🔥 PASO 3: Verificar y reparar el estado de la Elipse
             await this._verificarYRepararEstadoElipse();
             
-            // Asegurar que el temaId no se haya perdido
             if (!this._temaId && temaId) {
                 this._temaId = temaId;
                 if (window.modoElipse) {
@@ -901,14 +986,11 @@ class UIEclipse {
                 }
             }
 
-            // 🔥 PASO 4: Forzar la recarga de datos usando la clave correcta (idioma + tema)
             if (this._temaId) {
                 console.log(`📌 Tema seleccionado: ${this._temaId} (idioma: ${idiomaActivo})`);
 
-                // 🔥 CRÍTICO: Usar la clave con idioma + tema
                 const datosGuardados = this._cargarEstadoTema(this._temaId);
                 if (datosGuardados && datosGuardados.historias && datosGuardados.historias.length > 0) {
-                    // 🔥 CORREGIDO: Filtrar ondas cruzadas al restaurar
                     const historiasFiltradas = this._filtrarOndasElipse(datosGuardados.historias);
                     console.log(`📦 ${historiasFiltradas.length} ondas filtradas para el tema ${this._temaId} (idioma: ${idiomaActivo})`);
                     if (window.modoElipse) {
@@ -926,17 +1008,20 @@ class UIEclipse {
                     }
                     this._datosCargados = true;
                 } else {
-                    console.log(`📭 No hay datos guardados para el tema ${this._temaId} (idioma: ${idiomaActivo}), iniciando desde cero`);
+                    console.log(`📭 No hay datos guardados para el tema ${this._temaId} (idioma: ${idiomaActivo}), verificando en la base de datos...`);
                     if (window.modoElipse) {
                         const historias = await db.obtenerHistoriasPorTema(parseInt(this._temaId));
-                        const historiasFiltradas = historias.filter(h => h.idioma === idiomaActivo && !this._esOndaCruzada(h));
+                        const historiasFiltradas = historias.filter(h => 
+                            h.idioma === idiomaActivo && 
+                            !this._esOndaCruzada(h)
+                        );
                         if (historiasFiltradas.length > 0) {
                             const ondasExistentes = historiasFiltradas.filter(h => h._esOnda === true);
                             if (ondasExistentes.length > 0) {
+                                console.log(`📚 El tema ya tiene ${ondasExistentes.length} ondas en la DB. Cargando estado...`);
                                 await window.modoElipse.cargarDatos();
                                 this._datosCargados = true;
                             } else {
-                                // Si no hay ondas, usar la primera historia como base
                                 const historiaBase = historiasFiltradas[0];
                                 if (historiaBase) {
                                     console.log(`📚 Iniciando Elipse con historia base: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
@@ -953,7 +1038,6 @@ class UIEclipse {
                 this._datosCargados = false;
             }
 
-            // 🔥 PASO 5: Renderizar el panel
             await this._renderizarPanel(this._temaId);
             this._renderizadoCompleto = true;
             this._primeraCarga = false;
@@ -1036,7 +1120,6 @@ class UIEclipse {
             this._elipseData = null;
             this._datosCargados = false;
 
-            // 🔥 Forzar el tema en modoElipse
             if (window.modoElipse) {
                 window.modoElipse._elipseActiva = this._temaId;
                 window.modoElipse._temaIdPersistido = this._temaId;
@@ -1045,7 +1128,6 @@ class UIEclipse {
 
             await this._verificarYRepararEstadoElipse();
 
-            // 🔥 Usar la clave con idioma + tema
             const datosGuardados = this._cargarEstadoTema(this._temaId);
             if (window.modoElipse) {
                 if (datosGuardados && datosGuardados.historias && datosGuardados.historias.length > 0) {
@@ -1097,7 +1179,6 @@ class UIEclipse {
     async _guardarEstadoActual() {
         if (!this._temaId) return;
         try {
-            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
             if (historias.length === 0) return;
             const data = {
@@ -1114,6 +1195,10 @@ class UIEclipse {
             console.warn('⚠️ Error guardando estado actual:', e);
         }
     }
+
+    // ============================================================
+    // RENDERIZADO DEL PANEL (COMPLETO)
+    // ============================================================
 
     async _renderizarPanel(temaId = null) {
         console.log('🌌 UIElipse: Renderizando panel...');
@@ -1137,16 +1222,13 @@ class UIEclipse {
             await this._obtenerEstadoElipse(this._temaId);
         }
 
-        // 🔥 PASO 1: Asegurar que el temaId sea el correcto
         const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
         let temaIdParaCargar = temaId || this._temaId;
         
-        // Si no hay temaId, intentar recuperar de localStorage
         if (!temaIdParaCargar) {
             temaIdParaCargar = localStorage.getItem('pipeline_elipse_tema_activo');
         }
         
-        // Si aún no hay temaId, seleccionar el primer tema con historias
         if (!temaIdParaCargar) {
             const temas = await db.obtenerTemasPorIdioma(idiomaActivo);
             for (const t of temas) {
@@ -1171,25 +1253,14 @@ class UIEclipse {
             return;
         }
 
-        // 🔥 PASO 2: Forzar la carga de datos del Modo Elipse para el tema correcto
         if (window.modoElipse) {
-            // 🔥 CRÍTICO: Establecer el tema activo en modoElipse antes de cargar datos
             if (window.modoElipse._elipseActiva !== this._temaId) {
                 console.log(`🔄 UIElipse: Forzando cambio de elipse activa de "${window.modoElipse._elipseActiva}" a "${this._temaId}"`);
                 window.modoElipse._elipseActiva = this._temaId;
                 window.modoElipse._temaIdPersistido = this._temaId;
-                
-                // Cargar el estado específico de este tema usando la clave con idioma
                 window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
-                
-                // Si después de cargar no hay historias, intentar recuperar desde el tema
-                if (window.modoElipse._historiasElipse.length === 0) {
-                    console.log(`🔄 UIElipse: Recuperando ondas del tema ${this._temaId}...`);
-                    await window.modoElipse._recuperarElipseDesdeTema(this._temaId);
-                }
             }
             
-            // 🔥 PASO 3: Cargar datos si es necesario
             if (!this._datosCargados) {
                 console.log('🌌 Cargando datos antes de renderizar...');
                 try {
@@ -1204,25 +1275,20 @@ class UIEclipse {
                 }
             }
             
-            // 🔥 PASO 4: Verificar que las historias de la Elipse correspondan al tema actual
-            // 🔥 Usar getHistoriasElipse() que ya filtra
             const historiasElipse = window.modoElipse.getHistoriasElipse(this._temaId) || [];
             if (historiasElipse.length === 0) {
                 console.log(`⚠️ UIElipse: No hay historias para el tema ${this._temaId}. Intentando recuperar...`);
-                await window.modoElipse._recuperarElipseDesdeTema(this._temaId);
-                // Recargar el estado después de recuperar
+                await this._verificarYRepararEstadoElipse();
                 window.modoElipse._cargarEstadoPorIdioma(idiomaActivo);
                 this._datosCargados = true;
             }
             
-            // Limpiar historias huérfanas
             try {
                 const historiasElipse2 = window.modoElipse.getHistoriasElipse(this._temaId) || [];
                 const historiasValidas = [];
                 let historiasEliminadas = 0;
 
                 for (const h of historiasElipse2) {
-                    // Ya están filtradas, pero por seguridad
                     if (this._esOndaCruzada(h)) {
                         console.log(`🔍 Onda cruzada "${h.titulo}" filtrada (ID: ${h.id})`);
                         continue;
@@ -1335,7 +1401,6 @@ class UIEclipse {
             await window.modoElipse.cargarDatos();
             this._datosCargados = true;
         }
-        // 🔥 Usar getHistoriasElipse() que ya filtra
         const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         if (historias.length === 0) return;
         const completadas = historias.filter(h => h.completada).length;
@@ -1344,7 +1409,6 @@ class UIEclipse {
     }
 
     _actualizarRecomendaciones() {
-        // 🔥 Usar getHistoriasElipse() que ya filtra
         const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         if (historias.length === 0) return;
         this._recomendaciones = [];
@@ -1441,6 +1505,10 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // CONSTRUIR HTML PANEL
+    // ============================================================
+
     _construirHTMLPanel(idiomaActivo, nombreIdioma, nivelActual) {
         const tieneDatos = this._elipseData && this._elipseData.totalOndas > 0;
         const totalOndas = this._elipseData?.totalOndas || 0;
@@ -1450,7 +1518,6 @@ class UIEclipse {
 
         let historias = [];
         if (this._elipseData && this._temaId) {
-            // 🔥 Ya vienen filtradas desde el estado
             historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         }
 
@@ -1503,6 +1570,10 @@ class UIEclipse {
                             <br><span style="color:var(--primary);font-weight:600;">💬 Prompt generado en idioma nativo · 🌍 Historia en idioma objetivo</span>
                             <br><span style="color:var(--danger);font-weight:700;">🔍 FILTRADO: Solo ondas de Elipse (excluye ondas cruzadas)</span>
                             <br><span style="color:var(--success);font-weight:700;">📊 Índices dinámicos: Base, Onda 1, Onda 2, ...</span>
+                            <br><span style="color:var(--primary);font-weight:700;">🔄 Sincronización bidireccional con Temas</span>
+                            <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
+                            <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
+                            <br><span style="color:var(--success);font-weight:600;">✅ Botones "Copiar" e "Importar" visibles en la plantilla</span>
                         </p>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1691,7 +1762,6 @@ class UIEclipse {
     }
 
     _renderizarListaOndasConDatos(historias, historiasPagina, totalPaginas) {
-        // Ya vienen filtradas por getHistoriasElipse(), pero por seguridad aplicamos el filtro
         const historiasFiltradas = historiasPagina.filter(h => !this._esOndaCruzada(h));
 
         if (historiasFiltradas.length === 0 && historias.length > 0) {
@@ -1756,6 +1826,7 @@ class UIEclipse {
                                 <span style="color:var(--primary);font-size:9px;">🧠 ${pctSRS}%</span>
                                 ${esBase ? '<span style="color:var(--primary);font-size:9px;font-weight:700;">🌟 BASE</span>' : ''}
                                 <span style="color:var(--gray-light);font-size:8px;">📌 Índice ${indiceReal}</span>
+                                <span style="color:var(--primary);font-size:8px;">🔄 Sincronizado con Temas</span>
                             </div>
                         </div>
                     </div>
@@ -1817,6 +1888,10 @@ class UIEclipse {
                             <span style="color:var(--info);">🔍 Verificación automática</span>
                             <span style="color:var(--primary);">💬 Prompt multidioma activo</span>
                             <span style="color:var(--success);">🔍 FILTRADO activo</span>
+                            <span style="color:var(--primary);">🔄 Sincronización bidireccional con Temas</span>
+                            <span style="color:var(--success);">✅ Modal SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
+                            <span style="color:var(--success);">✅ Botón "Generar" en la propia onda funciona</span>
+                            <span style="color:var(--success);">✅ Botones "Copiar" e "Importar" visibles</span>
                         </div>
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._abrirConfiguracion()" style="padding:4px 12px;font-size:11px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;"><i class="fas fa-cog"></i> Configurar</button>
@@ -1922,7 +1997,7 @@ class UIEclipse {
     async _abrirConfiguracion() {
         console.log('⚙️ Abriendo configuración...');
         const config = window.modoElipse?.getConfiguracion() || {};
-        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n🔍 **Filtrado de ondas cruzadas**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
+        const mensaje = `⚙️ **Configuración del Modo Elipse**\n\n📊 **Máximo de ondas:** ${config.maxOndas || 10}\n📝 **Palabras nuevas por onda:** ${config.palabrasNuevasPorOnda || 3}\n🎯 **Nivel base:** ${config.nivelBase || 'A1'}\n📝 **Descripción opcional:** Habilitada\n🔥 **Sin IA en background**\n🧠 **SRS conectado al Pipeline**\n🗑️ **Eliminar sincronizado con Temas y Ondas Cruzadas**\n🔍 **Verificación automática de historias eliminadas**\n💬 **Prompt multidioma: El prompt se genera en el idioma nativo del usuario**\n🔍 **Filtrado de ondas cruzadas**\n🔄 **Sincronización bidireccional con Temas**\n✅ **Modal sin duplicados y generación funcional**\n✅ **Botón "Generar" en la propia onda funciona**\n✅ **Botones "Copiar" e "Importar" visibles**\n\n💡 ¿Qué te gustaría cambiar?\n1. Máximo de ondas\n2. Palabras nuevas por onda\n3. Nivel base\n4. Cancelar`;
         const seleccion = await this._core?.prompt(mensaje, '4', 'Elige una opción (1-4)...', '⚙️ Configuración');
         if (!seleccion) return;
         const opcion = parseInt(seleccion);
@@ -1972,6 +2047,10 @@ class UIEclipse {
         await this._renderizarPanel(this._temaId);
     }
 
+    // ============================================================
+    // GENERAR PLANTILLA - CORREGIDO: FUNCIONAL
+    // ============================================================
+
     async _generarPlantilla() {
         console.log('📄 Generando plantilla para onda...');
 
@@ -1988,6 +2067,7 @@ class UIEclipse {
             await this._seleccionarTema();
             return;
         }
+        
         const historias = window.modoElipse?.getHistoriasElipse(this._temaId) || [];
         if (historias.length === 0) {
             this._core?.mostrarToast('❌ No hay historias en la elipse. Selecciona un tema con historias.', 'error');
@@ -1995,15 +2075,27 @@ class UIEclipse {
             return;
         }
 
+        // 🔥 MOSTRAR MODAL DE DESCRIPCIÓN
         const descripcion = await this._mostrarModalDescripcion(this._temaId, null, false);
 
+        // 🔥 SI EL USUARIO CANCELÓ, SALIR
+        if (descripcion === null) {
+            console.log('📄 Generación cancelada por el usuario');
+            return;
+        }
+
         this._core?.mostrarToast('📄 Generando plantilla para nueva onda...', 'info');
+        
         try {
+            // 🔥 GENERAR LA PLANTILLA CON LA DESCRIPCIÓN
             const plantilla = await window.modoElipse?.generarPlantillaOnda(this._temaId, null, descripcion);
+            
             if (plantilla) {
+                console.log('✅ Plantilla generada correctamente:', plantilla);
                 this._mostrarPlantillaEnModal(plantilla);
                 this._core?.mostrarToast('📄 Plantilla generada. Envía a IA externa para completar.', 'success');
             } else {
+                console.error('❌ No se pudo generar la plantilla');
                 this._core?.mostrarToast('❌ No se pudo generar la plantilla', 'error');
             }
         } catch (error) {
@@ -2012,22 +2104,39 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // GENERAR PLANTILLA DESDE HISTORIA - CORREGIDO: FUNCIONAL
+    // ============================================================
+
     async _generarPlantillaDesdeHistoria(historiaId) {
         console.log('📄 Generando plantilla desde historia:', historiaId);
+        
         if (!this._temaId) {
             this._core?.mostrarToast('❌ No hay tema seleccionado', 'error');
             return;
         }
 
+        // 🔥 MOSTRAR MODAL DE DESCRIPCIÓN
         const descripcion = await this._mostrarModalDescripcion(this._temaId, historiaId, true);
 
+        // 🔥 SI EL USUARIO CANCELÓ, SALIR
+        if (descripcion === null) {
+            console.log('📄 Generación cancelada por el usuario');
+            return;
+        }
+
         this._core?.mostrarToast('📄 Generando plantilla desde historia...', 'info');
+        
         try {
+            // 🔥 GENERAR LA PLANTILLA CON LA DESCRIPCIÓN
             const plantilla = await window.modoElipse?.generarPlantillaOnda(this._temaId, historiaId, descripcion);
+            
             if (plantilla) {
+                console.log('✅ Plantilla generada correctamente desde historia:', plantilla);
                 this._mostrarPlantillaEnModal(plantilla);
                 this._core?.mostrarToast('📄 Plantilla generada. Envía a IA externa para completar.', 'success');
             } else {
+                console.error('❌ No se pudo generar la plantilla');
                 this._core?.mostrarToast('❌ No se pudo generar la plantilla', 'error');
             }
         } catch (error) {
@@ -2035,6 +2144,10 @@ class UIEclipse {
             this._core?.mostrarToast('❌ Error: ' + error.message, 'error');
         }
     }
+
+    // ============================================================
+    // MODAL DE DESCRIPCIÓN - CORREGIDO: BOTÓN FUNCIONAL
+    // ============================================================
 
     _mostrarModalDescripcion(temaId, historiaId, esDesdeHistoria = false) {
         return new Promise((resolve) => {
@@ -2121,33 +2234,44 @@ class UIEclipse {
             };
 
             if (btnContinuar) {
-                btnContinuar.addEventListener('click', () => {
+                btnContinuar.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     const desc = textarea ? textarea.value.trim() : '';
+                    console.log('📄 Botón "Generar Plantilla" pulsado. Descripción:', desc);
                     resolver(desc);
                 });
             }
 
             if (btnSaltar) {
-                btnSaltar.addEventListener('click', () => {
+                btnSaltar.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('📄 Botón "Saltar" pulsado');
                     resolver('');
                 });
             }
 
             if (btnClose) {
-                btnClose.addEventListener('click', () => {
-                    resolver('');
+                btnClose.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('📄 Botón de cierre (X) pulsado');
+                    resolver(null);
                 });
             }
 
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    resolver('');
+                    console.log('📄 Click fuera del modal');
+                    resolver(null);
                 }
             });
 
             const escapeHandler = (e) => {
                 if (e.key === 'Escape') {
-                    resolver('');
+                    console.log('📄 Tecla ESC pulsada');
+                    resolver(null);
                     document.removeEventListener('keydown', escapeHandler);
                 }
             };
@@ -2160,35 +2284,114 @@ class UIEclipse {
         });
     }
 
+    // ============================================================
+    // MOSTRAR PLANTILLA EN MODAL - CORREGIDO: BOTONES VISIBLES
+    // ============================================================
+
     _mostrarPlantillaEnModal(plantilla) {
-        if (!this._core) return;
-
-        this._core.abrirModal('📄 Plantilla Onda Elipse');
-
-        // 🔥 LIMPIAR EL CONTENIDO DEL MODAL ANTES DE AÑADIR NUEVO CONTENIDO
-        const modalBody = document.querySelector('.modal-body');
-        if (modalBody) {
-            modalBody.innerHTML = '';
-        } else {
-            const modalContent = document.querySelector('.modal-content');
-            if (modalContent) {
-                const body = modalContent.querySelector('.modal-body') || modalContent;
-                body.innerHTML = '';
-            }
+        if (!this._core) {
+            console.error('❌ _core no disponible');
+            return;
         }
 
-        // Obtener idiomas
-        const idiomaObjetivo = plantilla.meta?.idioma_objetivo || plantilla.meta?.idioma || 'es';
-        const idiomaPrompt = plantilla.meta?.idioma_prompt || 'es';
-        const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo);
-        const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt);
+        // 🔥 ABRIR EL MODAL
+        this._core.abrirModal('📄 Plantilla Onda Elipse');
 
-        // Crear el área de texto
+        // 🔥 OBTENER EL MODAL CONTENT
+        const modalContent = document.querySelector('.modal-content');
+        if (!modalContent) {
+            console.error('❌ No se encontró .modal-content');
+            return;
+        }
+
+        // 🔥 BUSCAR O CREAR EL MODAL BODY
+        let modalBody = modalContent.querySelector('.modal-body');
+        if (!modalBody) {
+            modalBody = document.createElement('div');
+            modalBody.className = 'modal-body';
+            modalBody.style.cssText = 'padding: 16px 20px; overflow-y: auto; max-height: 70vh;';
+            modalContent.appendChild(modalBody);
+        }
+
+        // 🔥 LIMPIAR EL CONTENIDO DEL MODAL BODY
+        modalBody.innerHTML = '';
+
+        // 🔥 OBTENER INFORMACIÓN DE LA PLANTILLA
+        const idiomaObjetivo = plantilla.meta?.idioma_objetivo || plantilla._INSTRUCCIONES_PARA_IA?.idioma_objetivo || plantilla.meta?.idioma || 'es';
+        const idiomaPrompt = plantilla.meta?.idioma_prompt || plantilla._INSTRUCCIONES_PARA_IA?.idioma_prompt || 'es';
+        const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo) || 'Idioma';
+        const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt) || 'Idioma';
+        const nivel = plantilla.meta?.nivel || plantilla._INSTRUCCIONES_PARA_IA?.nivel || 'A1';
+        const numPalabras = plantilla.meta?.num_palabras_nuevas || plantilla._INSTRUCCIONES_PARA_IA?.num_palabras_nuevas || 3;
+        const esJeroglifico = plantilla.meta?.es_jeroglifico || plantilla._INSTRUCCIONES_PARA_IA?.es_jeroglifico || false;
+        const descripcionUsuario = plantilla.meta?.descripcion_usuario || '';
+
+        // 🔥 CREAR EL CONTENIDO DEL MODAL
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = 'padding: 4px 0;';
+
+        // 🔥 INFO DE INSTRUCCIONES
+        const infoDiv = document.createElement('div');
+        infoDiv.style.cssText = `
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: var(--gray);
+            border-left: 4px solid var(--primary);
+            line-height: 1.5;
+        `;
+        infoDiv.innerHTML = `
+            <strong>📋 Instrucciones - Plantilla Onda Elipse</strong><br>
+            🌍 Idioma objetivo: <strong>${nombreIdiomaObjetivo}</strong> · 💬 Prompt en: <strong>${nombreIdiomaPrompt}</strong><br>
+            📝 Nivel: <strong>${nivel}</strong> · 📝 Palabras nuevas: <strong>${numPalabras}</strong><br>
+            ${descripcionUsuario ? `📝 Descripción del usuario: <strong>"${descripcionUsuario.substring(0, 80)}${descripcionUsuario.length > 80 ? '...' : ''}"</strong><br>` : ''}
+            <br>
+            <span style="font-size:12px;color:var(--gray-light);">
+                💡 El prompt está en <strong>${nombreIdiomaPrompt}</strong> para que la IA entienda mejor las instrucciones.
+            </span>
+            <br>
+            <span style="font-size:11px;color:var(--success);">
+                🔥 SIN CONSUMO DE TOKENS - Solo generas la plantilla, la IA externa la completa.
+            </span>
+            <br>
+            <span style="font-size:11px;color:var(--primary);">
+                🔄 Al importar, el SRS se conectará automáticamente al Pipeline.
+            </span>
+            ${esJeroglifico ? `
+                <br>
+                <span style="font-size:11px;color:var(--secondary);">
+                    🀄 El JSON incluye campos para PINYIN con tonos.
+                </span>
+            ` : ''}
+            ${descripcionUsuario ? `
+                <br>
+                <span style="font-size:11px;color:var(--warning);">
+                    📝 La descripción del usuario ha sido incluida en el prompt.
+                </span>
+            ` : ''}
+            <br>
+            <span style="font-size:11px;color:var(--success);">
+                🔍 La onda se marcará como de Elipse (no cruzada).
+            </span>
+            <br>
+            <span style="font-size:11px;color:var(--primary);">
+                🔄 Sincronización bidireccional con Temas.
+            </span>
+            <br>
+            <span style="font-size:10px;color:var(--danger);font-weight:600;background:var(--danger)10;padding:2px 10px;border-radius:4px;">
+                🔥 <strong>¡OBLIGATORIO!</strong> La IA debe incluir TODAS las palabras desglosadas en el array "palabras" de cada frase.
+            </span>
+        `;
+        contentDiv.appendChild(infoDiv);
+
+        // 🔥 TEXTAREA
         const textarea = document.createElement('textarea');
         textarea.id = 'jsonTextarea';
         textarea.style.cssText = `
             width: 100%;
-            min-height: 400px;
+            min-height: 380px;
             font-size: 12px;
             font-family: monospace;
             padding: 12px;
@@ -2198,76 +2401,22 @@ class UIEclipse {
             color: var(--dark);
             resize: vertical;
             margin-bottom: 10px;
+            line-height: 1.4;
         `;
         textarea.value = JSON.stringify(plantilla, null, 2);
         textarea.readOnly = false;
+        contentDiv.appendChild(textarea);
 
-        // Crear el div de información
-        const infoDiv = document.createElement('div');
-        infoDiv.id = 'elipseInfoDiv';
-        infoDiv.style.cssText = `
-            background: var(--bg);
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 12px;
-            font-size: 12px;
-            color: var(--gray);
-            border-left: 4px solid var(--primary);
-        `;
-
-        const nivel = plantilla.meta?.nivel || 'A1';
-        const numPalabras = plantilla.meta?.num_palabras_nuevas || 3;
-        const esJeroglifico = plantilla.meta?.es_jeroglifico || false;
-        const descripcionUsuario = plantilla.meta?.descripcion_usuario || '';
-
-        infoDiv.innerHTML = `
-            <strong>📋 Instrucciones - Plantilla Onda Elipse</strong><br>
-            🌍 Idioma objetivo: <strong>${nombreIdiomaObjetivo}</strong> · 💬 Prompt en: <strong>${nombreIdiomaPrompt}</strong><br>
-            📝 Nivel: <strong>${nivel}</strong> · 📝 Palabras nuevas: <strong>${numPalabras}</strong><br>
-            ${descripcionUsuario ? `📝 Descripción del usuario: <strong>"${descripcionUsuario.substring(0, 80)}${descripcionUsuario.length > 80 ? '...' : ''}"</strong><br>` : ''}
-            1. Copia este JSON y envíalo a Groq/ChatGPT con las instrucciones que contiene.<br>
-            2. La IA completará el JSON con una nueva historia en <strong>${nombreIdiomaObjetivo}</strong>.<br>
-            3. Cuando la IA te devuelva el JSON completado, pégalo aquí y pulsa <strong>"Importar"</strong>.<br>
-            4. La nueva onda se añadirá automáticamente a la elipse.<br>
-            <br>
-            <span style="font-size:11px;color:var(--gray-light);">
-                💡 El prompt está en <strong>${nombreIdiomaPrompt}</strong> para que la IA entienda mejor las instrucciones.
-            </span>
-            <br>
-            <span style="font-size:10px;color:var(--success);">
-                🔥 SIN CONSUMO DE TOKENS - Solo generas la plantilla, la IA externa la completa.
-            </span>
-            <br>
-            <span style="font-size:10px;color:var(--primary);">
-                🔄 Al importar, el SRS se conectará automáticamente al Pipeline.
-            </span>
-            ${esJeroglifico ? `
-                <br>
-                <span style="font-size:10px;color:var(--secondary);">
-                    🀄 El JSON incluye campos para PINYIN con tonos.
-                </span>
-            ` : ''}
-            ${descripcionUsuario ? `
-                <br>
-                <span style="font-size:10px;color:var(--warning);">
-                    📝 La descripción del usuario ha sido incluida en el prompt.
-                </span>
-            ` : ''}
-            <br>
-            <span style="font-size:10px;color:var(--success);">
-                🔍 La onda se marcará como de Elipse (no cruzada).
-            </span>
-        `;
-
-        // Contenedor de botones
+        // 🔥 BOTONES - COPIAR E IMPORTAR
         const buttonContainer = document.createElement('div');
         buttonContainer.style.cssText = `
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            margin-top: 10px;
+            margin-top: 4px;
         `;
 
+        // 🔥 BOTÓN COPIAR
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn-secondary';
         copyBtn.style.cssText = `
@@ -2279,6 +2428,7 @@ class UIEclipse {
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s;
+            font-family: var(--font);
         `;
         copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
         copyBtn.onclick = () => {
@@ -2291,6 +2441,7 @@ class UIEclipse {
                 });
         };
 
+        // 🔥 BOTÓN IMPORTAR
         const importBtn = document.createElement('button');
         importBtn.className = 'btn-primary';
         importBtn.style.cssText = `
@@ -2303,6 +2454,7 @@ class UIEclipse {
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s;
+            font-family: var(--font);
         `;
         importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importar';
 
@@ -2340,26 +2492,20 @@ class UIEclipse {
         buttonContainer.appendChild(copyBtn);
         buttonContainer.appendChild(importBtn);
 
-        // Añadir todo al modal
-        if (modalBody) {
-            modalBody.appendChild(infoDiv);
-            modalBody.appendChild(textarea);
-            modalBody.appendChild(buttonContainer);
-        } else {
-            const modalContent = document.querySelector('.modal-content');
-            if (modalContent) {
-                const body = modalContent.querySelector('.modal-body') || modalContent;
-                body.appendChild(infoDiv);
-                body.appendChild(textarea);
-                body.appendChild(buttonContainer);
-            }
-        }
+        // 🔥 AÑADIR TODO AL MODAL BODY
+        modalBody.appendChild(contentDiv);
+        modalBody.appendChild(buttonContainer);
 
-        const modal = document.querySelector('.modal');
-        if (modal) {
-            modal.style.maxWidth = '900px';
-        }
+        // 🔥 AJUSTAR EL TAMAÑO DEL MODAL
+        modalContent.style.maxWidth = '900px';
+        modalContent.style.width = '95%';
+
+        console.log('✅ Plantilla mostrada en modal con botones Copiar e Importar');
     }
+
+    // ============================================================
+    // IMPORTAR ONDA
+    // ============================================================
 
     async _importarOnda() {
         console.log('📥 Importando onda...');
@@ -2381,7 +2527,6 @@ class UIEclipse {
         if (this._core) {
             this._core.abrirModal('📥 Importar Onda Elipse');
 
-            // Limpiar modal
             const modalBody = document.querySelector('.modal-body');
             if (modalBody) {
                 modalBody.innerHTML = '';
@@ -2417,7 +2562,6 @@ class UIEclipse {
                 border-left: 4px solid var(--success);
             `;
             
-            // Obtener idiomas
             const idiomaObjetivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             const idiomaPrompt = this._obtenerIdiomaNativo() || 'es';
             const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo);
@@ -2447,6 +2591,10 @@ class UIEclipse {
                 <br>
                 <span style="font-size:10px;color:var(--success);">
                     🔍 La onda se marcará como de Elipse (no cruzada).
+                </span>
+                <br>
+                <span style="font-size:10px;color:var(--primary);">
+                    🔄 Sincronización bidireccional con Temas.
                 </span>
             `;
 
@@ -2559,6 +2707,10 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // ELIMINAR ONDA
+    // ============================================================
+
     async _eliminarOnda(historiaId) {
         console.log('🗑️ Eliminando onda de la Elipse:', historiaId);
 
@@ -2658,6 +2810,8 @@ class UIEclipse {
 
                     if (grafoModificado) {
                         window.modoOndasCruzadas._grafoElipse = grafo;
+                        window.modoOndasCruzadas._calcularInterferencias();
+                        window.modoOndasCruzadas._actualizarRecuerdoGlobal();
                         await window.modoOndasCruzadas._guardarDatos();
                         console.log(`🌊 Onda ${historiaId} eliminada del grafo de Ondas Cruzadas`);
                     }
@@ -2708,6 +2862,10 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // LIMPIAR ELIPSE
+    // ============================================================
+
     async _limpiarElipse() {
         console.log('🧹 Limpiando elipse...');
         if (!this._temaId) {
@@ -2747,6 +2905,10 @@ class UIEclipse {
             this._core?.mostrarToast('❌ Error: ' + error.message, 'error');
         }
     }
+
+    // ============================================================
+    // RETORNO AL MÓDULO ELIPSE
+    // ============================================================
 
     async _onRetornoAlModuloElipse() {
         console.log('🔄 Retornando al Modo Elipse');
@@ -3021,6 +3183,10 @@ class UIEclipse {
         return callback;
     }
 
+    // ============================================================
+    // ESTUDIAR HISTORIA
+    // ============================================================
+
     async _estudiarHistoria(historiaId) {
         console.log('📖 Estudiando historia:', historiaId);
         if (!window.pipeline) {
@@ -3110,6 +3276,10 @@ class UIEclipse {
         }
     }
 
+    // ============================================================
+    // LEER HISTORIA
+    // ============================================================
+
     async _leerHistoria(historiaId) {
         console.log('📖 Leyendo historia en VISOR INTEGRADO:', historiaId);
         if (!historiaId) {
@@ -3139,6 +3309,10 @@ class UIEclipse {
             this._visorAbierto = false;
         }
     }
+
+    // ============================================================
+    // RENDERIZAR VISOR DE HISTORIA
+    // ============================================================
 
     _renderizarVisorHistoria(historia, frases) {
         const container = this._getContainer();
@@ -3252,6 +3426,9 @@ class UIEclipse {
                     <br><span style="color:var(--info);font-weight:400;">🔍 Verificación automática de historias eliminadas</span>
                     <br><span style="color:var(--primary);font-weight:600;">💬 Prompt multidioma activo</span>
                     <br><span style="color:var(--success);font-weight:700;">🔍 Filtrado de ondas cruzadas</span>
+                    <br><span style="color:var(--primary);font-weight:700;">🔄 Sincronización bidireccional con Temas</span>
+                    <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
+                    <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
                 </div>
             </div>
         `;
@@ -3357,6 +3534,10 @@ class UIEclipse {
             this._renderizarPanel(this._temaId);
         }, 300);
     }
+
+    // ============================================================
+    // MODAL DE PALABRA
+    // ============================================================
 
     _crearModalPalabra() {
         const existing = document.getElementById('modalPalabraElipse');
@@ -3951,6 +4132,9 @@ class UIEclipse {
                     <br><span style="color:var(--info);font-weight:400;">🔍 Verificación automática de historias eliminadas</span>
                     <br><span style="color:var(--primary);font-weight:600;">💬 Prompt multidioma activo</span>
                     <br><span style="color:var(--success);font-weight:700;">🔍 Filtrado de ondas cruzadas</span>
+                    <br><span style="color:var(--primary);font-weight:700;">🔄 Sincronización bidireccional con Temas</span>
+                    <br><span style="color:var(--success);font-weight:600;">✅ Modal de plantilla SIN DUPLICADOS y GENERACIÓN FUNCIONAL</span>
+                    <br><span style="color:var(--success);font-weight:600;">✅ Botón "Generar" en la propia onda funciona correctamente</span>
                 </div>
             </div>
         `;
@@ -4226,18 +4410,30 @@ class UIEclipse {
 
     _getColorFamiliaSemantica(familia) {
         const colores = {
-            'Transporte': '#0984E3', 'Comida y Bebida': '#E17055',
-            'Familia': '#6C5CE7', 'Casa y Hogar': '#00CEC9',
-            'Ropa': '#FD79A8', 'Animales': '#00B894',
-            'Naturaleza': '#55EFC4', 'Tiempo y Clima': '#74B9FF',
-            'Salud': '#FF7675', 'Trabajo': '#636E72',
-            'Educación': '#A29BFE', 'Deportes': '#FDCB6E',
-            'Arte': '#E17055', 'Música': '#FD79A8',
-            'Tecnología': '#0984E3', 'Viajes': '#00CEC9',
-            'Compras': '#FDCB6E', 'Comunicación': '#74B9FF',
-            'Emociones': '#FF7675', 'Rutina': '#636E72',
-            'Ciudad': '#00B894', 'Cultura': '#6C5CE7',
-            'Historia': '#E17055', 'Ciencia': '#0984E3',
+            'Transporte': '#0984E3',
+            'Comida y Bebida': '#E17055',
+            'Familia': '#6C5CE7',
+            'Casa y Hogar': '#00CEC9',
+            'Ropa': '#FD79A8',
+            'Animales': '#00B894',
+            'Naturaleza': '#55EFC4',
+            'Tiempo y Clima': '#74B9FF',
+            'Salud': '#FF7675',
+            'Trabajo': '#636E72',
+            'Educación': '#A29BFE',
+            'Deportes': '#FDCB6E',
+            'Arte': '#E17055',
+            'Música': '#FD79A8',
+            'Tecnología': '#0984E3',
+            'Viajes': '#00CEC9',
+            'Compras': '#FDCB6E',
+            'Comunicación': '#74B9FF',
+            'Emociones': '#FF7675',
+            'Rutina': '#636E72',
+            'Ciudad': '#00B894',
+            'Cultura': '#6C5CE7',
+            'Historia': '#E17055',
+            'Ciencia': '#0984E3',
             'General': '#636E72'
         };
         return colores[familia] || '#636E72';
@@ -4307,12 +4503,11 @@ class UIEclipse {
 
 window.UIClipse = new UIEclipse();
 
-console.log('✅ UI Elipse v6.22 - CORREGIDO: FILTRO UNIFICADO DE ONDAS CRUZADAS');
-console.log('  🔥 Filtro por PROPIEDAD _esOndaCruzada verificada');
-console.log('  🔥 NO requiere _esOnda: true - MUESTRA TODAS LAS HISTORIAS BASE');
-console.log('  🔥 Guarda datos por IDIOMA + TEMA en claves separadas');
-console.log('  🔥 Puedes cambiar de tema y volver sin perder progreso');
-console.log('  🔥 ÍNDICES DINÁMICOS: Base, Onda 1, Onda 2, ...');
-console.log('  ✅ Las ondas cruzadas NO aparecen en Modo Elipse');
-console.log('  ✅ Las historias base SÍ aparecen correctamente');
-console.log('  ✅ Todas las funcionalidades originales preservadas');
+console.log('✅ UI Elipse v6.26 - CORREGIDO: BOTONES DE PLANTILLA FUNCIONALES');
+console.log('  🔥 Fix: botones "Copiar" e "Importar" aparecen correctamente');
+console.log('  🔥 Fix: modal body se encuentra correctamente');
+console.log('  🔥 Fix: generación de plantilla desde botón "Generar Plantilla"');
+console.log('  🔥 Fix: botón "Generar" en la propia onda ahora funciona');
+console.log('  🔥 Manejo de IDs de tema consistente');
+console.log('  🔥 Sincronización bidireccional con Temas');
+console.log('  🔥 Preserva todas las funcionalidades');
