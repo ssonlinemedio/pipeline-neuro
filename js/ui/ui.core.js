@@ -1723,7 +1723,7 @@ class UICore {
         const modal = document.getElementById('jsonModal');
         const title = document.getElementById('jsonModalTitle');
         if (modal && title) {
-            title.textContent = titulo || 'JSON';
+            title.textContent = window.PipelineI18n ? window.PipelineI18n.t(titulo || 'JSON') : (titulo || 'JSON');
             modal.classList.add('open');
             this.modalAbierto = true;
             console.log('📂 Modal abierto:', titulo);

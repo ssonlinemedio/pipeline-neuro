@@ -221,15 +221,18 @@ class UIDialogs {
             const input = document.getElementById('customDialogInput');
             const buttons = document.getElementById('customDialogButtons');
             
+            const i18n = window.PipelineI18n;
+            const t = (v) => i18n?.t ? i18n.t(String(v ?? '')) : String(v ?? '');
+            const tm = (v) => i18n?.message ? i18n.message(String(v ?? '')) : t(v);
             if (icon) icon.textContent = opciones.icon || '📢';
-            if (title) title.textContent = opciones.title || 'Aviso';
-            if (message) message.textContent = opciones.message || '';
+            if (title) title.textContent = t(opciones.title || 'Aviso');
+            if (message) message.textContent = tm(opciones.message || '');
             
             if (opciones.input) {
                 if (inputContainer) inputContainer.style.display = 'block';
                 if (input) {
                     input.value = opciones.defaultValue || '';
-                    input.placeholder = opciones.placeholder || 'Escribe aquí...';
+                    input.placeholder = t(opciones.placeholder || 'Escribe aquí...');
                     input.type = opciones.type || 'text';
                     setTimeout(() => input.focus(), 100);
                 }
@@ -243,7 +246,7 @@ class UIDialogs {
                 
                 btns.forEach((btn) => {
                     const button = document.createElement('button');
-                    button.textContent = btn.text;
+                    button.textContent = t(btn.text);
                     button.className = 'dialog-btn ' + (btn.primary ? 'primary' : (btn.danger ? 'danger' : (btn.success ? 'success' : 'secondary')));
                     button.addEventListener('click', () => {
                         const value = opciones.input ? input.value : btn.value;

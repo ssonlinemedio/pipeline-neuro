@@ -1069,14 +1069,15 @@
                     </div>
                 `;
                 
+                const modalHTMLTraducido = window.PipelineI18n ? window.PipelineI18n.html(modalHTML) : modalHTML;
                 const existing = document.getElementById('modalHistoriaCompletada');
                 if (existing) existing.remove();
                 
                 const container = document.getElementById('cardContainer');
                 if (container) {
-                    container.insertAdjacentHTML('beforeend', modalHTML);
+                    container.insertAdjacentHTML('beforeend', modalHTMLTraducido);
                 } else {
-                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    document.body.insertAdjacentHTML('beforeend', modalHTMLTraducido);
                 }
                 
                 setTimeout(() => {
@@ -1257,14 +1258,15 @@
                 </div>
             `;
             
+            const modalHTMLTraducido = window.PipelineI18n ? window.PipelineI18n.html(modalHTML) : modalHTML;
             const existing = document.getElementById('modalTemaCompletado');
             if (existing) existing.remove();
             
             const container = document.getElementById('cardContainer');
             if (container) {
-                container.insertAdjacentHTML('beforeend', modalHTML);
+                container.insertAdjacentHTML('beforeend', modalHTMLTraducido);
             } else {
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                document.body.insertAdjacentHTML('beforeend', modalHTMLTraducido);
             }
         }
 
@@ -1993,7 +1995,7 @@
                 </div>
                 `;
                 
-                container.innerHTML = html;
+                container.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(html) : html;
                 
                 // ============================================================
                 // GENERACIÓN ASÍNCRONA DE OPCIONES MÚLTIPLES
@@ -3090,12 +3092,15 @@ REGLAS:
                 
                 modal.style.display = 'flex';
                 this._modalAvanzadoAbierto = true;
-                body.innerHTML = `
+                {
+                    const loadingHTML = `
                     <div style="text-align:center;padding:30px;color:var(--gray);">
                         <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);"></i>
                         <p style="margin-top:12px;">Cargando información de "${palabra}"...</p>
                     </div>
-                `;
+                    `;
+                    body.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(loadingHTML) : loadingHTML;
+                }
                 
                 const idiomaReal = idioma || gestorIdiomas?.getIdiomaActivo() || 'es';
                 const nivelReal = nivel || this._obtenerNivelRealUsuario();
@@ -3196,7 +3201,7 @@ REGLAS:
                 const pinyinFinal = palabraCompleta?.pinyin || pinyin || '';
                 const significadoFinal = palabraCompleta?.significado || significado || palabra;
                 
-                body.innerHTML = this._renderizarModalPalabraAvanzado({
+                const modalPalabraHTML = this._renderizarModalPalabraAvanzado({
                     texto: palabra,
                     pinyin: pinyinFinal,
                     significado: significadoFinal,
@@ -3223,6 +3228,7 @@ REGLAS:
                     idioma: idiomaReal,
                     origen: 'estudio'
                 });
+                body.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(modalPalabraHTML) : modalPalabraHTML;
                 
                 if (titulo) titulo.textContent = palabra;
                 if (subtitulo) {

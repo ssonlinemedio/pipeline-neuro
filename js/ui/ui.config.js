@@ -873,7 +873,7 @@ class UIConfig {
             </div>
         `;
 
-        container.innerHTML = html;
+        container.innerHTML = (window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html);
         await this._cargarHistorialNiveles();
         this._inicializarEventosConfiguracion();
         
@@ -1245,6 +1245,7 @@ class UIConfig {
         }
 
         let nombreFinal = validacion.idiomaFinal;
+        if (/^espanol$/i.test(String(nombreFinal || '')) && /^(español|espanol)$/i.test(nombre.trim())) nombreFinal = 'Español';
         
         if (validacion.corregido) {
             const aceptar = await this.core?.confirm(
@@ -1331,6 +1332,7 @@ class UIConfig {
             }
 
             let idiomaFinal = validacion.idiomaFinal;
+            if (/^espanol$/i.test(String(idiomaFinal || '')) && /^(español|espanol)$/i.test(idiomaTrim)) idiomaFinal = 'Español';
 
             if (validacion.corregido && validacion.sugerido) {
                 const aceptar = await this.core.confirm(
@@ -1593,7 +1595,7 @@ class UIConfig {
                 `;
             }
             html += '</div>';
-            container.innerHTML = html;
+            container.innerHTML = (window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html);
         } catch (e) { console.warn('⚠️ Error cargando historial:', e); }
     }
 
@@ -1927,7 +1929,7 @@ class UIConfig {
             `;
         }
         
-        container.innerHTML = html;
+        container.innerHTML = (window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html);
         this._actualizarContadorSeleccionados();
     }
 

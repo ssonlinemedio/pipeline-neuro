@@ -77,7 +77,7 @@ class App {
 
         // Diccionarios de idiomas
         this._IDIOMAS_CONOCIDOS = {
-            'espanol': 'es', 'castellano': 'es', 'spanish': 'es',
+            'espanol': 'es', 'español': 'es', 'castellano': 'es', 'spanish': 'es',
             'ingles': 'en', 'english': 'en',
             'chino': 'zh', 'mandarin': 'zh', 'chinese': 'zh',
             'japones': 'ja', 'japanese': 'ja',
@@ -114,7 +114,7 @@ class App {
         };
 
         this._NOMBRES_IDIOMAS = {
-            'es': 'Espanol', 'en': 'Ingles', 'zh': 'Chino', 'ja': 'Japones',
+            'es': 'Español', 'en': 'Ingles', 'zh': 'Chino', 'ja': 'Japones',
             'ko': 'Coreano', 'fr': 'Frances', 'de': 'Aleman', 'it': 'Italiano',
             'pt': 'Portugues', 'ru': 'Ruso', 'ar': 'Arabe', 'hi': 'Hindi',
             'ur': 'Urdu', 'fa': 'Persa', 'tr': 'Turco', 'vi': 'Vietnamita',
@@ -477,6 +477,8 @@ class App {
         const textoNormalizado = texto.trim().normalize('NFKC').toLowerCase();
         const idiomasKeys = Object.keys(this._IDIOMAS_CONOCIDOS);
         
+        // Coincidencia exacta Unicode primero (p. ej. "Español").
+        // Evita sugerir incorrectamente "Espanol" cuando la ñ es válida.
         const exacto = idiomasKeys.find(i => i === textoNormalizado);
         if (exacto) {
             const codigo = this._IDIOMAS_CONOCIDOS[exacto];
@@ -1975,25 +1977,67 @@ class App {
 
     async _mostrarBienvenida(usuario) {
         console.log('🎉 Mostrando bienvenida para:', usuario.nombre);
-        var mensajeMotivador = 'Comienza tu viaje de aprendizaje!';
+
+        const i18n = window.PipelineI18n || null;
+        const uiLang = i18n?.getLanguage?.() || 'es';
+        const langLabel = uiLang === 'zh' ? 'chino mandarín simplificado' : (uiLang === 'en' ? 'inglés' : 'español');
+        const fallback = uiLang === 'zh'
+            ? '开始你的学习之旅吧！'
+            : (uiLang === 'en' ? 'Start your learning journey!' : '¡Comienza tu viaje de aprendizaje!');
+
+        // La respuesta de algunos modelos puede llegar como JSON ({"message":"..."}).
+        // Normalizamos SOLO el texto visual de bienvenida; no alteramos datos del curso.
+        const extraerMensaje = (respuesta) => {
+            if (respuesta == null) return '';
+            if (typeof respuesta === 'object') {
+                return String(respuesta.message ?? respuesta.mensaje ?? respuesta.text ?? respuesta.content ?? '').trim();
+            }
+            let txt = String(respuesta).trim();
+            txt = txt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            if (/^[{[]/.test(txt)) {
+                try {
+                    const obj = JSON.parse(txt);
+                    if (obj && typeof obj === 'object') {
+                        const candidate = obj.message ?? obj.mensaje ?? obj.text ?? obj.content;
+                        if (candidate != null) return String(candidate).trim();
+                    }
+                } catch (_) {}
+            }
+            // Rescate de JSON parcialmente envuelto sin mostrar la clave "message" al usuario.
+            const mm = txt.match(/["'](?:message|mensaje|text|content)["']\s*:\s*["']([\s\S]*?)["']\s*[,}]/i);
+            if (mm) return mm[1].replace(/\n/g, ' ').replace(/\"/g, '"').trim();
+            return txt;
+        };
+
+        let mensajeMotivador = fallback;
         try {
             if (window.vigia && window.vigia.enLinea) {
-                var prompt = 'Eres un asistente motivacional. El usuario ' + usuario.nombre + ' acaba de registrarse. Idiomas: ' + usuario.idiomasObjetivo.map(function(i) { return i.idioma + ' (' + i.nivel + ')'; }).join(', ') + ' Genera un mensaje motivador corto (max 30 palabras).';
-                var respuesta = await window.vigia._consultarGroq(prompt, 'text');
-                if (respuesta && respuesta.length > 5) mensajeMotivador = respuesta.trim();
+                const prompt = 'Eres un asistente motivacional. El usuario ' + usuario.nombre +
+                    ' acaba de registrarse. Idiomas: ' + usuario.idiomasObjetivo.map(function(i) { return i.idioma + ' (' + i.nivel + ')'; }).join(', ') +
+                    '. Genera UN mensaje motivador corto (máximo 30 palabras) en ' + langLabel +
+                    '. Devuelve únicamente texto plano: NO JSON, NO claves, NO markdown.';
+                const respuesta = await window.vigia._consultarGroq(prompt, 'text');
+                const limpio = extraerMensaje(respuesta);
+                if (limpio && limpio.length > 3) mensajeMotivador = limpio;
             }
-        } catch (e) {}
-        
-        var overlay = document.createElement('div');
+        } catch (e) {
+            console.warn('⚠️ No se pudo generar mensaje de bienvenida:', e?.message || e);
+        }
+
+        const welcomeText = uiLang === 'zh'
+            ? '欢迎，' + usuario.nombre + '！'
+            : (uiLang === 'en' ? 'Welcome, ' + usuario.nombre + '!' : '¡Bienvenido, ' + usuario.nombre + '!');
+        const startText = uiLang === 'zh' ? '开始！' : (uiLang === 'en' ? 'Start!' : '¡Comenzar!');
+
+        const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:99999;display:flex;justify-content:center;align-items:center;animation:fadeIn 0.5s ease;';
-        overlay.innerHTML = '<div style="background:#fff;border-radius:24px;padding:40px 32px;max-width:420px;width:92%;text-align:center;animation:scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 30px 80px rgba(0,0,0,0.35);"><div style="font-size:72px;margin-bottom:16px;">🎉</div><h2 style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Bienvenido, ' + usuario.nombre + '!</h2><p style="font-size:16px;color:#636E72;margin-bottom:16px;">' + mensajeMotivador + '</p><button onclick="this.closest(\'div[style]\').parentElement.remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">Comenzar!</button></div>';
-        document.body.appendChild(overlay);
-        setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 8000);
-        return new Promise(function(resolve) {
-            var checkModal = setInterval(function() {
-                if (!document.body.contains(overlay)) { clearInterval(checkModal); resolve(); }
-            }, 200);
-        });
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border-radius:24px;padding:40px 32px;max-width:420px;width:92%;text-align:center;animation:scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 30px 80px rgba(0,0,0,0.35);';
+        const emoji = document.createElement('div'); emoji.style.cssText='font-size:72px;margin-bottom:16px;'; emoji.textContent='🎉';
+        const h2 = document.createElement('h2'); h2.style.cssText='font-size:28px;font-weight:800;background:linear-gradient(135deg,#6C5CE7,#00CEC9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;'; h2.textContent=welcomeText;
+        const para = document.createElement('p'); para.style.cssText='font-size:16px;color:#636E72;margin-bottom:16px;white-space:pre-wrap;'; para.textContent=mensajeMotivador;
+        const btn = document.createElement('button'); btn.style.cssText='width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;'; btn.textContent=startText; btn.addEventListener('click',()=>overlay.remove());
+        card.append(emoji,h2,para,btn); overlay.appendChild(card); document.body.appendChild(overlay);
     }
 
     _showToast(mensaje, tipo) {

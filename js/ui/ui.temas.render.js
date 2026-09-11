@@ -548,7 +548,7 @@ class UITemasRender {
                 </div>
             `;
 
-            container.innerHTML = html;
+            container.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(html) : html;
             
             const inputBusqueda = document.getElementById('buscarTemasInput');
             if (inputBusqueda) {

@@ -1898,7 +1898,7 @@ class UIOndasCruzadasReal {
             </div>
         `;
 
-        container.innerHTML = html;
+        container.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(html) : html);
         this._cargando = false;
         console.log(`✅ Panel de Ondas Cruzadas renderizado (${this._idiomaActual})`);
     }
@@ -2317,7 +2317,7 @@ class UIOndasCruzadasReal {
             `;
         }
 
-        infoDiv.innerHTML = infoHTML;
+        infoDiv.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(infoHTML) : infoHTML);
 
         const buttonContainer = document.createElement('div');
         buttonContainer.style.cssText = `
@@ -2943,7 +2943,7 @@ class UIOndasCruzadasReal {
                     }
                 }
             }
-            container.innerHTML = html;
+            container.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(html) : html);
             container.style.display = 'block';
 
         } catch (error) {
@@ -3132,14 +3132,17 @@ class UIOndasCruzadasReal {
                 animation: fadeIn 0.3s ease;
             `;
 
+            const i18n = window.PipelineI18n;
+            const tituloTraducido = i18n ? i18n.t(opciones.title || 'Aviso') : (opciones.title || 'Aviso');
+            const mensajeTraducido = i18n ? i18n.html(String(opciones.message || '')) : String(opciones.message || '');
             overlay.innerHTML = `
                 <div style="background:var(--white,#ffffff);border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,0.4);animation:scaleIn 0.3s ease;">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
                         <span style="font-size:28px;">${opciones.icon || '📢'}</span>
-                        <h3 style="font-size:18px;font-weight:700;color:var(--dark);margin:0;">${opciones.title || 'Aviso'}</h3>
+                        <h3 style="font-size:18px;font-weight:700;color:var(--dark);margin:0;">${tituloTraducido}</h3>
                     </div>
                     <div style="font-size:14px;color:var(--gray);line-height:1.6;margin-bottom:16px;">
-                        ${opciones.message}
+                        ${mensajeTraducido}
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                         ${opciones.buttons.map((btn, i) => `
@@ -3148,7 +3151,7 @@ class UIOndasCruzadasReal {
                                     ${btn.primary ? 'background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;' :
                                       btn.secondary ? 'background:var(--light);color:var(--gray);' :
                                       'background:var(--bg);color:var(--dark);'}">
-                                ${btn.text}
+                                ${i18n ? i18n.t(btn.text) : btn.text}
                             </button>
                         `).join('')}
                     </div>

@@ -1419,7 +1419,7 @@ class UIEclipse {
             this._container = newContainer;
         }
 
-        this._container.innerHTML = html;
+        this._container.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(html) : html);
         this._renderizadoCompleto = true;
         this._primeraCarga = false;
         console.log('🌌 UIElipse: Panel renderizado correctamente');
@@ -2264,7 +2264,7 @@ class UIEclipse {
                 </div>
             `;
 
-            overlay.innerHTML = html;
+            overlay.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(html) : html);
             document.body.appendChild(overlay);
 
             const textarea = document.getElementById('descripcionOndaElipse');
@@ -2393,7 +2393,7 @@ class UIEclipse {
             border-left: 4px solid var(--primary);
             line-height: 1.5;
         `;
-        infoDiv.innerHTML = `
+        const infoHtml = `
             <strong>📋 Instrucciones - Plantilla Onda Elipse</strong><br>
             🌍 Idioma objetivo: <strong>${nombreIdiomaObjetivo}</strong> · 💬 Prompt en: <strong>${nombreIdiomaPrompt}</strong><br>
             📝 Nivel: <strong>${nivel}</strong> · 📝 Palabras nuevas: <strong>${numPalabras}</strong><br>
@@ -2435,6 +2435,7 @@ class UIEclipse {
                 🔥 <strong>¡OBLIGATORIO!</strong> La IA debe incluir TODAS las palabras desglosadas en el array "palabras" de cada frase.
             </span>
         `;
+        infoDiv.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(infoHtml) : infoHtml;
         contentDiv.appendChild(infoDiv);
 
         // 🔥 TEXTAREA
@@ -2481,7 +2482,7 @@ class UIEclipse {
             transition: all 0.3s;
             font-family: var(--font);
         `;
-        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> ' + (window.PipelineI18n ? window.PipelineI18n.t('Copiar') : 'Copiar');
         copyBtn.onclick = () => {
             navigator.clipboard.writeText(textarea.value)
                 .then(() => this._core?.mostrarToast('📋 Copiado al portapapeles', 'success'))
@@ -2507,7 +2508,7 @@ class UIEclipse {
             transition: all 0.3s;
             font-family: var(--font);
         `;
-        importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importar';
+        importBtn.innerHTML = '<i class="fas fa-file-import"></i> ' + (window.PipelineI18n ? window.PipelineI18n.t('Importar') : 'Importar');
 
         const self = this;
         importBtn.onclick = async function() {
@@ -2517,14 +2518,14 @@ class UIEclipse {
                 return;
             }
             try {
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (window.PipelineI18n ? window.PipelineI18n.t('Importando...') : 'Importando...');
                 this.disabled = true;
 
                 const data = JSON.parse(jsonText);
                 const primeraFrase = data.historias?.[0]?.frases?.[0]?.original || '';
                 if (primeraFrase.includes('[') || primeraFrase.includes('Frase') || primeraFrase.includes('frase')) {
                     self._core?.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Completa el JSON con la IA y luego importa.', 'warning');
-                    this.innerHTML = '<i class="fas fa-file-import"></i> Importar';
+                    this.innerHTML = '<i class="fas fa-file-import"></i> ' + (window.PipelineI18n ? window.PipelineI18n.t('Importar') : 'Importar');
                     this.disabled = false;
                     return;
                 }
@@ -3484,7 +3485,7 @@ class UIEclipse {
                 </div>
             </div>
         `;
-        container.innerHTML = html;
+        container.innerHTML = (window.PipelineI18n ? window.PipelineI18n.html(html) : html);
         this._visorAbierto = true;
     }
 

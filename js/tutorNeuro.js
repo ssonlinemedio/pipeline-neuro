@@ -4269,19 +4269,22 @@ class TutorNeuro extends Vigia {
             transition: all 0.3s ease;
         `;
         const opciones = Array.isArray(intervencion.opciones) ? intervencion.opciones : [{ id: 'ok', label: '✅ Aceptar', accion: 'descartar' }];
+        const _i18n = window.PipelineI18n;
+        const _mensajeVisual = _i18n ? _i18n.message(String(intervencion.mensaje || '')) : String(intervencion.mensaje || '');
+        const _opcionesVisuales = opciones.map(op => ({ ...op, _labelVisual: _i18n ? _i18n.t(String(op.label || '')) : String(op.label || '') }));
         toast.innerHTML = `
             <div style="display:flex;align-items:start;gap:10px;">
                 <span style="font-size:24px;">${this._getIconoPrioridad(intervencion.prioridad)}</span>
                 <div style="flex:1;">
-                    <div style="font-size:13px;color:var(--dark);line-height:1.5;margin-bottom:8px;white-space:pre-wrap;">${intervencion.mensaje}</div>
+                    <div style="font-size:13px;color:var(--dark);line-height:1.5;margin-bottom:8px;white-space:pre-wrap;">${_mensajeVisual}</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        ${opciones.map(op => `
+                        ${_opcionesVisuales.map(op => `
                             <button class="intervencion-btn" data-accion="${op.accion}" data-id="${intervencion.id}" 
                                     style="padding:4px 12px;font-size:11px;border:none;border-radius:6px;cursor:pointer;font-family:var(--font);
                                     ${op.accion === 'ignorar' ? 'background:var(--light);color:var(--gray);' : 
                                       op.accion === 'descartar' || op.accion === 'posponer' ? 'background:var(--warning);color:var(--dark);' :
                                       'background:var(--primary);color:white;'}">
-                                ${op.label}
+                                ${op._labelVisual}
                             </button>
                         `).join('')}
                     </div>
@@ -6013,7 +6016,7 @@ class TutorNeuro extends Vigia {
             </div>
         `;
         
-        container.innerHTML = html;
+        container.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(html) : html;
     }
 
     // ============================================================

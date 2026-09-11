@@ -937,10 +937,10 @@ class UIDashboard {
                             <span class="dm-kicker"><i class="fas fa-sparkles"></i> Pipeline Neuro</span>
                             <h2 class="dm-title">Tu espacio de aprendizaje</h2>
                             <p class="dm-subtitle">
-                                Bienvenido, <strong>${nombreUsuario}</strong>.
-                                Estás trabajando en <strong>${idiomaNombre}</strong> · nivel <strong>${escapeHtml(nivel)}</strong>.
-                                ${esTonal ? ' Este idioma incluye entrenamiento específico de tonos.' : ''}
-                                ${esJeroglifico ? ' También tienes herramientas específicas para escritura jeroglífica.' : ''}
+                                ${window.PipelineI18n ? window.PipelineI18n.t('Bienvenido,') : 'Bienvenido,'} <strong>${nombreUsuario}</strong>.
+                                ${window.PipelineI18n ? window.PipelineI18n.t('Estás trabajando en') : 'Estás trabajando en'} <strong>${idiomaNombre}</strong> · ${window.PipelineI18n ? window.PipelineI18n.t('nivel') : 'nivel'} <strong>${escapeHtml(nivel)}</strong>.
+                                ${esTonal ? ' ' + (window.PipelineI18n ? window.PipelineI18n.t('Este idioma incluye entrenamiento específico de tonos.') : 'Este idioma incluye entrenamiento específico de tonos.') : ''}
+                                ${esJeroglifico ? ' ' + (window.PipelineI18n ? window.PipelineI18n.t('También tienes herramientas específicas para escritura jeroglífica.') : 'También tienes herramientas específicas para escritura jeroglífica.') : ''}
                             </p>
                         </div>
                         <div class="dm-hero-actions">
@@ -1159,7 +1159,7 @@ class UIDashboard {
             </div>
         `;
 
-        container.innerHTML = html;
+        container.innerHTML = window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html;
     }
 
     // ============================================================

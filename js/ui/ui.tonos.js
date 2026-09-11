@@ -1,3 +1,8 @@
+/* ============================================================
+   PIPELINE UI i18n: módulo completo preservado.
+   Los textos puramente visuales son traducidos por ui.i18n.js.
+   No se altera idioma nativo, idioma objetivo ni contenido pedagógico.
+   ============================================================ */
 // ============================================================
 // UI ESTUDIO DE TONOS v17.6 - PROMPT POR NIVEL
 // ============================================================
@@ -569,6 +574,7 @@ Ahora genera una historia para la sílaba "${grupo}" en ${nombreIdioma} que use 
             <br>
             <span style="font-size:10px;color:var(--warning);">📌 El prompt solicita SOLO sílabas del nivel ${this._nivelUsuario} para evitar respuestas demasiado largas.</span>
         `;
+        if (window.PipelineI18n?.html) infoDiv.innerHTML = window.PipelineI18n.html(infoDiv.innerHTML);
         modalBody.insertBefore(infoDiv, modalBody.firstChild);
     }
 
@@ -1428,12 +1434,12 @@ Ahora genera una historia para la sílaba "${grupo}" en ${nombreIdioma} que use 
         const esTonal = this._esTonal(idiomaActivo);
 
         if (!esTonal) {
-            container.innerHTML = this._renderizarNoTonal(nombreIdioma);
+            { const _h = this._renderizarNoTonal(nombreIdioma); container.innerHTML = window.PipelineI18n?.html ? window.PipelineI18n.html(_h) : _h; }
             return;
         }
 
         if (Object.keys(this._diccionario).length === 0) {
-            container.innerHTML = this._renderizarSinDiccionario();
+            { const _h = this._renderizarSinDiccionario(); container.innerHTML = window.PipelineI18n?.html ? window.PipelineI18n.html(_h) : _h; }
             return;
         }
 
@@ -1468,7 +1474,7 @@ Ahora genera una historia para la sílaba "${grupo}" en ${nombreIdioma} que use 
         html += this._renderizarEstadisticas(idiomaActivo);
         html += '</div>';
 
-        container.innerHTML = html;
+        container.innerHTML = window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html;
     }
 
     // ============================================================
@@ -1858,7 +1864,7 @@ Ahora genera una historia para la sílaba "${grupo}" en ${nombreIdioma} que use 
         `;
         
         html += '</div>';
-        container.innerHTML = html;
+        container.innerHTML = window.PipelineI18n?.html ? window.PipelineI18n.html(html) : html;
     }
 
     // ============================================================

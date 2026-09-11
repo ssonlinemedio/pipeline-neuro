@@ -931,7 +931,7 @@ class UIManual {
             </div>
         `;
         
-        this._container.innerHTML = html;
+        this._container.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(html) : html;
         
         // Guardar última lectura
         this._ultimaLectura = Date.now();
@@ -1181,7 +1181,7 @@ class UIManual {
                 const modalBody = textarea.parentElement;
                 modalBody.appendChild(container);
             }
-            container.innerHTML = html;
+            container.innerHTML = window.PipelineI18n ? window.PipelineI18n.html(html) : html;
             container.style.display = 'block';
             
             const input = document.getElementById('buscadorManualInput');

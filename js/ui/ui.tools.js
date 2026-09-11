@@ -1,3 +1,8 @@
+/* ============================================================
+   PIPELINE UI i18n: módulo completo preservado.
+   Los textos puramente visuales son traducidos por ui.i18n.js.
+   No se altera idioma nativo, idioma objetivo ni contenido pedagógico.
+   ============================================================ */
 // ============================================================
 // UI TOOLS v23.1 - LIMPIEZA SELECTIVA POR IDIOMA
 // ============================================================
