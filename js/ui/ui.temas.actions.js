@@ -405,6 +405,84 @@ class UITemasActions {
     }
 
     // ============================================================
+    // 🔥 NUEVO: OBTENER VOCABULARIO YA EXISTENTE EN UN TEMA
+    // (Se usa para que la IA Externa NO duplique palabras al generar
+    // nuevas historias para un tema que ya tiene contenido)
+    // ============================================================
+
+    static async _obtenerVocabularioExistenteDeTema(temaId) {
+        const vocabulario = { total: 0, lista: [], titulos: [] };
+        if (!temaId) return vocabulario;
+
+        try {
+            const historias = await db.obtenerHistoriasPorTema(temaId);
+            if (!historias || historias.length === 0) return vocabulario;
+
+            const vistas = new Set();
+
+            for (const h of historias) {
+                if (h.titulo) vocabulario.titulos.push(h.titulo);
+                const frases = await db.obtenerFrasesPorHistoria(h.id);
+                for (const f of frases) {
+                    for (const p of (f.palabras || [])) {
+                        const texto = (p.palabra || p.hanzi || '').toString().trim();
+                        if (!texto) continue;
+                        const clave = texto.toLowerCase();
+                        if (vistas.has(clave)) continue;
+                        vistas.add(clave);
+                        vocabulario.lista.push({
+                            palabra: texto,
+                            significado: p.significado || ''
+                        });
+                    }
+                }
+            }
+
+            vocabulario.total = vocabulario.lista.length;
+        } catch (e) {
+            console.warn('⚠️ No se pudo recopilar el vocabulario existente del tema:', e);
+        }
+
+        return vocabulario;
+    }
+
+    static _construirBloqueVocabularioExistente(vocabExistente, idiomaActivo) {
+        if (!vocabExistente || vocabExistente.total === 0) return null;
+
+        return {
+            "_INSTRUCCIONES": [
+                `🔴 Estas son las ${vocabExistente.total} palabras que YA existen en las historias actuales de este tema.`,
+                "🔴 NO repitas estas palabras como vocabulario NUEVO en el contenido que generes.",
+                "✅ Las palabras funcionales muy comunes (artículos, pronombres, preposiciones, conjunciones) sí pueden repetirse porque son inevitables gramaticalmente.",
+                `✅ El objetivo es que los sustantivos, verbos y adjetivos NUEVOS amplíen el vocabulario del alumno en ${idiomaActivo}, en vez de repetir lo que ya conoce.`,
+                "Si una palabra nueva coincide con esta lista, sustitúyela por un sinónimo o una palabra relacionada distinta.",
+                "Esta lista es solo de CONSULTA para evitar duplicados, no forma parte del contenido a completar."
+            ],
+            "total_palabras_existentes": vocabExistente.total,
+            "palabras": vocabExistente.lista
+        };
+    }
+
+    // ============================================================
+    // 🔥 NUEVO: BLOQUE LIGERO CON LOS TÍTULOS DE HISTORIAS EXISTENTES
+    // (Da contexto de escena a la IA sin enviar las frases completas,
+    // para que ambiente la historia nueva en una situación distinta)
+    // ============================================================
+
+    static _construirBloqueHistoriasExistentes(vocabExistente) {
+        if (!vocabExistente || !vocabExistente.titulos || vocabExistente.titulos.length === 0) return null;
+
+        return {
+            "_INSTRUCCIONES": [
+                `Estos son los títulos de las ${vocabExistente.titulos.length} historias que YA existen en este tema.`,
+                "Ambienta la historia nueva en una escena o situación DISTINTA a estas, para no repetir el mismo argumento.",
+                "Esta lista es solo de CONSULTA para variar el contexto, no forma parte del contenido a completar."
+            ],
+            "titulos": vocabExistente.titulos
+        };
+    }
+
+    // ============================================================
     // GENERAR TEMA PREDEFINIDO
     // ============================================================
 
@@ -438,6 +516,10 @@ class UITemasActions {
             core?.mostrarToast('❌ Error al guardar el tema predefinido', 'error');
             return;
         }
+
+        // 🔥 NUEVO: RECOPILAR VOCABULARIO YA EXISTENTE EN EL TEMA
+        // (para que la IA Externa no duplique palabras en las nuevas historias)
+        const vocabExistente = await window.UITemasActions._obtenerVocabularioExistenteDeTema(dbId);
 
         const numHistorias = 3;
         const numFrases = 6;
@@ -517,6 +599,22 @@ class UITemasActions {
             `11. IMPORTANTE: Clasifica CADA palabra con su tipo gramatical correcto`,
             `12. IMPORTANTE: Genera una sección 'caracteres_destacados' con los caracteres clave del tema`
         ];
+
+        if (vocabExistente.total > 0) {
+            instrucciones.push(
+                `13. 🔴🔴🔴 IMPORTANTE: Este tema ya tiene ${vocabExistente.total} palabras usadas en historias previas (ver sección "vocabulario_existente_tema" de este JSON).`,
+                `14. 🔴🔴🔴 NO repitas esas palabras como vocabulario nuevo. Usa palabras DIFERENTES para ampliar el vocabulario del alumno.`,
+                `15. ✅ Se permite repetir palabras funcionales inevitables (artículos, pronombres, preposiciones, conjunciones).`
+            );
+        }
+
+        if (vocabExistente.titulos && vocabExistente.titulos.length > 0) {
+            const idxT = instrucciones.length;
+            instrucciones.push(
+                `${idxT+1}. 🎬 IMPORTANTE: Revisa la sección "historias_existentes_tema" de este JSON con los títulos de las historias ya existentes.`,
+                `${idxT+2}. 🎬 Ambienta las historias nuevas en escenas o situaciones DISTINTAS a esas, para no repetir el mismo argumento.`
+            );
+        }
 
         const todasInstrucciones = [...instrucciones, ...instruccionesDesglose];
 
@@ -680,6 +778,18 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
 🔥 NO OLVIDES: Cuantas más palabras desglosadas proporciones, más útil será el contenido para el estudiante.
 `;
 
+        // 🔥 NUEVO: AÑADIR VOCABULARIO YA EXISTENTE (para evitar duplicados)
+        const bloqueVocabExistente = window.UITemasActions._construirBloqueVocabularioExistente(vocabExistente, idiomaActivo);
+        if (bloqueVocabExistente) {
+            template.vocabulario_existente_tema = bloqueVocabExistente;
+        }
+
+        // 🔥 NUEVO: AÑADIR TÍTULOS DE HISTORIAS EXISTENTES (alternativa ligera para variar el contexto)
+        const bloqueHistoriasExistentes = window.UITemasActions._construirBloqueHistoriasExistentes(vocabExistente);
+        if (bloqueHistoriasExistentes) {
+            template.historias_existentes_tema = bloqueHistoriasExistentes;
+        }
+
         if (esJeroglifico) {
             template.caracteres_destacados = {
                 "_INSTRUCCIONES": {
@@ -753,6 +863,18 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                     <span style="font-size:10px;color:var(--danger);font-weight:700;background:var(--danger)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
                         🔥 <strong>¡OBLIGATORIO!</strong> Incluye TODAS las palabras: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.
                     </span>
+                    ${vocabExistente.total > 0 ? `
+                    <br>
+                    <span style="font-size:10px;color:var(--primary);font-weight:700;background:var(--primary)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                        🧠 Se incluyeron ${vocabExistente.total} palabras ya existentes en este tema para que la IA NO las repita.
+                    </span>
+                    ` : ''}
+                    ${vocabExistente.titulos && vocabExistente.titulos.length > 0 ? `
+                    <br>
+                    <span style="font-size:10px;color:var(--primary);font-weight:700;background:var(--primary)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                        🎬 Se incluyeron los ${vocabExistente.titulos.length} títulos de historias existentes para variar el argumento.
+                    </span>
+                    ` : ''}
                 `;
                 modalBody.insertBefore(infoDiv, modalBody.firstChild);
             }
@@ -2478,6 +2600,10 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
         if (btnGenerar) btnGenerar.disabled = true;
 
         try {
+            // 🔥 NUEVO: RECOPILAR VOCABULARIO YA EXISTENTE EN EL TEMA
+            // (para que la IA Externa no duplique palabras en la nueva historia)
+            const vocabExistente = await window.UITemasActions._obtenerVocabularioExistenteDeTema(temaId);
+
             let instruccionesTranscripcion = '';
             let camposTranscripcion = {};
             
@@ -2560,7 +2686,16 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                         esJeroglifico ? "Incluye 'pinyin' con tonos para cada frase y cada palabra" : 
                         `Incluye 'transcripcion' para cada frase y cada palabra en ${nombreNativo}`,
                         esJeroglifico ? "Incluye una sección 'caracteres_destacados' con los caracteres clave" : "",
-                        "Devuelve SOLO un JSON valido con la estructura indicada."
+                        "Devuelve SOLO un JSON valido con la estructura indicada.",
+                        ...(vocabExistente.total > 0 ? [
+                            `🔴🔴🔴 IMPORTANTE: Este tema ya tiene ${vocabExistente.total} palabras usadas en historias previas (ver sección "vocabulario_existente_tema" de este JSON).`,
+                            "🔴🔴🔴 NO repitas esas palabras como vocabulario nuevo. Usa palabras DIFERENTES para ampliar el vocabulario del alumno.",
+                            "✅ Se permite repetir palabras funcionales inevitables (artículos, pronombres, preposiciones, conjunciones)."
+                        ] : []),
+                        ...(vocabExistente.titulos && vocabExistente.titulos.length > 0 ? [
+                            `🎬 IMPORTANTE: Revisa la sección "historias_existentes_tema" de este JSON con los títulos de las historias ya existentes.`,
+                            "🎬 Ambienta esta historia nueva en una escena o situación DISTINTA a esas, para no repetir el mismo argumento."
+                        ] : [])
                     ],
                     "campos_transcripcion": camposTranscripcion,
                     "formato_palabras": esJeroglifico ? {
@@ -2699,6 +2834,18 @@ Este JSON contiene TODOS los campos necesarios para una historia completa.
 🔥 NO OLVIDES: Cuantas más palabras desglosadas proporciones, más útil será el contenido para el estudiante.
 `;
 
+            // 🔥 NUEVO: AÑADIR VOCABULARIO YA EXISTENTE (para evitar duplicados)
+            const bloqueVocabExistente = window.UITemasActions._construirBloqueVocabularioExistente(vocabExistente, idiomaActivo);
+            if (bloqueVocabExistente) {
+                plantilla.vocabulario_existente_tema = bloqueVocabExistente;
+            }
+
+            // 🔥 NUEVO: AÑADIR TÍTULOS DE HISTORIAS EXISTENTES (alternativa ligera para variar el contexto)
+            const bloqueHistoriasExistentes = window.UITemasActions._construirBloqueHistoriasExistentes(vocabExistente);
+            if (bloqueHistoriasExistentes) {
+                plantilla.historias_existentes_tema = bloqueHistoriasExistentes;
+            }
+
             if (esJeroglifico) {
                 plantilla.caracteres_destacados = {
                     lista: [
@@ -2760,6 +2907,18 @@ Este JSON contiene TODOS los campos necesarios para una historia completa.
                         <span style="font-size:10px;color:var(--danger);font-weight:700;background:var(--danger)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
                             🔥 <strong>¡OBLIGATORIO!</strong> Incluye TODAS las palabras: artículos, preposiciones, conjunciones, verbos, sustantivos, adjetivos, etc.
                         </span>
+                        ${vocabExistente.total > 0 ? `
+                        <br>
+                        <span style="font-size:10px;color:var(--primary);font-weight:700;background:var(--primary)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                            🧠 Se incluyeron ${vocabExistente.total} palabras ya existentes en este tema para que la IA NO las repita.
+                        </span>
+                        ` : ''}
+                        ${vocabExistente.titulos && vocabExistente.titulos.length > 0 ? `
+                        <br>
+                        <span style="font-size:10px;color:var(--primary);font-weight:700;background:var(--primary)10;padding:2px 10px;border-radius:4px;margin-top:4px;">
+                            🎬 Se incluyeron los ${vocabExistente.titulos.length} títulos de historias existentes para variar el argumento.
+                        </span>
+                        ` : ''}
                     `;
                     modalBody.insertBefore(infoDiv, modalBody.firstChild);
                 }
