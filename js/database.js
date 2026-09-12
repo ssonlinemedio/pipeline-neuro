@@ -794,6 +794,7 @@ class Database {
             }
             
             const esJeroglifico = this._esJeroglifico(palabra.idioma);
+            palabra = { ...palabra, familiaSemantica: this.obtenerFamiliaSemantica(palabra) };
             
             if (esJeroglifico && !palabra.pinyin) {
                 palabra.pinyin = palabra.fonetica || palabra.transcripcion || palabra.pronunciacion || '';
@@ -814,6 +815,9 @@ class Database {
                 }
                 await this.update('palabras', { 
                     ...existing, 
+                    familiaSemantica: this.obtenerFamiliaSemantica(existing) !== 'General'
+                        ? this.obtenerFamiliaSemantica(existing) : palabra.familiaSemantica,
+                    tipo: existing.tipo || palabra.tipo || '',
                     frecuencia: (existing.frecuencia || 0) + 1,
                     pinyin: existing.pinyin || palabra.pinyin || '',
                     transcripcion: existing.transcripcion || palabra.transcripcion || ''

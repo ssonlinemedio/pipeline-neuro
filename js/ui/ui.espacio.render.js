@@ -966,7 +966,7 @@ class UIEspacioRender {
             const textoNativo = elemento.significado || elemento.original || '';
             const transcripcion = uiEspacio._getTranscripcion(elemento, idioma);
             const familiaSemantica = elemento.familiaSemantica || 'sin_clasificar';
-            const familiaGramatical = elemento.familia || elemento.familiaGramatical || 'sustantivo';
+            const familiaGramatical = elemento.tipo || elemento.familiaGramatical || elemento.familia || 'sin_clasificar';
             const nivel = elemento.nivel || 'A1';
             const colorSemantica = uiEspacio._getColorFamiliaSemantica(familiaSemantica);
             const colorGramatical = uiEspacio._getColorFamiliaGramatical(familiaGramatical);

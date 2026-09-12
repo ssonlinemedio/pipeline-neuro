@@ -3297,6 +3297,8 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                                 palabraId = palabraExistente.id;
                                 const updateData = {
                                     ...palabraExistente,
+                                    familiaSemantica: db.obtenerFamiliaSemantica(palabraExistente) === 'General' ? familiaSemantica : db.obtenerFamiliaSemantica(palabraExistente),
+                                    tipo: palabraExistente.tipo || tipoGramatical,
                                     frecuencia: (palabraExistente.frecuencia || 0) + 1,
                                     pinyin: esJeroglifico ? (palabraExistente.pinyin || pinyinPalabra) : palabraExistente.pinyin,
                                     transcripcion: !esJeroglifico ? (palabraExistente.transcripcion || transcripcionPalabra) : '',

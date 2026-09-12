@@ -1932,6 +1932,7 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
                                 familia: familiasLimp[0] || 'sin_clasificar',
                                 familias: familiasLimp.length > 0 ? familiasLimp : ['sin_clasificar'],
                                 tipo: palabraData.tipo || '',
+                                familiaSemantica: db.obtenerFamiliaSemantica(palabraData),
                                 significado: palabraData.significado || palabraText,
                                 frecuencia: 1,
                                 neuroScore: 0.5,
@@ -1946,6 +1947,10 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
                             palabrasExistentes.push(palabraObj);
                         } else {
                             palabraObj = palabraExistente;
+                            if (db.obtenerFamiliaSemantica(palabraObj) === 'General') {
+                                palabraObj.familiaSemantica = db.obtenerFamiliaSemantica(palabraData);
+                            }
+                            palabraObj.tipo = palabraObj.tipo || palabraData.tipo || '';
                             
                             if (esJeroglifico && pinyinPalabra && !palabraObj.pinyin) {
                                 palabraObj.pinyin = pinyinPalabra;
