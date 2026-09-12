@@ -490,6 +490,14 @@ class UIJSON {
                 `31. 🔥 ]`,
                 `32. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
             ];
+            if (/^(en|english|inglés|ingles)$/i.test(idiomaActivo)) {
+                instrucciones.push(
+                    `${instrucciones.length + 1}. 🔗 Para cada phrasal verb que aparezca, añade en la frase un objeto en "phrasal_verbs".`,
+                    `${instrucciones.length + 2}. Cada objeto debe incluir "expresion", "verbo_base", "particula", "significado", "traduccion_contextual", "separable" y "nivel".`,
+                    `${instrucciones.length + 3}. Incluye solo expresiones reales como "give up", "look for" o "turn on"; no marques una preposición aislada como phrasal verb.`,
+                    `${instrucciones.length + 4}. Si no hay phrasal verbs, usa "phrasal_verbs": [].`
+                );
+            }
             
             if (descripcion) {
                 instrucciones.push(`33. ⚠️ IMPORTANTE: Utiliza esta descripción detallada para dar contexto y riqueza a las historias: "${descripcion}"`);
@@ -580,6 +588,15 @@ class UIJSON {
                         "explicacion_gramatical": `Explicación detallada en ${nombreNativo} adaptada al nivel`,
                         "tipo_regla": "Categoría: tiempo_verbal, estructura_oracional, concordancia, uso_preposicional, etc."
                     },
+                    "campos_phrasal_verbs": /^(en|english|inglés|ingles)$/i.test(idiomaActivo) ? {
+                        "expresion": "Phrasal verb completo (ej: look for)",
+                        "verbo_base": "Verbo sin conjugar (ej: look)",
+                        "particula": "Partícula (ej: for)",
+                        "significado": `Significado general en ${nombreNativo}`,
+                        "traduccion_contextual": `Traducción en esta frase al ${nombreNativo}`,
+                        "separable": "true o false",
+                        "nivel": nivel
+                    } : null,
                     "campos_transcripcion": esJeroglifico ? {
                         "frase": "pinyin con tonos",
                         "palabra": "pinyin con tonos",
@@ -1889,6 +1906,7 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
                         reglaGramatical: fraseData.regla_gramatical || null,
                         explicacionGramatical: fraseData.explicacion_gramatical || null,
                         tipoRegla: fraseData.tipo_regla || null,
+                        phrasalVerbs: Array.isArray(fraseData.phrasal_verbs) ? fraseData.phrasal_verbs : [],
                         _version_estandar: versionEstandar,
                         neuroData: {
                             exposiciones: 0,
