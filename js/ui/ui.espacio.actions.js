@@ -659,6 +659,13 @@ class UIEspacioActions {
             mensajePrompt += `📖 **${textoMostrar}**\n`;
         }
         mensajePrompt += `📝 **Significado:** ${textoNativo}\n\n`;
+        const tipoGramatical = palabraObj.tipo || palabraObj.familiaGramatical || 'sin_clasificar';
+        const familiaSemantica = palabraObj.familiaSemantica || palabraObj.familia || 'sin_clasificar';
+        mensajePrompt += `📚 **Categoría gramatical:** ${tipoGramatical}\n`;
+        mensajePrompt += `🏷️ **Familia semántica:** ${familiaSemantica}\n`;
+        if (palabraObj.ejemploFrase) {
+            mensajePrompt += `💬 **Ejemplo:** ${palabraObj.ejemploFrase}\n`;
+        }
         mensajePrompt += `🌍 Idioma: ${uiEspacio._getNombreIdioma(idioma)}\n`;
         mensajePrompt += `🎯 Nivel: ${palabraObj.nivel || uiEspacio._obtenerNivelRealUsuario()}\n\n`;
         mensajePrompt += esJeroglifico ? '✍️ Escribe el carácter o pinyin:' : '✍️ Escribe la palabra:';
@@ -1624,7 +1631,10 @@ class UIEspacioActions {
     // ============================================================
 
     static limpiarFiltrosEspacio(uiEspacio) {
+        clearTimeout(uiEspacio._busquedaTimer);
         uiEspacio._filtros = { busqueda: '', nivel: '', familia: '', tipo: 'todos' };
+        uiEspacio._paginaNivel = 1;
+        uiEspacio._paginaFamilias = {};
         const busquedaInput = document.getElementById('buscarEnEspacio');
         if (busquedaInput) busquedaInput.value = '';
         const nivelSelect = document.getElementById('filtroNivelEspacio');
@@ -1646,18 +1656,27 @@ class UIEspacioActions {
         if (busquedaInput) {
             busquedaInput.addEventListener('input', () => {
                 uiEspacio._filtros.busqueda = busquedaInput.value;
-                uiEspacio._renderizarMiEspacio();
+                clearTimeout(uiEspacio._busquedaTimer);
+                uiEspacio._busquedaTimer = setTimeout(() => {
+                    uiEspacio._paginaNivel = 1;
+                    uiEspacio._paginaFamilias = {};
+                    uiEspacio._renderizarMiEspacio();
+                }, 250);
             });
         }
         if (nivelSelect) {
             nivelSelect.addEventListener('change', () => {
                 uiEspacio._filtros.nivel = nivelSelect.value;
+                uiEspacio._paginaNivel = 1;
+                uiEspacio._paginaFamilias = {};
                 uiEspacio._renderizarMiEspacio();
             });
         }
         if (tipoSelect) {
             tipoSelect.addEventListener('change', () => {
                 uiEspacio._filtros.tipo = tipoSelect.value;
+                uiEspacio._paginaNivel = 1;
+                uiEspacio._paginaFamilias = {};
                 uiEspacio._renderizarMiEspacio();
             });
         }
@@ -1697,14 +1716,15 @@ class UIEspacioActions {
         let totalRCN = 0;
         let elementosConRCN = 0;
         for (const p of palabras) {
-            const progreso = await db.obtenerProgreso(p.id);
+            const progreso = await db.obtenerProgresoCaracter(p.id);
             if (progreso && progreso.rcn !== undefined) { totalRCN += progreso.rcn; elementosConRCN++; }
         }
         for (const f of frases) {
             const progreso = await db.obtenerProgreso(f.id);
             if (progreso && progreso.rcn !== undefined) { totalRCN += progreso.rcn; elementosConRCN++; }
         }
-        const rcnPromedio = elementosConRCN > 0 ? totalRCN / elementosConRCN : 0;
+        const totalElementos = palabras.length + frases.length;
+        const rcnPromedio = totalElementos > 0 ? totalRCN / totalElementos : 0;
         const dominio = Math.min(100, Math.round((rcnPromedio / 4) * 100));
         let color = 'var(--danger)', estado = '🔴 Necesita práctica', icono = '🔴';
         if (dominio >= 90) { color = 'var(--success)'; estado = '🏆 Dominio avanzado'; icono = '🏆'; }
@@ -1736,11 +1756,8 @@ class UIEspacioActions {
             const diff = Math.floor((Date.now() - parseInt(ultimoRepaso)) / 86400000);
             if (diff <= 1) {
                 racha = parseInt(localStorage.getItem(rachaCountKey) || '0');
-                if (diff === 0) racha++;
-                localStorage.setItem(rachaCountKey, String(racha));
-            } else if (diff > 1) { racha = 0; localStorage.setItem(rachaCountKey, '0'); }
+            } else if (diff > 1) { racha = 0; }
         }
-        localStorage.setItem(rachaKey, String(Date.now()));
         return { logros, racha };
     }
 
@@ -1751,10 +1768,12 @@ class UIEspacioActions {
     static async estudiarFamiliaDesdeEspacio(familia, nivel, uiEspacio) {
         const core = uiEspacio._getCore();
         const idioma = gestorIdiomas.getIdiomaActivo() || 'es';
-        const todasPalabras = await db.obtenerPalabrasPorIdioma(idioma);
-        const todasFrases = await db.obtenerFrasesPorIdioma(idioma);
-        const palabrasFamilia = todasPalabras.filter(p => (p.familia || p.familiaSemantica || '') === familia);
-        const frasesFamilia = todasFrases.filter(f => (f.familiaSemantica || '') === familia);
+        const todasPalabras = await gestorFavoritos.obtenerPalabrasFavoritas();
+        const todasFrases = await gestorFavoritos.obtenerFrasesFavoritas();
+        const nivelActual = uiEspacio._obtenerNivelRealUsuario();
+        const pertenece = item => item.idioma === idioma && (!nivel || (item.nivel || nivelActual) === nivel);
+        const palabrasFamilia = todasPalabras.filter(p => pertenece(p) && (p.familiaSemantica || p.familia || 'sin_clasificar') === familia);
+        const frasesFamilia = todasFrases.filter(f => pertenece(f) && (f.familiaSemantica || 'sin_clasificar') === familia);
 
         if (palabrasFamilia.length === 0 && frasesFamilia.length === 0) {
             uiEspacio._mostrarToast('❌ No hay elementos en esta familia', 'error');
@@ -2114,6 +2133,16 @@ class UIEspacioActions {
         }
     }
 
+    static filtrarPalabrasBusqueda(palabras, consulta) {
+        const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const terminos = normalizar(consulta).trim().split(/\s+/).filter(Boolean);
+        return palabras.filter(p => {
+            const texto = normalizar([p.palabra, p.hanzi, p.significado, p.pinyin, p.transcripcion, p.tipo, p.familiaSemantica, p.nivel].join(' '));
+            return terminos.every(termino => texto.includes(termino));
+        });
+
+    }
+
     static async verPalabras(uiEspacio) {
         const container = document.getElementById('espacioContent');
         if (!container) return;
@@ -2126,24 +2155,32 @@ class UIEspacioActions {
             const todasPalabras = await gestorFavoritos.obtenerPalabrasFavoritas();
             let palabras = todasPalabras.filter(p => p.idioma === idiomaActivo);
             const { palabrasFiltradas } = uiEspacio._aplicarFiltros([], palabras);
-            palabras = palabrasFiltradas;
+            palabras = this.filtrarPalabrasBusqueda(palabrasFiltradas, uiEspacio._busquedaPalabras);
+            const totalResultados = palabras.length;
+            const totalPaginas = Math.max(1, Math.ceil(totalResultados / 20));
+            uiEspacio._paginaPalabras = Math.max(1, Math.min(uiEspacio._paginaPalabras || 1, totalPaginas));
+            palabras = palabras.slice((uiEspacio._paginaPalabras - 1) * 20, uiEspacio._paginaPalabras * 20);
 
             let html = `
                 <div class="espacio-detalle">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
                         <button class="btn-back" onclick="window.UIEspacio._volver()" style="padding:6px 14px;font-size:13px;"><i class="fas fa-arrow-left"></i> Volver</button>
-                        <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0;">📝 Todas las Palabras (${palabras.length})</h2>
+                        <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0;">📝 Todas las Palabras (${totalResultados})</h2>
                         <span style="font-size:12px;color:var(--gray-light);">${uiEspacio._getNombreIdioma(idiomaActivo)}</span>
                         <span style="font-size:11px;color:var(--primary);font-weight:600;">🎯 Nivel: ${nivelReal}</span>
                         ${palabras.length > 0 ? `<button class="btn-danger" onclick="window.UIEspacio._eliminarTodasPalabras()" style="padding:4px 12px;font-size:11px;background:#FF7675;color:white;border:none;border-radius:6px;cursor:pointer;"><i class="fas fa-trash"></i> Eliminar todas</button>` : ''}
                     </div>
             `;
 
+            const escapar = window.UIEspacioRender.escapar;
+            const buscar = window.PipelineI18n?.t('Buscar') || 'Buscar';
+            html += `<label for="buscarPalabrasEspacio">${escapar(buscar)}</label><input id="buscarPalabrasEspacio" type="search" value="${escapar(uiEspacio._busquedaPalabras || '')}" style="width:100%;padding:12px;margin:8px 0 16px;border:1px solid var(--light);border-radius:10px;">`;
+            html += `<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;"><button id="palabrasPaginaAnterior" ${uiEspacio._paginaPalabras === 1 ? 'disabled' : ''}>←</button><span>${uiEspacio._paginaPalabras} / ${totalPaginas} · ${totalResultados}</span><button id="palabrasPaginaSiguiente" ${uiEspacio._paginaPalabras === totalPaginas ? 'disabled' : ''}>→</button></div>`;
             if (palabras.length === 0) {
                 html += `
                     <div style="text-align:center;padding:40px;color:var(--gray);background:var(--bg);border-radius:12px;border:2px dashed var(--light);">
                         <i class="fas fa-list" style="font-size:48px;color:var(--primary-light);display:block;margin-bottom:16px;"></i>
-                        <p style="font-size:16px;font-weight:500;">No tienes palabras guardadas en ${uiEspacio._getNombreIdioma(idiomaActivo)}</p>
+                        <p style="font-size:16px;font-weight:500;">${window.PipelineI18n?.t('Sin resultados para estos filtros') || 'Sin resultados para estos filtros'}</p>
                         <p style="font-size:13px;color:var(--gray-light);">Añade palabras desde el modal "Añadir Contenido"</p>
                     </div>
                 `;
@@ -2185,7 +2222,7 @@ class UIEspacioActions {
                     for (const p of palabrasGrupo) {
                         const elementoHtml = uiEspacio._renderizarElementoEspacio(p, 'palabra', idiomaActivo);
                         const nivelPalabra = p.nivel || nivelReal;
-                        const familiaGramatical = p.familia || 'sustantivo';
+                        const familiaGramatical = p.tipo || p.familiaGramatical || p.familia || 'sin_clasificar';
                         const colorGramatical = uiEspacio._getColorFamiliaGramatical(familiaGramatical);
 
                         html += `
@@ -2217,6 +2254,28 @@ class UIEspacioActions {
             html += `</div>`;
             container.innerHTML = html;
 
+            const inputBusqueda = document.getElementById('buscarPalabrasEspacio');
+            inputBusqueda.oninput = () => {
+                uiEspacio._busquedaPalabras = inputBusqueda.value;
+                uiEspacio._paginaPalabras = 1;
+                clearTimeout(uiEspacio._timerBusquedaPalabras);
+                uiEspacio._timerBusquedaPalabras = setTimeout(async () => {
+                    if (!inputBusqueda.isConnected) return;
+                    const posicion = inputBusqueda.selectionStart;
+                    await this.verPalabras(uiEspacio);
+                    const nuevo = document.getElementById('buscarPalabrasEspacio');
+                    nuevo?.focus();
+                    nuevo?.setSelectionRange(posicion, posicion);
+                }, 250);
+            };
+            document.getElementById('palabrasPaginaAnterior').onclick = () => {
+                uiEspacio._paginaPalabras--;
+                this.verPalabras(uiEspacio);
+            };
+            document.getElementById('palabrasPaginaSiguiente').onclick = () => {
+                uiEspacio._paginaPalabras++;
+                this.verPalabras(uiEspacio);
+            };
         } catch (error) {
             console.error('❌ Error cargando palabras:', error);
             container.innerHTML = `

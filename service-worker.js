@@ -2,15 +2,19 @@
 // SERVICE WORKER v15.0 - NEURO CACHE OPTIMIZADO
 // ============================================================
 
-const CACHE_NAME = 'pipeline-neuro-v15.0';
-const OFFLINE_CACHE = 'pipeline-offline-v15.0';
-const DYNAMIC_CACHE = 'pipeline-dynamic-v15.0';
+const CACHE_NAME = 'pipeline-neuro-v15.4';
+const OFFLINE_CACHE = 'pipeline-offline-v15.4';
+const DYNAMIC_CACHE = 'pipeline-dynamic-v15.4';
 
 // Assets estáticos para cache
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/style.css',
+    '/css/espacio.css',
+    '/js/ui/ui.espacio.render.js',
+    '/js/ui/ui.espacio.actions.js',
+    '/js/ui/ui.i18n.js',
     '/js/app.js',
     '/js/database.js',
     '/js/vigia.js',
@@ -27,6 +31,10 @@ const STATIC_ASSETS = [
 const OFFLINE_ASSETS = [
     '/index.html',
     '/css/style.css',
+    '/css/espacio.css',
+    '/js/ui/ui.espacio.render.js',
+    '/js/ui/ui.espacio.actions.js',
+    '/js/ui/ui.i18n.js',
     '/js/app.js',
     '/js/database.js',
     '/js/vigia.js',

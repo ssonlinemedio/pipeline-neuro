@@ -9,6 +9,15 @@ class UIDialogs {
         this._creado = false;
     }
 
+    _formatearMensaje(mensaje) {
+        const seguro = String(mensaje ?? '').replace(/[&<>\"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+        return seguro
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+    }
+
     _crearDialogPersonalizado() {
         if (this._creado || document.getElementById('customDialog')) return;
         
@@ -226,7 +235,7 @@ class UIDialogs {
             const tm = (v) => i18n?.message ? i18n.message(String(v ?? '')) : t(v);
             if (icon) icon.textContent = opciones.icon || '📢';
             if (title) title.textContent = t(opciones.title || 'Aviso');
-            if (message) message.textContent = tm(opciones.message || '');
+            if (message) message.innerHTML = this._formatearMensaje(tm(opciones.message || ''));
             
             if (opciones.input) {
                 if (inputContainer) inputContainer.style.display = 'block';

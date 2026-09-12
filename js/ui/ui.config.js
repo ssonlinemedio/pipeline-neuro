@@ -2413,7 +2413,7 @@ class UIConfig {
                                 significado: pData.significado || palabraText,
                                 familia: pData.tipo || pData.familia || 'sustantivo',
                                 familias: [pData.tipo || pData.familia || 'sustantivo'],
-                                familiaSemantica: pData.familiaSemantica || 'General',
+                            familiaSemantica: db.obtenerFamiliaSemantica(pData),
                                 nivel: nivel,
                                 tipo: pData.tipo || 'sustantivo',
                                 idioma: idioma,
@@ -3283,7 +3283,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                             if (!palabraText) continue;
                             
                             const tipoGramatical = pData.tipo || pData.familia || 'sustantivo';
-                            const familiaSemantica = pData.familia_semantica || 'General';
+                            const familiaSemantica = db.obtenerFamiliaSemantica(pData);
                             const pinyinPalabra = pData.pinyin || '';
                             const transcripcionPalabra = pData.transcripcion || '';
                             
@@ -3297,6 +3297,8 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                                 palabraId = palabraExistente.id;
                                 const updateData = {
                                     ...palabraExistente,
+                                    familiaSemantica: db.obtenerFamiliaSemantica(palabraExistente) === 'General' ? familiaSemantica : db.obtenerFamiliaSemantica(palabraExistente),
+                                    tipo: palabraExistente.tipo || tipoGramatical,
                                     frecuencia: (palabraExistente.frecuencia || 0) + 1,
                                     pinyin: esJeroglifico ? (palabraExistente.pinyin || pinyinPalabra) : palabraExistente.pinyin,
                                     transcripcion: !esJeroglifico ? (palabraExistente.transcripcion || transcripcionPalabra) : '',
@@ -3429,7 +3431,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                         significado: p.significado || palabraText,
                         familia: p.tipo || p.familia || 'sustantivo',
                         familias: [p.tipo || p.familia || 'sustantivo'],
-                        familiaSemantica: p.familia_semantica || 'General',
+                            familiaSemantica: db.obtenerFamiliaSemantica(p),
                         nivel: nivel,
                         tipo: p.tipo || 'sustantivo',
                         idioma: idioma,
