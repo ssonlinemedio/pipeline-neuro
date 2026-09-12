@@ -38,6 +38,7 @@ class UIGrammar {
         this._buscarTimeout = null;
         this._idiomaNativo = 'es';
         this._cacheTranscripciones = {};
+        this._phrasalVerbs = [];
     }
 
     _esJeroglifico(idioma) {
@@ -252,6 +253,7 @@ class UIGrammar {
         ]);
         
         this._frasesConReglas = frasesConReglas;
+        this._phrasalVerbs = window.PhrasalVerbs ? await window.PhrasalVerbs.extraerDesdeHistorias(await db.obtenerFrasesPorIdioma(idioma), idioma) : [];
         this._progresoGramatical = this._vigiaGramatical ? this._vigiaGramatical.getEstadoGramatical() : null;
         
         let html = '';
@@ -268,6 +270,8 @@ class UIGrammar {
             html += this._renderVistaChatGramatical(idioma);
         } else if (this._vistaActual === 'reglas') {
             html += await this._renderCentroConocimiento(idioma);
+        } else if (this._vistaActual === 'phrasal') {
+            html += this._renderVistaPhrasalVerbs(idioma);
         }
         
         container.innerHTML = html;
@@ -706,6 +710,7 @@ class UIGrammar {
             { id: 'chat', icono: '💬', label: 'Chat Gramatical' },
             { id: 'reglas', icono: '🧠', label: 'Centro de Conocimiento' }
         ];
+        if (window.PhrasalVerbs?.esIngles(this._idiomaActual)) tabs.splice(2, 0, { id: 'phrasal', icono: '🔗', label: 'Phrasal verbs' });
         
         return `
             <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--light);padding-bottom:8px;flex-wrap:wrap;">
@@ -719,6 +724,20 @@ class UIGrammar {
                 `).join('')}
             </div>
         `;
+    }
+
+    _renderVistaPhrasalVerbs(idioma) {
+        if (!window.PhrasalVerbs?.esIngles(idioma)) return '';
+        const consulta = this._busquedaGramatica.toLowerCase();
+        const datos = this._phrasalVerbs.filter(p => !consulta || `${p.expresion} ${p.significado}`.includes(consulta));
+        return `<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+            ${datos.length ? datos.map(p => `<article style="background:var(--white);border-left:4px solid var(--primary);border-radius:12px;padding:16px;box-shadow:var(--shadow);">
+                <div style="font-size:20px;font-weight:700;color:var(--primary);">${p.expresion}</div>
+                <div style="margin:6px 0;color:var(--dark);">${p.significado}</div>
+                <small style="color:var(--gray);">Nivel: ${p.niveles.join(', ')}</small>
+                <div style="margin-top:10px;font-size:12px;color:var(--gray);">${p.ejemplos.slice(0,2).map(e => `“${e.texto}” → ${e.traduccion}`).join('<br>')}</div>
+            </article>`).join('') : '<p style="color:var(--gray);">No hay phrasal verbs detectados en tus historias.</p>'}
+        </div>`;
     }
 
     _cambiarVista(vista) {
