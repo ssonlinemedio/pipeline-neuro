@@ -710,7 +710,8 @@ class UIGrammar {
             { id: 'chat', icono: '💬', label: 'Chat Gramatical' },
             { id: 'reglas', icono: '🧠', label: 'Centro de Conocimiento' }
         ];
-        if (window.PhrasalVerbs?.esIngles(this._idiomaActual)) tabs.splice(2, 0, { id: 'phrasal', icono: '🔗', label: 'Phrasal verbs' });
+        const idiomaIngles = window.PhrasalVerbs?.esIngles(this._idiomaActual) || /^(en|english|inglés|ingles)$/i.test(String(this._idiomaActual || '').trim());
+        if (idiomaIngles) tabs.splice(2, 0, { id: 'phrasal', icono: '🔗', label: 'Phrasal verbs' });
         
         return `
             <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--light);padding-bottom:8px;flex-wrap:wrap;">
