@@ -763,6 +763,13 @@ class Database {
     // PALABRAS
     // ============================================================
     
+    obtenerFamiliaSemantica(palabra) {
+        const gramaticales = /^(sustantivos?|verbos?|adjetivos?|adverbios?|pronombres?|preposici[oó]n|conjunci[oó]n|art[ií]culos?|determinantes?|clasificadores?|clasificador|part[ií]culas?|numerales?|numeral|interjecci[oó]n)$/i;
+        return [palabra.familiaSemantica, palabra.familia_semantica, palabra.familia]
+            .find(valor => typeof valor === 'string' && valor.trim() &&
+                !/^(general|sin_clasificar)$/i.test(valor.trim()) && !gramaticales.test(valor.trim()))?.trim() || 'General';
+    }
+
     async guardarPalabra(palabra) {
         try {
             if (!this._initialized) {

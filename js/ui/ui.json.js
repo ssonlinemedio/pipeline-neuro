@@ -426,9 +426,9 @@ class UIJSON {
                     - 🔥 EJEMPLO PARA JEROGLÍFICOS: Si la frase es "我爱你" (3 palabras)
                     - El array DEBE tener 3 entradas:
                     - [
-                    -   { "hanzi": "我", "pinyin": "wǒ", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-                    -   { "hanzi": "爱", "pinyin": "ài", "familia": "Sentimientos", "tipo": "verbo", "significado": "amar" },
-                    -   { "hanzi": "你", "pinyin": "nǐ", "familia": "Pronombres", "tipo": "pronombre", "significado": "tú" }
+                    -   { "hanzi": "我", "pinyin": "wǒ", "familia": "Emociones", "tipo": "pronombre", "significado": "yo" },
+                    -   { "hanzi": "爱", "pinyin": "ài", "familia": "Emociones", "tipo": "verbo", "significado": "amar" },
+                    -   { "hanzi": "你", "pinyin": "nǐ", "familia": "Emociones", "tipo": "pronombre", "significado": "tú" }
                     - ]
                 `;
             } else {
@@ -445,10 +445,10 @@ class UIJSON {
                     - Para cada palabra, la transcripción debe reflejar su pronunciación individual.
                     - 🔥 EJEMPLO CORRECTO para "I have a pencil" (inglés → español):
                     - "palabras": [
-                    -   { "palabra": "I", "transcripcion": "ai", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-                    -   { "palabra": "have", "transcripcion": "jaf", "familia": "Posesión", "tipo": "verbo", "significado": "tener" },
-                    -   { "palabra": "a", "transcripcion": "a", "familia": "Artículos", "tipo": "artículo", "significado": "un/una" },
-                    -   { "palabra": "pencil", "transcripcion": "pensil", "familia": "Objetos", "tipo": "sustantivo", "significado": "lápiz" }
+                    -   { "palabra": "I", "transcripcion": "ai", "familia": "Educación", "tipo": "pronombre", "significado": "yo" },
+                    -   { "palabra": "have", "transcripcion": "jaf", "familia": "Educación", "tipo": "verbo", "significado": "tener" },
+                    -   { "palabra": "a", "transcripcion": "a", "familia": "Educación", "tipo": "artículo", "significado": "un/una" },
+                    -   { "palabra": "pencil", "transcripcion": "pensil", "familia": "Educación", "tipo": "sustantivo", "significado": "lápiz" }
                     - ]
                 `;
             }
@@ -482,11 +482,11 @@ class UIJSON {
                 `23. 🔥 Si la frase en español es: "Yo voy a la tienda" (5 palabras)`,
                 `24. 🔥 El array "palabras" DEBE tener 5 entradas:`,
                 `25. 🔥 [`,
-                `26. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },`,
-                `27. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },`,
-                `28. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },`,
-                `29. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },`,
-                `30. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }`,
+                `26. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Compras", "tipo": "pronombre", "significado": "yo" },`,
+                `27. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Compras", "tipo": "verbo", "significado": "ir" },`,
+                `28. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Compras", "tipo": "preposición", "significado": "a" },`,
+                `29. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Compras", "tipo": "artículo", "significado": "la" },`,
+                `30. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Compras", "tipo": "sustantivo", "significado": "tienda" }`,
                 `31. 🔥 ]`,
                 `32. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
             ];
@@ -565,14 +565,14 @@ class UIJSON {
                     "formato_palabras": esJeroglifico ? {
                         "hanzi": "El carácter en el idioma objetivo (ej: 我)",
                         "pinyin": "Pronunciación con tonos (ej: wǒ)",
-                        "familia": "Familia SEMÁNTICA",
-                        "tipo": "Categoría GRAMATICAL",
+                        "familia": "Familia SEMÁNTICA de la lista permitida, según el contexto de la frase. Nunca una categoría gramatical. Para palabras funcionales, usa el contexto temático de la frase.",
+                        "tipo": "Categoría GRAMATICAL según su uso en la frase: sustantivo, verbo, adjetivo, pronombre, artículo, preposición, clasificador, partícula, etc. No copies sustantivo por defecto.",
                         "significado": `Traducción al ${nombreNativo}`
                     } : {
                         "palabra": "La palabra en el idioma objetivo",
                         "transcripcion": `Transcripción fonética en ${nombreNativo} (ej: "ai" para "I")`,
-                        "familia": "Familia SEMÁNTICA",
-                        "tipo": "Categoría GRAMATICAL",
+                        "familia": "Familia SEMÁNTICA de la lista permitida, según el contexto de la frase. Nunca una categoría gramatical. Para palabras funcionales, usa el contexto temático de la frase.",
+                        "tipo": "Categoría GRAMATICAL según su uso en la frase: sustantivo, verbo, adjetivo, pronombre, artículo, preposición, clasificador, partícula, etc. No copies sustantivo por defecto.",
                         "significado": `Traducción al ${nombreNativo}`
                     },
                     "campos_gramaticales": {
@@ -645,10 +645,10 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
 
 🔥 Ejemplo CORRECTO para "I have a pencil" (inglés → español):
 "palabras": [
-    { "palabra": "I", "transcripcion": "ai", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-    { "palabra": "have", "transcripcion": "jaf", "familia": "Posesión", "tipo": "verbo", "significado": "tener" },
-    { "palabra": "a", "transcripcion": "a", "familia": "Artículos", "tipo": "artículo", "significado": "un/una" },
-    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Objetos", "tipo": "sustantivo", "significado": "lápiz" }
+    { "palabra": "I", "transcripcion": "ai", "familia": "Educación", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "have", "transcripcion": "jaf", "familia": "Educación", "tipo": "verbo", "significado": "tener" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Educación", "tipo": "artículo", "significado": "un/una" },
+    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Educación", "tipo": "sustantivo", "significado": "lápiz" }
 ]
 
 🔥 ¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY! 🔥
@@ -700,18 +700,18 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
 
 📝 Ejemplo CORRECTO para una frase en español (5 palabras → 5 entradas):
 "palabras": [
-    { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-    { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },
-    { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },
-    { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },
-    { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }
+    { "palabra": "Yo", "transcripcion": "io", "familia": "Compras", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "voy", "transcripcion": "boi", "familia": "Compras", "tipo": "verbo", "significado": "ir" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Compras", "tipo": "preposición", "significado": "a" },
+    { "palabra": "la", "transcripcion": "la", "familia": "Compras", "tipo": "artículo", "significado": "la" },
+    { "palabra": "tienda", "transcripcion": "tienda", "familia": "Compras", "tipo": "sustantivo", "significado": "tienda" }
 ]
 
 📝 Ejemplo CORRECTO para una frase en chino (3 palabras → 3 entradas):
 "palabras": [
-    { "hanzi": "我", "pinyin": "wǒ", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-    { "hanzi": "爱", "pinyin": "ài", "familia": "Sentimientos", "tipo": "verbo", "significado": "amar" },
-    { "hanzi": "你", "pinyin": "nǐ", "familia": "Pronombres", "tipo": "pronombre", "significado": "tú" }
+    { "hanzi": "我", "pinyin": "wǒ", "familia": "Emociones", "tipo": "pronombre", "significado": "yo" },
+    { "hanzi": "爱", "pinyin": "ài", "familia": "Emociones", "tipo": "verbo", "significado": "amar" },
+    { "hanzi": "你", "pinyin": "nǐ", "familia": "Emociones", "tipo": "pronombre", "significado": "tú" }
 ]
 
 🔴 **¡NUNCA OMITAS PALABRAS!** Incluye artículos, preposiciones, conjunciones, etc.
@@ -1223,11 +1223,11 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                 `23. 🔥 Si la frase en español es: "Yo voy a la tienda" (5 palabras)`,
                 `24. 🔥 El array "palabras" DEBE tener 5 entradas:`,
                 `25. 🔥 [`,
-                `26. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },`,
-                `27. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Movimiento", "tipo": "verbo", "significado": "ir" },`,
-                `28. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Preposiciones", "tipo": "preposición", "significado": "a" },`,
-                `29. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Artículos", "tipo": "artículo", "significado": "la" },`,
-                `30. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Comercio", "tipo": "sustantivo", "significado": "tienda" }`,
+                `26. 🔥   { "palabra": "Yo", "transcripcion": "io", "familia": "Compras", "tipo": "pronombre", "significado": "yo" },`,
+                `27. 🔥   { "palabra": "voy", "transcripcion": "boi", "familia": "Compras", "tipo": "verbo", "significado": "ir" },`,
+                `28. 🔥   { "palabra": "a", "transcripcion": "a", "familia": "Compras", "tipo": "preposición", "significado": "a" },`,
+                `29. 🔥   { "palabra": "la", "transcripcion": "la", "familia": "Compras", "tipo": "artículo", "significado": "la" },`,
+                `30. 🔥   { "palabra": "tienda", "transcripcion": "tienda", "familia": "Compras", "tipo": "sustantivo", "significado": "tienda" }`,
                 `31. 🔥 ]`,
                 `32. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
             ];
@@ -1279,14 +1279,14 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                     "formato_palabras": esJeroglifico ? {
                         "hanzi": "El carácter en el idioma objetivo",
                         "pinyin": "Pronunciación con tonos (ej: nǐ hǎo)",
-                        "familia": "Familia SEMÁNTICA",
-                        "tipo": "Categoría GRAMATICAL",
+                        "familia": "Familia SEMÁNTICA de la lista permitida, según el contexto de la frase. Nunca una categoría gramatical. Para palabras funcionales, usa el contexto temático de la frase.",
+                        "tipo": "Categoría GRAMATICAL según su uso en la frase: sustantivo, verbo, adjetivo, pronombre, artículo, preposición, clasificador, partícula, etc. No copies sustantivo por defecto.",
                         "significado": `Traducción al ${nombreNativo}`
                     } : {
                         "palabra": "La palabra en el idioma objetivo",
                         "transcripcion": `Transcripción fonética en ${nombreNativo}`,
-                        "familia": "Familia SEMÁNTICA",
-                        "tipo": "Categoría GRAMATICAL",
+                        "familia": "Familia SEMÁNTICA de la lista permitida, según el contexto de la frase. Nunca una categoría gramatical. Para palabras funcionales, usa el contexto temático de la frase.",
+                        "tipo": "Categoría GRAMATICAL según su uso en la frase: sustantivo, verbo, adjetivo, pronombre, artículo, preposición, clasificador, partícula, etc. No copies sustantivo por defecto.",
                         "significado": `Traducción al ${nombreNativo}`
                     },
                     "campos_gramaticales": {
@@ -1368,10 +1368,10 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
 
 🔥 Ejemplo CORRECTO para "I have a pencil" (inglés → español):
 "palabras": [
-    { "palabra": "I", "transcripcion": "ai", "familia": "Pronombres", "tipo": "pronombre", "significado": "yo" },
-    { "palabra": "have", "transcripcion": "jaf", "familia": "Posesión", "tipo": "verbo", "significado": "tener" },
-    { "palabra": "a", "transcripcion": "a", "familia": "Artículos", "tipo": "artículo", "significado": "un/una" },
-    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Objetos", "tipo": "sustantivo", "significado": "lápiz" }
+    { "palabra": "I", "transcripcion": "ai", "familia": "Educación", "tipo": "pronombre", "significado": "yo" },
+    { "palabra": "have", "transcripcion": "jaf", "familia": "Educación", "tipo": "verbo", "significado": "tener" },
+    { "palabra": "a", "transcripcion": "a", "familia": "Educación", "tipo": "artículo", "significado": "un/una" },
+    { "palabra": "pencil", "transcripcion": "pensil", "familia": "Educación", "tipo": "sustantivo", "significado": "lápiz" }
 ]
 
 🔥 ¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY! 🔥
