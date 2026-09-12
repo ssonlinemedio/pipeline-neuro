@@ -482,6 +482,27 @@ class UITemasActions {
         };
     }
 
+    static async _construirContextoNarrativoTema(temaId, idiomaActivo) {
+        const historias = await db.obtenerHistoriasPorTema(temaId);
+        const salida = [];
+        for (const h of (historias || []).filter(x => x._esOndaCruzada !== true)) {
+            const frases = await db.obtenerFrasesPorHistoria(h.id);
+            const texto = (frases || []).map(f => f.original || '').filter(Boolean).join(' ').slice(0, 500);
+            salida.push({ id: h.id, titulo: h.titulo || '', fecha: h.fechaCreacion || '', resumen: texto });
+        }
+        return {
+            idioma: idiomaActivo,
+            total_historias: salida.length,
+            historias: salida.slice(-12),
+            ultimo_estado: salida.length ? { titulo: salida[salida.length - 1].titulo, resumen: salida[salida.length - 1].resumen } : null,
+            _INSTRUCCIONES: [
+                'Continúa los hechos y personajes de este contexto sin contradecirlos.',
+                'Avanza desde el último estado y crea una situación nueva.',
+                'No copies literalmente los resúmenes en la respuesta.'
+            ]
+        };
+    }
+
     // ============================================================
     // GENERAR TEMA PREDEFINIDO
     // ============================================================
@@ -2603,6 +2624,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             // 🔥 NUEVO: RECOPILAR VOCABULARIO YA EXISTENTE EN EL TEMA
             // (para que la IA Externa no duplique palabras en la nueva historia)
             const vocabExistente = await window.UITemasActions._obtenerVocabularioExistenteDeTema(temaId);
+            const contextoNarrativo = await window.UITemasActions._construirContextoNarrativoTema(temaId, idiomaActivo);
 
             let instruccionesTranscripcion = '';
             let camposTranscripcion = {};
@@ -2695,6 +2717,9 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                         ...(vocabExistente.titulos && vocabExistente.titulos.length > 0 ? [
                             `🎬 IMPORTANTE: Revisa la sección "historias_existentes_tema" de este JSON con los títulos de las historias ya existentes.`,
                             "🎬 Ambienta esta historia nueva en una escena o situación DISTINTA a esas, para no repetir el mismo argumento."
+                        ] : []),
+                        ...(contextoNarrativo.total_historias > 0 ? [
+                            '📚 CONTINUIDAD: Revisa el bloque "contexto_narrativo_acumulado" y continúa sus personajes y hechos sin contradicciones.'
                         ] : [])
                     ],
                     "campos_transcripcion": camposTranscripcion,
@@ -2844,6 +2869,9 @@ Este JSON contiene TODOS los campos necesarios para una historia completa.
             const bloqueHistoriasExistentes = window.UITemasActions._construirBloqueHistoriasExistentes(vocabExistente);
             if (bloqueHistoriasExistentes) {
                 plantilla.historias_existentes_tema = bloqueHistoriasExistentes;
+            }
+            if (contextoNarrativo.total_historias > 0) {
+                plantilla.contexto_narrativo_acumulado = contextoNarrativo;
             }
 
             if (esJeroglifico) {

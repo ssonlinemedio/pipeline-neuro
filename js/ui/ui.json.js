@@ -1,5 +1,5 @@
 // ============================================================
-// UI JSON v22.3 - NEUROADAPTATIVO CON PODER DEL SUPER POWER
+// UI JSON v22.4 - NEUROADAPTATIVO CON CONTINUIDAD NARRATIVA
 // - Instrucciones potentes para desglose COMPLETO de palabras
 // - Ejemplos claros y repetidos para la IA
 // - Validación estricta en importación
@@ -162,15 +162,18 @@ class UIJSON {
     // ============================================================
 
     async _obtenerVocabularioExistenteDePosibleTema(temaNombre, idiomaActivo) {
-        const resultado = { total: 0, lista: [], titulos: [], temaId: null, temaNombreEncontrado: null };
+        const resultado = { total: 0, lista: [], titulos: [], temaId: null, temaNombreEncontrado: null, contextoNarrativo: null };
         if (!temaNombre) return resultado;
 
         try {
             const temasExistentes = await db.obtenerTemas();
             const nombreBuscado = temaNombre.trim().toLowerCase();
-            const temaExistente = (temasExistentes || []).find(t =>
-                t.idioma === idiomaActivo && (t.nombre || '').trim().toLowerCase() === nombreBuscado
-            );
+            const equivalentes = { chino: 'zh', zh: 'zh', español: 'es', espanol: 'es', es: 'es', inglés: 'en', ingles: 'en', en: 'en' };
+            const idiomaCanonico = equivalentes[String(idiomaActivo).toLowerCase()] || String(idiomaActivo).toLowerCase();
+            const temaExistente = (temasExistentes || []).find(t => {
+                const idiomaTema = equivalentes[String(t.idioma || '').toLowerCase()] || String(t.idioma || '').toLowerCase();
+                return idiomaTema === idiomaCanonico && (t.nombre || '').trim().toLowerCase() === nombreBuscado;
+            });
 
             if (!temaExistente) return resultado;
 
@@ -179,10 +182,17 @@ class UIJSON {
 
             const historias = await db.obtenerHistoriasPorTema(temaExistente.id);
             const vistas = new Set();
+            const historiasContexto = [];
 
             for (const h of (historias || [])) {
                 if (h.titulo) resultado.titulos.push(h.titulo);
                 const frases = await db.obtenerFrasesPorHistoria(h.id);
+                historiasContexto.push({
+                    id: h.id,
+                    titulo: h.titulo || '',
+                    fecha: h.fechaCreacion || '',
+                    resumen: (frases || []).map(f => f.original || '').filter(Boolean).join(' ').slice(0, 500)
+                });
                 for (const f of frases) {
                     for (const p of (f.palabras || [])) {
                         const texto = (p.palabra || p.hanzi || '').toString().trim();
@@ -199,6 +209,20 @@ class UIJSON {
             }
 
             resultado.total = resultado.lista.length;
+            resultado.contextoNarrativo = {
+                idioma: idiomaActivo,
+                total_historias: historiasContexto.length,
+                historias: historiasContexto.slice(-12),
+                ultimo_estado: historiasContexto.length ? {
+                    titulo: historiasContexto[historiasContexto.length - 1].titulo,
+                    resumen: historiasContexto[historiasContexto.length - 1].resumen
+                } : null,
+                _INSTRUCCIONES: [
+                    'Continúa los hechos y personajes de este contexto sin contradecirlos.',
+                    'Avanza desde el último estado y crea una situación nueva.',
+                    'No copies literalmente los resúmenes en la respuesta.'
+                ]
+            };
         } catch (e) {
             console.warn('⚠️ No se pudo recopilar el vocabulario existente del tema:', e);
         }
@@ -240,6 +264,72 @@ class UIJSON {
             ],
             "titulos": vocabExistente.titulos
         };
+    }
+
+    // Contexto narrativo acumulado: permite continuidad de personajes, hechos y
+    // lugares, no solo evitar palabras o títulos repetidos.
+    async _obtenerContextoNarrativoTema(vocabExistente, idiomaActivo) {
+        const vacio = { historias: [], ultimo_estado: null, personajes: [], lugares: [], situaciones: [] };
+        if (!vocabExistente?.temaId) return vacio;
+        try {
+            // La fuente de verdad para el generador son las historias y frases
+            // persistidas. No dependemos de estadísticas/progreso para construir
+            // contexto: si una de esas lecturas falla, se perdería la continuidad.
+            let historias = await db.obtenerHistoriasPorTema(vocabExistente.temaId);
+            historias = Array.isArray(historias) ? historias : [];
+            const salida = [];
+            const personajes = new Set();
+            const lugares = new Set();
+            const situaciones = new Set();
+            for (const h of (historias || []).filter(x => x._esOndaCruzada !== true)) {
+                const frases = Array.isArray(h.frases) && h.frases.length
+                    ? h.frases
+                    : await db.obtenerFrasesPorHistoria(h.id);
+                const textos = frases.map(f => f.original || '').filter(Boolean);
+                const resumen = textos.join(' ').slice(0, 420);
+                salida.push({ id: h.id, titulo: h.titulo || '', fecha: h.fechaCreacion || '', resumen });
+                for (const p of (frases.flatMap(f => f.palabras || []))) {
+                    const palabra = typeof p === 'string' ? p : (p.palabra || p.hanzi || '');
+                    const tipo = String(p?.tipo || '').toLowerCase();
+                    if (palabra && /nombre|persona|parentesco|lugar|ciudad|pa[ií]s|familia/.test(tipo)) personajes.add(palabra);
+                }
+            }
+            const ultimo = salida[salida.length - 1] || null;
+            return {
+                idioma: idiomaActivo,
+                total_historias: salida.length,
+                historias: salida.slice(-12),
+                ultimo_estado: ultimo ? { titulo: ultimo.titulo, resumen: ultimo.resumen } : null,
+                personajes: [...personajes].slice(0, 80),
+                lugares: [...lugares].slice(0, 40),
+                situaciones: [...situaciones].slice(0, 40),
+                _INSTRUCCIONES: [
+                    'Usa este contexto para continuar la línea narrativa sin contradecir hechos anteriores.',
+                    'Conserva personajes y relaciones confirmadas cuando reaparezcan.',
+                    'La escena nueva debe avanzar la historia y ser distinta de las situaciones ya usadas.',
+                    'No copies frases completas ni conviertas el resumen en texto de salida.'
+                ]
+            };
+        } catch (e) {
+            console.warn('No se pudo construir el contexto narrativo:', e);
+            // Segundo intento sin filtros auxiliares, para no perder el contexto
+            // por una inconsistencia de idioma o de índices secundarios.
+            try {
+                const todas = await db.obtenerHistorias();
+                const historias = (todas || []).filter(h => Number(h.temaId) === Number(vocabExistente.temaId));
+                return {
+                    idioma: idiomaActivo,
+                    total_historias: historias.length,
+                    historias: historias.slice(-12).map(h => ({ id: h.id, titulo: h.titulo || '', fecha: h.fechaCreacion || '', resumen: h.resumen || h.descripcion || '' })),
+                    ultimo_estado: historias.length ? { titulo: historias[historias.length - 1].titulo || '', resumen: historias[historias.length - 1].resumen || historias[historias.length - 1].descripcion || '' } : null,
+                    personajes: [], lugares: [], situaciones: [],
+                    _INSTRUCCIONES: ['Continúa los hechos existentes sin contradecirlos y crea una situación nueva.']
+                };
+            } catch (fallbackError) {
+                console.warn('No se pudo recuperar contexto narrativo alternativo:', fallbackError);
+                return vacio;
+            }
+        }
     }
 
     _configurarJSON() {
@@ -304,6 +394,7 @@ class UIJSON {
         // 🔥 NUEVO: RECOPILAR VOCABULARIO YA EXISTENTE SI EL TEMA YA EXISTE
         // (para que la IA Externa no duplique palabras al añadir más historias)
         const vocabExistente = await this._obtenerVocabularioExistenteDePosibleTema(tema, idiomaActivo);
+        const contextoNarrativo = vocabExistente.contextoNarrativo || await this._obtenerContextoNarrativoTema(vocabExistente, idiomaActivo);
 
         let numInt = parseInt(num) || 3;
         if (isNaN(numInt) || numInt < 1) numInt = 3;
@@ -418,6 +509,7 @@ class UIJSON {
                 const idxT2 = instrucciones.length;
                 instrucciones.push(
                     `${idxT2+1}. 🎬 IMPORTANTE: Revisa la sección "historias_existentes_tema" de este JSON con los títulos de las historias ya existentes de ese tema.`,
+                    `${idxT2+2}. 📚 CONTINUIDAD: Revisa "contexto_narrativo_acumulado" y continúa los hechos/personajes sin contradecirlos.`,
                     `${idxT2+2}. 🎬 Ambienta las historias nuevas en escenas o situaciones DISTINTAS a esas, para no repetir el mismo argumento.`
                 );
             }
@@ -452,7 +544,7 @@ class UIJSON {
             
             const plantilla = {
                 "_INSTRUCCIONES_PARA_IA": {
-                    "version": "22.3",
+                    "version": "22.4",
                     "accion": "Completar este JSON con mini-historias para aprendizaje de idiomas",
                     "idioma_objetivo": idiomaActivo,
                     "nombre_idioma": nombreIdioma,
@@ -516,7 +608,7 @@ class UIJSON {
                     "palabras_requeridas": palabrasRequeridas,
                     "num_temas_recomendados": numTemasRecomendados,
                     "fecha_generacion": new Date().toISOString(),
-                    "neuro_version": "22.3",
+                    "neuro_version": "22.4",
                     "incluye_gramatica": true,
                     "incluye_transcripcion": true,
                     "descripcion": descripcion || null
@@ -640,6 +732,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             if (bloqueHistoriasExistentes) {
                 plantilla.historias_existentes_tema = bloqueHistoriasExistentes;
             }
+            if (contextoNarrativo.total_historias) plantilla.contexto_narrativo_acumulado = contextoNarrativo;
 
             this._core?.abrirModal(`📄 Plantilla para ${nombreIdioma} (${nivel}) - ${nombreVersion}`);
             const textarea = document.getElementById('jsonTextarea');
@@ -719,6 +812,9 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             const mensajeExtra = esJeroglifico ? 
                 '⚠️ IMPORTANTE: El JSON incluye campos para PINYIN con tonos.' : 
                 `🎤 IMPORTANTE: El JSON incluye campos para TRANSCRIPCIÓN FONÉTICA en ${nombreNativo}.`;
+            if (contextoNarrativo?.total_historias) {
+                this._core?.mostrarToast(`📚 Contexto narrativo incluido: ${contextoNarrativo.total_historias} historias`, 'success');
+            }
             
             this._core?.mostrarToast(`✅ Plantilla del Tutor Neuroadaptativo generada para ${nombreIdioma} (${nivel}) con ${nombreVersion}`, 'success');
             this._core?.mostrarToast(`📊 ${numTemasRecomendados} temas recomendados para cubrir las ${palabrasRequeridas} palabras`, 'info');
@@ -946,7 +1042,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
         
         return {
             "_INSTRUCCIONES_PARA_IA": {
-                "version": "22.3",
+                "version": "22.4",
                 "accion": `Genera una familia de caracteres para el carácter "${caracter}" en ${nombreIdioma}`,
                 "caracter_raiz": caracter,
                 "tema": tema,
@@ -996,7 +1092,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                 "nombre_version": nombreVersion,
                 "palabras_requeridas": palabrasRequeridas,
                 "fecha_generacion": new Date().toISOString(),
-                "version": "22.3",
+                "version": "22.4",
                 "generado_por": "Pipeline Neuro - Tutor Neuroadaptativo"
             },
             "caracter_raiz": {
@@ -1074,6 +1170,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
         // 🔥 NUEVO: RECOPILAR VOCABULARIO YA EXISTENTE SI EL TEMA YA EXISTE
         // (para que la IA Externa no duplique palabras al añadir más historias)
         const vocabExistente = await this._obtenerVocabularioExistenteDePosibleTema(tema, idiomaActivo);
+        const contextoNarrativo = vocabExistente.contextoNarrativo || await this._obtenerContextoNarrativoTema(vocabExistente, idiomaActivo);
 
         try {
             this._core?.mostrarToast(`🧠 Tutor Neuroadaptativo: Generando plantilla para ${nombreIdioma} (${nivel}) con ${nombreVersion}...`, 'info');
@@ -1155,13 +1252,14 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                 const idxT3 = instrucciones.length;
                 instrucciones.push(
                     `${idxT3+1}. 🎬 IMPORTANTE: Revisa la sección "historias_existentes_tema" de este JSON con los títulos de las historias ya existentes de ese tema.`,
+                    `${idxT3+2}. 📚 CONTINUIDAD: Revisa "contexto_narrativo_acumulado" y continúa los hechos/personajes sin contradecirlos.`,
                     `${idxT3+2}. 🎬 Ambienta las historias nuevas en escenas o situaciones DISTINTAS a esas, para no repetir el mismo argumento.`
                 );
             }
             
             const plantilla = {
                 "_INSTRUCCIONES_PARA_IA": {
-                    "version": "22.3",
+                    "version": "22.4",
                     "accion": "Completar este JSON con mini-historias para aprendizaje de idiomas",
                     "idioma_objetivo": idiomaActivo,
                     "nombre_idioma": nombreIdioma,
@@ -1216,7 +1314,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                     "palabras_requeridas": palabrasRequeridas,
                     "num_temas_recomendados": numTemasRecomendados,
                     "fecha_generacion": new Date().toISOString(),
-                    "neuro_version": "22.3",
+                    "neuro_version": "22.4",
                     "incluye_gramatica": true,
                     "incluye_transcripcion": true
                 },
@@ -1323,6 +1421,7 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
             if (bloqueHistoriasExistentes2) {
                 plantilla.historias_existentes_tema = bloqueHistoriasExistentes2;
             }
+            if (contextoNarrativo.total_historias) plantilla.contexto_narrativo_acumulado = contextoNarrativo;
 
             this._core?.abrirModal(`📄 Plantilla para ${nombreIdioma} (${nivel}) - ${nombreVersion}`);
             const textarea = document.getElementById('jsonTextarea');
@@ -1389,6 +1488,9 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
         
         try {
             const data = JSON.parse(jsonText);
+            if (typeof db.validarHistoriasImportadas === 'function' && Array.isArray(data.historias)) {
+                db.validarHistoriasImportadas(data.historias);
+            }
             
             const esFamiliaCaracteres = data.caracter_raiz && data.familia_palabras && Array.isArray(data.familia_palabras);
             
@@ -2427,7 +2529,7 @@ INCLUYE TODAS: artículos, preposiciones, conjunciones, verbos, sustantivos, etc
 
 window.UIJSON = new UIJSON();
 
-console.log('✅ UIJSON v22.3 - NEUROADAPTATIVO CON PODER DEL SUPER POWER');
+console.log('✅ UIJSON v22.4 - NEUROADAPTATIVO CON CONTINUIDAD NARRATIVA');
 console.log('  🔥 Instrucciones potentes para desglose COMPLETO de palabras');
 console.log('  🔥 Ejemplos claros y repetidos para la IA (5 palabras → 5 entradas)');
 console.log('  🔥 Aviso OBLIGATORIO en cada frase (campo _AVISO_OBLIGATORIO)');

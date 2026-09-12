@@ -5,7 +5,7 @@
 class Database {
     constructor() {
         this.dbName = 'PipelineDB';
-        this.dbVersion = 20;
+        this.dbVersion = 21;
         this.db = null;
         this._initialized = false;
         this._initializing = false;
@@ -24,6 +24,7 @@ class Database {
             historias: '++id, titulo, idioma, nivel, temaId, fechaCreacion, estado, frases',
             temas: '++id, nombre, descripcion, idioma, nivel, icono, fechaCreacion, estado, historiasIds, palabrasClave',
             progreso: '++id, fraseId, fase, rcn, rg, ultimoRepaso, proximoRepaso, estado, neuroMetrics, repasosExitosos, repasosFallidos, intervaloActual, fechaCreacion, idioma',
+            progresoCaracteres: '++id, palabraId, idioma',
             checkpoints: '++id, timestamp, fase, datos, neuroState',
             backups: '++id, timestamp, datos',
             chat: '++id, timestamp, rol, mensaje',
@@ -223,6 +224,27 @@ class Database {
                                 }
                             }
                         }
+                        const store = req.transaction.objectStore(name);
+                        for (const idx of keyPath.split(', ').filter(k => k !== '++id')) {
+                            if (!store.indexNames.contains(idx)) store.createIndex(idx, idx);
+                        }
+                    }
+                    // Conservar el registro antiguo para auditoría; no atribuir a una
+                    // frase el resultado que el cliente antiguo marcó como carácter.
+                    if (event.oldVersion > 0 && event.oldVersion < 21) {
+                        const cursor = req.transaction.objectStore('progreso').openCursor();
+                        cursor.onsuccess = () => {
+                            const item = cursor.result;
+                            if (!item) return;
+                            if (item.value.tipo === 'caracter') {
+                                const copia = { ...item.value, palabraId: item.value.fraseId,
+                                    _origenLegacy: true, _requiereRevision: true };
+                                delete copia.id;
+                                delete copia.fraseId;
+                                req.transaction.objectStore('progresoCaracteres').add(copia);
+                            }
+                            item.continue();
+                        };
                     }
                     
                     console.log('✅ Database actualizada correctamente');
@@ -282,61 +304,21 @@ class Database {
     // ============================================================
 
     async _tx(storeName, mode, cb) {
-        return new Promise(async (resolve, reject) => {
+        await this._verificarYReabrirDB();
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(storeName, mode);
+            let result;
+            tx.oncomplete = () => resolve(result);
+            tx.onerror = () => reject(tx.error || new Error('Database transaction failed'));
+            tx.onabort = () => reject(tx.error || new Error('Database transaction aborted'));
             try {
-                // Verificar y reabrir DB si está cerrada
-                await this._verificarYReabrirDB();
-                
-                if (!this.db || !this.db.objectStoreNames || this.db.objectStoreNames.length === 0) {
-                    console.warn('⚠️ Database no disponible, reinicializando...');
-                    const reconectado = await this._reconectar();
-                    if (!reconectado) {
-                        reject(new Error('❌ No se pudo reconectar la base de datos'));
-                        return;
-                    }
-                }
-                
-                if (!this.db.objectStoreNames.contains(storeName)) {
-                    console.warn(`⚠️ Store "${storeName}" no existe, intentando recrear...`);
-                    const reconectado = await this._reconectar();
-                    if (!reconectado) {
-                        reject(new Error(`❌ Store "${storeName}" no existe`));
-                        return;
-                    }
-                    return this._tx(storeName, mode, cb);
-                }
-                
-                const tx = this.db.transaction(storeName, mode);
-                const store = tx.objectStore(storeName);
-                let result = cb(store);
-                
-                if (result && typeof result.then === 'function') {
-                    result = await result;
-                }
-                
-                tx.oncomplete = () => {
-                    resolve(result);
-                };
-                
-                tx.onerror = (event) => {
-                    console.error(`❌ Error en transacción ${storeName}:`, event.target.error);
-                    reject(tx.error || event.target.error);
-                };
-                
-                tx.onabort = () => {
-                    reject(new Error('Transacción abortada'));
-                };
-                
-            } catch (e) {
-                console.error(`❌ Error en _tx(${storeName}):`, e);
-                reject(e);
-            }
+                Promise.resolve(cb(tx.objectStore(storeName))).then(value => { result = value; }, error => {
+                    try { tx.abort(); } catch (_) {}
+                    reject(error);
+                });
+            } catch (error) { tx.abort(); reject(error); }
         });
     }
-
-    // ============================================================
-    // MÉTODOS CRUD (MANTENIDOS)
-    // ============================================================
 
     async get(store, id) {
         try {
@@ -446,35 +428,21 @@ class Database {
     }
 
     async update(store, data) {
-        try {
-            if (!this._initialized) {
-                await this.init();
-            }
-            
-            if (!data) {
-                console.warn(`⚠️ update(${store}): data inválida`);
-                return null;
-            }
-            
-            if (!data.id) {
-                console.warn(`⚠️ update(${store}): data sin id`);
-                return null;
-            }
-            
-            return this._tx(store, 'readwrite', s => {
-                const req = s.put(data);
-                return new Promise((resolve, reject) => {
-                    req.onsuccess = () => resolve(req.result);
-                    req.onerror = () => reject(req.error);
-                });
-            });
-        } catch (e) {
-            console.error(`❌ Error en update(${store}):`, e);
-            return null;
-        }
+        if (!data || !data.id) throw new Error('Missing record id');
+        if (!this._initialized) await this.init();
+        return this._tx(store, 'readwrite', s => new Promise((resolve, reject) => {
+            const request = s.get(data.id);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                const put = s.put({ ...(request.result || {}), ...data });
+                put.onsuccess = () => resolve(put.result);
+                put.onerror = () => reject(put.error);
+            };
+        }));
     }
 
     async delete(store, id) {
+        if (['frases', 'historias', 'temas'].includes(store)) return this._eliminarContenido(store, Number(id));
         try {
             if (!this._initialized) {
                 await this.init();
@@ -502,6 +470,110 @@ class Database {
     // API KEY
     // ============================================================
     
+    async crearSesionImportacion() {
+        if (!this._initialized) await this.init();
+        const names = ['temas', 'historias', 'frases', 'palabras', 'reglasGramaticales'];
+        const original = {};
+        await Promise.all(names.map(async name => { original[name] = await this.getAll(name); }));
+        const tablas = Object.fromEntries(names.map(name => [name, new Map(original[name].map(x => [x.id, structuredClone(x)]))]));
+        const cambios = new Set();
+        const sesion = Object.create(this);
+        let nextId = Math.max(Date.now() * 1000, ...names.map(n => Math.max(0, ...original[n].map(x => x.id)) + 1));
+        let cerrada = false;
+        sesion.getAll = async name => {
+            if (!tablas[name]) throw new Error('Unsupported import table: ' + name);
+            return structuredClone([...tablas[name].values()]);
+        };
+        sesion.get = async (name, id) => structuredClone(tablas[name]?.get(Number(id)) || null);
+        sesion.getByIndex = async (name, key, value) => (await sesion.getAll(name)).filter(x => x[key] === value);
+        sesion.add = async (name, dato) => {
+            if (cerrada || !tablas[name] || !dato) throw new Error('Invalid import write');
+            const id = nextId++;
+            tablas[name].set(id, { ...structuredClone(dato), id });
+            cambios.add(name);
+            return id;
+        };
+        sesion.update = async (name, dato) => {
+            if (cerrada || !tablas[name] || !dato?.id) throw new Error('Invalid import update');
+            tablas[name].set(dato.id, { ...(tablas[name].get(dato.id) || {}), ...structuredClone(dato) });
+            cambios.add(name);
+            return dato.id;
+        };
+        sesion.confirmar = async () => {
+            if (cerrada) throw new Error('Import already closed');
+            cerrada = true;
+            if (!cambios.size) return;
+            await new Promise((resolve, reject) => {
+                // Comprobar también las tablas leídas evita guardar sobre un tema
+                // eliminado o modificado mientras se preparaba la importación.
+                const tx = this.db.transaction(names, 'readwrite');
+                let pendientes = names.length;
+                let error;
+                tx.oncomplete = resolve;
+                tx.onerror = tx.onabort = () => reject(error || tx.error || new Error('Import aborted'));
+                for (const name of names) {
+                    const req = tx.objectStore(name).getAll();
+                    req.onsuccess = () => {
+                        if (JSON.stringify(req.result) !== JSON.stringify(original[name])) {
+                            error = new Error('Data changed during import. Retry the import.');
+                            tx.abort();
+                            return;
+                        }
+                        if (--pendientes) return;
+                        try {
+                            for (const tabla of cambios) {
+                                const previos = new Map(original[tabla].map(x => [x.id, JSON.stringify(x)]));
+                                for (const item of tablas[tabla].values()) {
+                                    if (previos.get(item.id) !== JSON.stringify(item)) tx.objectStore(tabla).put(item);
+                                }
+                            }
+                        } catch (e) { error = e; tx.abort(); }
+                    };
+                }
+            });
+        };
+        return sesion;
+    }
+
+    validarHistoriasImportadas(historias) {
+        if (!Array.isArray(historias) || !historias.length) throw new Error('Invalid stories');
+        for (const h of historias) {
+            if (!Array.isArray(h.frases) || !h.frases.length) throw new Error('Story has no sentences');
+            for (const f of h.frases) {
+                if (typeof f.original !== 'string' || !f.original.trim() || typeof f.traduccion !== 'string' || !f.traduccion.trim()) {
+                    throw new Error('Incomplete sentence');
+                }
+                if (/^\s*\[[^\]]+\]\s*$/.test(f.original) || /^\s*\[[^\]]+\]\s*$/.test(f.traduccion)) throw new Error('Empty template');
+                if (f.palabras != null && !Array.isArray(f.palabras)) throw new Error('Invalid vocabulary');
+            }
+        }
+    }
+
+    async obtenerContextoTema(temaId) {
+        const tema = await this.obtenerTema(Number(temaId));
+        if (!tema) throw new Error('Topic not found');
+        const [historias, frases, progreso] = await Promise.all([
+            this.obtenerHistoriasPorTema(tema.id), this.obtenerFrasesPorIdioma(tema.idioma), this.obtenerProgresoPorIdioma(tema.idioma)
+        ]);
+        const progresos = new Map(progreso.map(p => [p.fraseId, p]));
+        const vocabulario = new Map();
+        const normalizar = p => typeof p === 'string' ? p.trim() : String(p?.palabra || p?.hanzi || '').trim();
+        const ordenadas = historias.filter(h => h.idioma === tema.idioma).sort((a, b) =>
+            (new Date(a.fechaCreacion || 0).getTime() || 0) - (new Date(b.fechaCreacion || 0).getTime() || 0) || a.id - b.id);
+        return { tema, historias: ordenadas.map(h => {
+            const contenido = frases.filter(f => Number(f.historiaId) === h.id).sort((a, b) => a.id - b.id);
+            for (const f of contenido) for (const p of f.palabras || []) {
+                const texto = normalizar(p);
+                if (texto) vocabulario.set(texto.toLocaleLowerCase(), { palabra: texto, significado: p.significado || '' });
+            }
+            const rcn = contenido.reduce((n, f) => n + (progresos.get(f.id)?.rcn || 0), 0);
+            return { ...h, frases: contenido, texto: contenido.map(f => f.original).join(' '),
+                palabrasNuevas: [...new Set((h._palabrasNuevas || []).map(normalizar).filter(Boolean))],
+                rcnPromedio: contenido.length ? rcn / contenido.length : 0,
+                completada: contenido.length > 0 && contenido.every(f => (progresos.get(f.id)?.rcn || 0) >= 4) };
+        }), vocabulario: [...vocabulario.values()] };
+    }
+
     async guardarApiKey(apiKey) {
         console.log('🔐 Guardando API Key...');
         try {
@@ -816,7 +888,7 @@ class Database {
             const allFrases = await this.obtenerFrases();
             const existing = allFrases.find(f => 
                 f.original === frase.original && 
-                f.idioma === frase.idioma
+                f.idioma === frase.idioma && String(f.historiaId || '') === String(frase.historiaId || '')
             );
             
             if (existing) {
@@ -1062,25 +1134,43 @@ class Database {
     }
 
     async eliminarTema(id) {
-        try {
-            const tema = await this.obtenerTema(id);
-            if (!tema) return false;
-            
-            const historias = await this.obtenerHistoriasPorTema(id);
-            for (const h of historias) {
-                const frases = await this.obtenerFrasesPorHistoria(h.id);
-                for (const f of frases) {
-                    await this.delete('frases', f.id);
-                }
-                await this.delete('historias', h.id);
+        await this._eliminarContenido('temas', Number(id));
+        return true;
+    }
+
+    async _eliminarContenido(tipo, id) {
+        if (!this._initialized) await this.init();
+        const names = ['temas', 'historias', 'frases', 'progreso'];
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(names, 'readwrite');
+            const data = {};
+            let pendientes = names.length;
+            tx.oncomplete = () => resolve(true);
+            tx.onabort = tx.onerror = () => reject(tx.error || new Error('Delete aborted'));
+            for (const name of names) {
+                const req = tx.objectStore(name).getAll();
+                req.onsuccess = () => {
+                    data[name] = req.result;
+                    if (--pendientes) return;
+                    const historias = new Set(data.historias.filter(h =>
+                        tipo === 'temas' ? Number(h.temaId) === id : tipo === 'historias' && h.id === id).map(h => h.id));
+                    const frases = new Set(data.frases.filter(f => historias.has(Number(f.historiaId)) ||
+                        (tipo === 'frases' && f.id === id)).map(f => f.id));
+                    for (const p of data.progreso) if (p.tipo !== 'caracter' && frases.has(Number(p.fraseId))) tx.objectStore('progreso').delete(p.id);
+                    for (const f of frases) tx.objectStore('frases').delete(f);
+                    for (const h of historias) tx.objectStore('historias').delete(h);
+                    for (const tema of data.temas) {
+                        if (tipo === 'temas' && tema.id === id) { tx.objectStore('temas').delete(id); continue; }
+                        if (data.historias.some(h => historias.has(h.id) && Number(h.temaId) === tema.id)) {
+                            const restantes = data.historias.filter(h => Number(h.temaId) === tema.id && !historias.has(h.id));
+                            const ids = new Set(restantes.map(h => h.id));
+                            tx.objectStore('temas').put({ ...tema, historiasIds: [...ids],
+                                frases: data.frases.filter(f => ids.has(Number(f.historiaId)) && !frases.has(f.id)).length });
+                        }
+                    }
+                };
             }
-            
-            await this.delete('temas', id);
-            return true;
-        } catch (e) {
-            console.error(`❌ Error en eliminarTema(${id}):`, e);
-            return false;
-        }
+        });
     }
 
     async obtenerProgresoTema(temaId) {
@@ -1116,36 +1206,42 @@ class Database {
     // ============================================================
     
     async guardarProgreso(progreso) {
-        try {
-            if (!this._initialized) {
-                await this.init();
-            }
-            
-            if (!progreso || typeof progreso !== 'object') {
-                console.warn('⚠️ guardarProgreso: progreso inválido');
-                return null;
-            }
-            
-            if (!progreso.fraseId) {
-                console.warn('⚠️ guardarProgreso: falta "fraseId"');
-                return null;
-            }
-            
-            if (!progreso.idioma) {
-                const idiomaActivo = localStorage.getItem('pipeline_idioma_activo');
-                progreso.idioma = idiomaActivo || 'es';
-            }
-            
-            const existing = await this.getByIndex('progreso', 'fraseId', progreso.fraseId);
-            if (existing.length > 0) {
-                await this.update('progreso', { ...existing[0], ...progreso });
-                return existing[0];
-            }
-            return this.add('progreso', progreso);
-        } catch (e) {
-            console.warn('⚠️ Error guardando progreso:', e);
-            return null;
-        }
+        if (!progreso || !progreso.fraseId) throw new Error('Missing phrase id');
+        if (progreso.tipo === 'caracter') return this.guardarProgresoCaracter({ ...progreso, palabraId: progreso.fraseId });
+        const frase = await this.get('frases', Number(progreso.fraseId));
+        if (!frase) throw new Error('Progress references a missing phrase');
+        const dato = { ...progreso, fraseId: frase.id, idioma: frase.idioma, tipo: 'frase' };
+        return this._guardarProgresoUnico('progreso', 'fraseId', dato);
+    }
+
+    async _guardarProgresoUnico(store, index, dato) {
+        return this._tx(store, 'readwrite', s => new Promise((resolve, reject) => {
+            const req = s.index(index).getAll(dato[index]);
+            req.onerror = () => reject(req.error);
+            req.onsuccess = () => {
+                const existentes = req.result.filter(p => store !== 'progreso' || p.tipo !== 'caracter');
+                const actualizado = { ...(existentes[0] || {}), ...dato };
+                delete actualizado.id;
+                if (existentes[0]) actualizado.id = existentes[0].id;
+                const put = s.put(actualizado);
+                put.onerror = () => reject(put.error);
+                put.onsuccess = () => resolve({ ...actualizado, id: put.result });
+                for (const extra of existentes.slice(1)) s.delete(extra.id);
+            };
+        }));
+    }
+
+    async obtenerProgresoCaracter(palabraId) {
+        const registros = await this.getByIndex('progresoCaracteres', 'palabraId', Number(palabraId));
+        return registros[0] || null;
+    }
+
+    async guardarProgresoCaracter(progreso) {
+        const palabra = await this.get('palabras', Number(progreso.palabraId));
+        if (!palabra) throw new Error('Progress references a missing word');
+        const dato = { ...progreso, palabraId: palabra.id, idioma: palabra.idioma, tipo: 'caracter' };
+        delete dato.fraseId;
+        return this._guardarProgresoUnico('progresoCaracteres', 'palabraId', dato);
     }
 
     async obtenerProgreso(fraseId) {
@@ -1153,8 +1249,8 @@ class Database {
             if (fraseId === undefined || fraseId === null) {
                 return null;
             }
-            const result = await this.getByIndex('progreso', 'fraseId', fraseId);
-            return result.length > 0 ? result[0] : null;
+            const result = await this.getByIndex('progreso', 'fraseId', Number(fraseId));
+            return result.find(p => p.tipo !== 'caracter') || null;
         } catch (e) {
             console.error(`❌ Error en obtenerProgreso(${fraseId}):`, e);
             return null;
@@ -1162,13 +1258,9 @@ class Database {
     }
 
     async obtenerTodoProgreso() {
-        try {
-            const result = await this.getAll('progreso');
-            return Array.isArray(result) ? result : [];
-        } catch (e) {
-            console.error('❌ Error en obtenerTodoProgreso:', e);
-            return [];
-        }
+        const [registros, frases] = await Promise.all([this.getAll('progreso'), this.obtenerFrases()]);
+        const ids = new Set(frases.map(f => f.id));
+        return registros.filter(p => p.tipo !== 'caracter' && ids.has(p.fraseId));
     }
 
     async obtenerProgresoPorIdioma(idioma) {
@@ -1392,31 +1484,67 @@ class Database {
     }
 
     async importarBackup(data) {
-        try {
-            if (!this._initialized) {
-                await this.init();
+        if (!this._initialized) await this.init();
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid backup');
+        const required = ['temas', 'historias', 'frases', 'palabras', 'progreso'];
+        if (required.some(name => !Array.isArray(data[name]))) throw new Error('Incomplete backup');
+        const copia = structuredClone(data);
+        for (const [name, items] of Object.entries(copia)) {
+            if (!this.stores[name]) continue;
+            if (!Array.isArray(items)) throw new Error('Invalid backup table: ' + name);
+            const ids = new Set();
+            for (const item of items) {
+                if (!item || !Number.isSafeInteger(item.id) || item.id < 1 || ids.has(item.id)) throw new Error('Invalid or duplicate id: ' + name);
+                ids.add(item.id);
             }
-            
-            for (const [name, items] of Object.entries(data)) {
-                if (!this.stores[name]) continue;
-                try {
-                    const existing = await this.getAll(name);
-                    for (const item of existing) await this.delete(name, item.id);
-                    for (const item of items) await this.add(name, item);
-                } catch (e) {
-                    console.warn(`⚠️ Error importando ${name}:`, e);
-                }
-            }
-            console.log('✅ Backup importado correctamente');
-        } catch (e) {
-            console.error('❌ Error en importarBackup:', e);
         }
+        const ids = name => new Set(copia[name].map(x => x.id));
+        const temas = ids('temas'), historias = ids('historias'), frases = ids('frases'), palabras = ids('palabras');
+        if (copia.historias.some(h => h.temaId != null && !temas.has(Number(h.temaId))) ||
+            copia.frases.some(f => f.historiaId != null && !historias.has(Number(f.historiaId))) ||
+            copia.progreso.some(p => p.tipo !== 'caracter' && !frases.has(Number(p.fraseId)))) {
+            throw new Error('Backup contains broken references');
+        }
+        for (const tema of copia.temas) {
+            if ((tema.historiasIds || []).some(id => !historias.has(Number(id)))) throw new Error('Backup contains broken topic references');
+        }
+        copia.progresoCaracteres = copia.progresoCaracteres || [];
+        for (const p of copia.progreso.filter(p => p.tipo === 'caracter')) {
+            if (palabras.has(Number(p.fraseId)) && !copia.progresoCaracteres.some(x => x.palabraId === Number(p.fraseId))) {
+                const item = { ...p, palabraId: Number(p.fraseId), _origenLegacy: true, _requiereRevision: true };
+                delete item.fraseId;
+                item.id = Math.max(0, ...copia.progresoCaracteres.map(x => x.id)) + 1;
+                copia.progresoCaracteres.push(item);
+            }
+        }
+        if (copia.progresoCaracteres.some(p => !palabras.has(Number(p.palabraId)))) throw new Error('Backup contains broken word references');
+        const names = Object.keys(this.stores);
+        await new Promise((resolve, reject) => {
+            const tx = this.db.transaction(names, 'readwrite');
+            const anterior = {};
+            let pendientes = names.length;
+            tx.oncomplete = resolve;
+            tx.onerror = tx.onabort = () => reject(tx.error || new Error('Restore aborted'));
+            for (const name of names) {
+                const req = tx.objectStore(name).getAll();
+                req.onsuccess = () => {
+                    if (name !== 'backups') anterior[name] = req.result;
+                    if (--pendientes) return;
+                    try {
+                        for (const tabla of names) {
+                            const store = tx.objectStore(tabla);
+                            store.clear();
+                            for (const item of copia[tabla] || []) store.put(item);
+                        }
+                        tx.objectStore('backups').add({ nombre: 'Before restore', fecha: Date.now(), timestamp: Date.now(), data: anterior, _seguridad: true });
+                    } catch (error) { tx.abort(); reject(error); }
+                };
+            }
+        });
+        this._cache = { frases: {}, palabras: {}, historias: {}, temas: {}, progreso: {} };
+        return true;
     }
 
-    // ============================================================
-    // LIMPIEZA
-    // ============================================================
-    
     async limpiarTodo() {
         try {
             if (!this._initialized) {

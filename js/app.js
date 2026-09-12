@@ -366,12 +366,10 @@ class App {
             faltan.push('idiomas_objetivo');
         }
         
-        if (!apiKeyLocal && !this._apiKeyCargada) {
-            faltan.push('api_key');
-        }
+        // La IA es opcional para estudiar contenido local.
         
         if (!usuarioLocal && !this._usuarioCargado) {
-            return { completo: false, faltan: ['nombre', 'idioma_nativo', 'idiomas_objetivo', 'api_key'] };
+            return { completo: false, faltan: ['nombre', 'idioma_nativo', 'idiomas_objetivo'] };
         }
         
         return {
@@ -1032,7 +1030,18 @@ class App {
             this._detenerBuclesInfinitos();
             
             // 🔥 LIMPIAR DATOS RESIDUALES DE IDIOMAS
-            this._limpiarDatosResidualesIdiomas();
+            // Recuperar antes de decidir que el registro está incompleto.
+            // No borrar las preferencias de idioma durante un arranque normal.
+            try {
+                await db.init();
+                this._dbReady = true;
+                const recuperado = await db.getUsuario();
+                if (!this._getUsuarioLocalStorage()?.nombre && recuperado?.nombre) this._saveUsuarioLocalStorage(recuperado);
+                if (!localStorage.getItem('pipeline_api_key')) {
+                    const clave = await db.obtenerApiKey();
+                    if (clave) localStorage.setItem('pipeline_api_key', clave);
+                }
+            } catch (error) { console.warn('Database recovery unavailable:', error); }
 
             const verificacion = this._verificarRegistroCompleto();
             

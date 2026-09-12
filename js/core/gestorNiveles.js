@@ -222,10 +222,10 @@ class GestorNiveles {
         console.log('📊 Evaluando nivel automático para:', usuarioId, idioma);
         
         try {
-            const stats = await db.obtenerEstadisticasNeuro();
-            const progreso = await db.obtenerTodoProgreso();
-            const frases = await db.obtenerFrases();
-            const palabras = await db.obtenerPalabras();
+            const stats = await db.obtenerEstadisticasNeuro(idioma);
+            const progreso = await db.obtenerProgresoPorIdioma(idioma);
+            const frases = await db.obtenerFrasesPorIdioma(idioma);
+            const palabras = await db.obtenerPalabrasPorIdioma(idioma);
             const usuario = await db.getUsuario();
 
             const rcnPromedio = stats.rcnPromedio || 0;
@@ -693,4 +693,5 @@ class GestorNiveles {
 }
 
 const gestorNiveles = new GestorNiveles();
+window.gestorNiveles = gestorNiveles;
 console.log('✅ Gestor de Niveles v1.5 cargado');

@@ -63,3 +63,6 @@ Para cambios de comportamiento, comprueba en el navegador el arranque y el flujo
 - Do not change public behavior or existing workflows unless explicitly requested.
 - If a change could affect multiple parts of the application, inspect the references before editing.
 - After making changes, review the diff for accidental or unrelated modifications.
+
+Never push commits to a remote repository unless explicitly requested by the user.
+- Local commits are allowed when requested.

@@ -2702,6 +2702,8 @@ REGLAS:
         // ============================================================
         
         async _validarRespuestaEscrita() {
+            if (this._validandoRespuesta || this._respuestaRegistrada === pipeline?.fraseActual?.id) return;
+            this._validandoRespuesta = true;
             try {
                 const input = document.getElementById('respuestaEscritura');
                 if (!input) {
@@ -2782,19 +2784,23 @@ REGLAS:
                     };
                 }
                 
+                if (pipeline.fraseActual !== frase || pipeline.idiomaObjetivo !== idioma) return;
+                const registrada = await pipeline.procesarRespuesta(resultado.correcto ? 'correcto' : resultado.aproximado ? 'parcial' : 'fallo', { avanzar: false });
+                if (!registrada) return;
+                this._respuestaRegistrada = frase.id;
                 this._ultimaRespuesta = resultado;
                 input.value = '';
                 this._renderizarFraseInteractiva();
                 
                 if (resultado.correcto) {
                     this.core.mostrarToast('✅ ¡Correcto!', 'success');
-                    await this._reforzarElemento(frase.id, 'frase', 1);
+
                 } else if (resultado.aproximado) {
                     this.core.mostrarToast('🟡 Casi correcto. Sigue así.', 'warning');
-                    await this._reforzarElemento(frase.id, 'frase', 0.3);
+
                 } else {
                     this.core.mostrarToast('❌ Incorrecto. Revisa la respuesta correcta.', 'error');
-                    await this._debilistarElemento(frase.id, 'frase');
+
                 }
                 
                 await this._recargarProgresoCompleto();
@@ -2804,7 +2810,7 @@ REGLAS:
             } catch (e) {
                 console.error('❌ Error validando respuesta:', e);
                 this.core.mostrarToast('❌ Error al validar la respuesta', 'error');
-            }
+            } finally { this._validandoRespuesta = false; }
         }
 
         // ============================================================
@@ -3126,7 +3132,7 @@ REGLAS:
                 let estadoRCNBarra = 0;
                 
                 if (palabraId) {
-                    const progreso = await db.obtenerProgreso(palabraId);
+                    const progreso = await db.obtenerProgresoCaracter(palabraId);
                     if (progreso) {
                         rcn = progreso.rcn || 0;
                         fase = progreso.fase || 1;
@@ -4875,24 +4881,22 @@ REGLAS:
         // ============================================================
         
         async _responderEstudio(tipo) {
-            if (pipeline && pipeline.procesarRespuesta) {
+            if (this._respondiendo || this._validandoRespuesta || !pipeline?.fraseActual) return;
+            this._respondiendo = true;
+            try {
+                if (this._respuestaRegistrada === pipeline.fraseActual.id) {
+                    this._respuestaRegistrada = null;
+                    await pipeline._avanzarSiguienteFrase();
+                } else {
+                    if (!await pipeline.procesarRespuesta(tipo)) return;
+                }
                 this._resetearEstadoFrase();
-                pipeline.procesarRespuesta(tipo);
-                this._guardarIndiceEstudio();
-                setTimeout(async () => {
-                    this._resetearEstadoFrase();
-                    
-                    await this._recargarProgresoCompleto();
-                    
-                    await this._verificarProgresoTema();
-                    if (!this._temaFinalizado) {
-                        this._renderizarFraseInteractiva();
-                    }
-                    if (window.UIDashboard) {
-                        window.UIDashboard._cargarDashboardInicial(window.uiCore);
-                    }
-                }, 50);
-            }
+                await this._guardarIndiceEstudio();
+                await this._recargarProgresoCompleto();
+                await this._verificarProgresoTema();
+                if (!this._temaFinalizado) this._renderizarFraseInteractiva();
+                if (window.UIDashboard) window.UIDashboard._cargarDashboardInicial(window.uiCore);
+            } finally { this._respondiendo = false; }
         }
 
         _fraseAnterior() {

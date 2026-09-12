@@ -698,10 +698,10 @@ class UICaracteresActions {
         if (!uiCaracteres._core) return;
 
         try {
-            let progreso = await db.obtenerProgreso(palabraId);
+            let progreso = await db.obtenerProgresoCaracter(palabraId);
             if (!progreso) {
                 progreso = {
-                    fraseId: palabraId,
+                    palabraId: palabraId,
                     fase: 1,
                     rcn: 0,
                     rg: 0,
@@ -744,7 +744,7 @@ class UICaracteresActions {
             progreso.idioma = gestorIdiomas?.getIdiomaActivo() || 'es';
             progreso.tipo = 'caracter';
 
-            await db.guardarProgreso(progreso);
+            await db.guardarProgresoCaracter(progreso);
 
             const palabra = await db.get('palabras', palabraId);
             if (palabra) {

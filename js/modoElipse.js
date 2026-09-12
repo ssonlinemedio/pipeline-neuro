@@ -563,6 +563,14 @@ class ModoElipse {
     }
 
     async _cargarDatosInterno() {
+        const temaCanonico = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
+        if (temaCanonico) {
+            const tema = await db.obtenerTema(Number(temaCanonico));
+            if (tema?.idioma === this._obtenerIdiomaActual()) {
+                await this._recuperarElipseDesdeTema(temaCanonico);
+                return this._historiasElipse;
+            }
+        }
         console.log('🌌 ModoElipse: Cargando datos de persistencia...');
         this._intentosCarga = 0;
         
@@ -649,91 +657,16 @@ class ModoElipse {
     // ============================================================
 
     async _reconstruirRecuerdoOndas() {
-        console.log('📚 Reconstruyendo recuerdo de ondas desde las historias...');
-        
-        this._recuerdoOndas = {
-            resumenGlobal: '',
-            personajesPrincipales: [],
-            lugares: [],
-            eventosClave: [],
-            tramasAbiertas: [],
-            ultimasFrases: [],
-            vocabularioAcumulado: [],
-            resumenPorOnda: {}
-        };
-        
-        const idiomaActual = this._obtenerIdiomaActual();
-        const temaId = this._elipseActiva;
-        
-        // 🔥 OBTENER TODAS LAS ONDAS DEL TEMA
-        const todasLasOndas = this._historiasElipse.filter(h => h.temaId == temaId);
-        console.log(`📚 ${todasLasOndas.length} ondas totales en el tema ${temaId} para recuerdo`);
-        
-        const historiasOrdenadas = [...todasLasOndas].sort((a, b) => (a.indice || 0) - (b.indice || 0));
-        
-        for (const h of historiasOrdenadas) {
-            try {
-                const historia = await db.get('historias', h.id);
-                if (historia && historia.idioma !== idiomaActual) {
-                    continue;
-                }
-                
-                const frases = await db.obtenerFrasesPorHistoria(h.id);
-                const textoCompleto = frases.map(f => f.original).join(' ');
-                
-                if (h.palabrasNuevas && h.palabrasNuevas.length > 0) {
-                    for (const p of h.palabrasNuevas) {
-                        if (!this._recuerdoOndas.vocabularioAcumulado.includes(p)) {
-                            this._recuerdoOndas.vocabularioAcumulado.push(p);
-                        }
-                    }
-                }
-                
-                const esBase = h.esBase || false;
-                const label = esBase ? '🌟 BASE' : `🌊 Onda ${(h.indice || 0) + 1}`;
-                
-                this._recuerdoOndas.resumenPorOnda[h.indice || 0] = {
-                    id: h.id,
-                    titulo: h.titulo,
-                    resumen: textoCompleto.substring(0, 200) + (textoCompleto.length > 200 ? '...' : ''),
-                    palabrasNuevas: h.palabrasNuevas || [],
-                    completada: h.completada || false,
-                    esBase: esBase,
-                    label: label,
-                    indice: h.indice || 0,
-                    nivel: h.nivel || 'A1'
-                };
-                
-                if (frases.length > 0) {
-                    const ultimas = frases.slice(-3).map(f => f.original);
-                    this._recuerdoOndas.ultimasFrases = ultimas;
-                }
-                
-            } catch (e) {
-                console.warn(`⚠️ Error procesando historia ${h.id} para recuerdo:`, e);
-            }
-        }
-        
-        const resumenes = Object.values(this._recuerdoOndas.resumenPorOnda)
-            .filter(r => r.resumen)
-            .sort((a, b) => (a.indice || 0) - (b.indice || 0))
-            .map((r) => {
-                const label = r.esBase ? '🌟 BASE' : `🌊 Onda ${r.indice + 1}`;
-                return `${label}: "${r.titulo}"\n${r.resumen}`;
-            });
-        this._recuerdoOndas.resumenGlobal = resumenes.join('\n\n');
-        
-        if (this._recuerdoOndas.vocabularioAcumulado.length > 30) {
-            this._recuerdoOndas.vocabularioAcumulado = this._recuerdoOndas.vocabularioAcumulado.slice(-30);
-        }
-        
+        if (!this._elipseActiva) return;
+        const resumenPorOnda = await this._construirRecuerdoCompleto(this._elipseActiva);
+        const historias = Object.values(resumenPorOnda).sort((a,b) => a.indice - b.indice);
+        this._recuerdoOndas = { resumenPorOnda,
+            resumenGlobal: historias.map(h => h.titulo + ': ' + h.resumen).join('\n\n'),
+            personajesPrincipales: [], lugares: [], eventosClave: [], tramasAbiertas: [],
+            ultimasFrases: historias.at(-1)?.ultimasFrases || [],
+            vocabularioAcumulado: [...new Set(historias.flatMap(h => h.vocabulario))] };
         this._guardarRecuerdoOndas();
-        console.log(`📚 Recuerdo de ondas reconstruido: ${Object.keys(this._recuerdoOndas.resumenPorOnda).length} ondas`);
     }
-
-    // ============================================================
-    // CONFIGURACIÓN
-    // ============================================================
 
     _cargarConfiguracion() {
         try {
@@ -843,198 +776,24 @@ class ModoElipse {
     async _recuperarElipseDesdeTema(temaId) {
         if (this._recuperando) return;
         this._recuperando = true;
-        
         try {
-            console.log(`🔄 Intentando recuperar Elipse desde el tema ${temaId}...`);
-            
-            if (typeof db === 'undefined' || !db._initialized) {
-                console.warn('⚠️ DB no disponible para recuperar');
-                this._recuperando = false;
-                return;
-            }
-            
-            const tema = await db.obtenerTema(parseInt(temaId));
-            if (!tema) {
-                console.warn(`⚠️ Tema ${temaId} no encontrado`);
-                this._recuperando = false;
-                return;
-            }
-            
-            const idiomaActual = this._obtenerIdiomaActual();
-            
-            if (tema.idioma && tema.idioma !== idiomaActual) {
-                console.log(`⚠️ El tema ${temaId} es de idioma "${tema.idioma}", actual: "${idiomaActual}"`);
-                localStorage.removeItem('pipeline_elipse_tema_activo');
-                this._recuperando = false;
-                return;
-            }
-            
-            const historias = await db.obtenerHistoriasPorTema(parseInt(temaId));
-            
-            // 🔥 FILTRAR ONDAS DE ELIPSE (NO CRUZADAS)
-            const historiasFiltradas = historias.filter(h => 
-                h.idioma === idiomaActual && 
-                !this._esOndaCruzada(h) &&
-                h._esOnda !== false
-            );
-            
-            console.log(`📚 Encontradas ${historiasFiltradas.length} historias en el tema ${temaId}`);
-            
-            if (historiasFiltradas.length === 0) {
-                console.log(`ℹ️ No hay historias en el tema ${temaId}`);
-                this._recuperando = false;
-                return;
-            }
-            
-            // 🔥 SEPARAR BASE Y ONDAS
-            const ondas = historiasFiltradas.filter(h => h._esOnda === true);
-            const historiasBase = historiasFiltradas.filter(h => h._esBase === true || h._esOnda === false);
-            
-            console.log(`📚 ${ondas.length} ondas y ${historiasBase.length} historias base en el tema ${temaId}`);
-            
-            this._elipseActiva = String(temaId);
-            this._historiasElipse = [];
-            this._estadisticas.totalOndas = 0;
-            let indiceCounter = 0;
-            
-            // 🔥 PRIMERO AÑADIR LA HISTORIA BASE
-            if (historiasBase.length > 0) {
-                for (const h of historiasBase) {
-                    if (this._esOndaCruzada(h)) continue;
-                    
-                    const frases = await db.obtenerFrasesPorHistoria(h.id);
-                    let rcnPromedio = 0;
-                    let completadas = 0;
-                    
-                    if (frases.length > 0) {
-                        let totalRCN = 0;
-                        for (const f of frases) {
-                            const progreso = await db.obtenerProgreso(f.id);
-                            if (progreso) {
-                                totalRCN += progreso.rcn || 0;
-                                if (progreso.rcn >= 4 || progreso.estado === 'completada') {
-                                    completadas++;
-                                }
-                            }
-                        }
-                        rcnPromedio = totalRCN / frases.length;
-                    }
-                    
-                    const esBase = h._esBase === true || h._esOnda === false;
-                    const ondaBase = {
-                        id: h.id,
-                        titulo: h.titulo || (esBase ? 'Historia base' : 'Historia sin título'),
-                        temaId: String(temaId),
-                        nivel: h.nivel || 'A1',
-                        indice: indiceCounter,
-                        fecha: h.fechaCreacion || Date.now(),
-                        palabrasNuevas: h._palabrasNuevas || [],
-                        palabrasBase: [],
-                        historiasPrevias: [],
-                        esBase: esBase,
-                        rcnPromedio: rcnPromedio,
-                        completada: completadas === frases.length && frases.length > 0,
-                        _sincronizado: h._sincronizado || false,
-                        _fechaSincronizacion: h._fechaSincronizacion || null,
-                        _recuerdo: h._recuerdo || null,
-                        _esOndaCruzada: h._esOndaCruzada || false,
-                        _ondaIndice: indiceCounter
-                    };
-                    this._historiasElipse.push(ondaBase);
-                    this._estadisticas.totalOndas++;
-                    indiceCounter++;
-                    
-                    console.log(`📚 Añadida historia base: "${h.titulo}"`);
-                }
-            }
-            
-            // 🔥 LUEGO AÑADIR LAS ONDAS
-            if (ondas.length > 0) {
-                const ondasOrdenadas = [...ondas].sort((a, b) => (a._ondaIndice || 0) - (b._ondaIndice || 0));
-                
-                for (const h of ondasOrdenadas) {
-                    if (this._esOndaCruzada(h)) continue;
-                    
-                    // Verificar si ya existe
-                    const yaExiste = this._historiasElipse.some(eh => eh.id === h.id);
-                    if (yaExiste) {
-                        console.log(`⚠️ Onda ${h.id} ya existe, omitiendo...`);
-                        continue;
-                    }
-                    
-                    const frases = await db.obtenerFrasesPorHistoria(h.id);
-                    let rcnPromedio = 0;
-                    let completadas = 0;
-                    
-                    if (frases.length > 0) {
-                        let totalRCN = 0;
-                        for (const f of frases) {
-                            const progreso = await db.obtenerProgreso(f.id);
-                            if (progreso) {
-                                totalRCN += progreso.rcn || 0;
-                                if (progreso.rcn >= 4 || progreso.estado === 'completada') {
-                                    completadas++;
-                                }
-                            }
-                        }
-                        rcnPromedio = totalRCN / frases.length;
-                    }
-                    
-                    const onda = {
-                        id: h.id,
-                        titulo: h.titulo || `Onda ${indiceCounter + 1}`,
-                        temaId: String(temaId),
-                        nivel: h.nivel || 'A1',
-                        indice: indiceCounter,
-                        fecha: h.fechaCreacion || Date.now(),
-                        palabrasNuevas: h._palabrasNuevas || [],
-                        palabrasBase: [],
-                        historiasPrevias: this._historiasElipse.map(eh => eh.id),
-                        esBase: false,
-                        rcnPromedio: rcnPromedio,
-                        completada: completadas === frases.length && frases.length > 0,
-                        _sincronizado: h._sincronizado || false,
-                        _fechaSincronizacion: h._fechaSincronizacion || null,
-                        _recuerdo: h._recuerdo || null,
-                        _esOndaCruzada: h._esOndaCruzada || false,
-                        _ondaIndice: h._ondaIndice || indiceCounter
-                    };
-                    this._historiasElipse.push(onda);
-                    this._estadisticas.totalOndas++;
-                    indiceCounter++;
-                    
-                    console.log(`📚 Añadida onda: "${h.titulo}" (onda ${h._ondaIndice || indiceCounter})`);
-                }
-            }
-            
-            // 🔥 ORDENAR POR ÍNDICE
-            this._historiasElipse.sort((a, b) => (a.indice || 0) - (b.indice || 0));
-            
-            this._persistenciaCargada = true;
-            this._datosCargados = true;
-            localStorage.setItem('pipeline_elipse_tema_activo', String(temaId));
+            const contexto = await db.obtenerContextoTema(temaId);
+            if (contexto.tema.idioma !== this._obtenerIdiomaActual()) return;
+            this._elipseActiva = String(contexto.tema.id);
+            this._historiasElipse = contexto.historias.filter(h => !this._esOndaCruzada(h)).map((h, indice, todas) => ({
+                id: h.id, temaId: String(contexto.tema.id), titulo: h.titulo, nivel: h.nivel || contexto.tema.nivel || 'A1',
+                indice, fecha: h.fechaCreacion, palabrasNuevas: h.palabrasNuevas, palabrasBase: [],
+                historiasPrevias: todas.slice(0, indice).map(x => x.id), esBase: indice === 0,
+                completada: h.completada, rcnPromedio: h.rcnPromedio, _esOndaCruzada: false,
+                _sincronizado: h.completada, _ondaIndice: indice
+            }));
+            this._estadisticas.totalOndas = this._historiasElipse.length;
+            this._persistenciaCargada = this._datosCargados = true;
             this._guardarEstadoElipse();
             await this._guardarEnIndexedDB();
             await this._reconstruirRecuerdoOndas();
-            
-            this._guardarEstadoPorIdioma(idiomaActual);
-            
-            console.log(`✅ Elipse recuperada con ${this._historiasElipse.length} ondas desde el tema ${temaId}`);
-            
-            if (this._core) {
-                this._core.mostrarToast(`🌌 Elipse recuperada con ${this._historiasElipse.length} ondas`, 'success');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error recuperando Elipse desde tema:', error);
-        } finally {
-            this._recuperando = false;
-        }
+        } finally { this._recuperando = false; }
     }
-
-    // ============================================================
-    // INICIAR ELIPSE
-    // ============================================================
 
     async iniciarElipse(temaId, historiaId) {
         console.log(`🌌 Iniciando Elipse para tema ${temaId} con historia ${historiaId}`);
@@ -1057,6 +816,7 @@ class ModoElipse {
             localStorage.setItem('pipeline_elipse_tema_activo', String(temaId));
             this._guardarEstadoElipse();
             await this._guardarEnIndexedDB();
+            await this._recuperarElipseDesdeTema(temaId);
             return this._historiasElipse;
         }
         
@@ -1082,45 +842,11 @@ class ModoElipse {
             return null;
         }
         
-        this._resetearEstado();
-        
-        const ondaInicial = {
-            id: parseInt(historiaId),
-            titulo: historia.titulo,
-            temaId: String(temaId),
-            nivel: historia.nivel || 'A1',
-            indice: 0,
-            fecha: Date.now(),
-            palabrasNuevas: [],
-            palabrasBase: [],
-            historiasPrevias: [],
-            esBase: true,
-            rcnPromedio: 0,
-            completada: false,
-            _sincronizado: false,
-            _fechaSincronizacion: null,
-            _recuerdo: null,
-            _esOndaCruzada: false,
-            _ondaIndice: 0
-        };
-        
-        this._historiasElipse = [ondaInicial];
-        this._elipseActiva = String(temaId);
-        this._estadisticas.totalOndas = 1;
-        
+        if (Number(historia.temaId) !== Number(temaId)) throw new Error('Story belongs to another topic');
+        await this._recuperarElipseDesdeTema(temaId);
         localStorage.setItem('pipeline_elipse_tema_activo', String(temaId));
-        this._guardarEstadoElipse();
-        await this._guardarEnIndexedDB();
-        await this._reconstruirRecuerdoOndas();
-        
         this._guardarEstadoPorIdioma(idiomaActual);
-        
-        console.log(`✅ Elipse iniciada y guardada con tema ${temaId} (${idiomaActual})`);
-        
-        if (this._core) {
-            this._core.mostrarToast(`🌌 Elipse iniciada con "${historia.titulo}"`, 'success');
-        }
-        
+
         window.dispatchEvent(new CustomEvent('elipseTemaSeleccionado', {
             detail: {
                 temaId: String(temaId),
@@ -1618,220 +1344,48 @@ class ModoElipse {
     // ============================================================
 
     async generarPlantillaOnda(temaId, historiaId = null, descripcion = '') {
-        if (this._generando) {
-            console.log('⏳ Ya hay una generación en curso');
-            return null;
-        }
-
-        if (!temaId) {
-            if (this._core) this._core.mostrarToast('❌ Tema no especificado', 'error');
-            return null;
-        }
-        
+        if (this._generando) return null;
         this._generando = true;
-        
         try {
-            console.log(`🌌 generarPlantillaOnda: temaId=${temaId}, historiaId=${historiaId}`);
-            
-            const idiomaObjetivo = this._obtenerIdiomaActual() || 'es';
-            const idiomaPrompt = this._obtenerIdiomaNativo() || 'es';
-            const nombreIdiomaObjetivo = this._getNombreIdioma(idiomaObjetivo);
-            const nombreIdiomaPrompt = this._getNombreIdioma(idiomaPrompt);
-            const esJeroglifico = window.gestorIdiomas?._esJeroglifico(idiomaObjetivo) || false;
-            
-            let tema = await db.obtenerTema(parseInt(temaId));
-            if (!tema) {
-                console.warn(`⚠️ Tema ${temaId} no encontrado`);
-                if (this._core) this._core.mostrarToast('❌ Tema no encontrado', 'error');
-                this._generando = false;
-                return null;
-            }
-            
-            console.log(`📂 Tema: "${tema.nombre}" (${temaId}) - Idioma: ${idiomaObjetivo}`);
-            
-            let historiaBase = null;
-            let frasesBase = [];
-            
-            // 🔥 OBTENER TODAS LAS HISTORIAS DE LA ELIPSE
-            const todasHistoriasElipse = this._historiasElipse.filter(h => h.temaId == temaId);
-            console.log(`📚 ${todasHistoriasElipse.length} ondas en la elipse para el tema ${temaId}`);
-            
-            // 🔥 SI SE ESPECIFICÓ UN historiaId, BUSCARLA
-            if (historiaId) {
-                console.log(`🔍 Buscando historia específica con ID: ${historiaId}`);
-                
-                let historiaEnElipse = todasHistoriasElipse.find(h => h.id == historiaId);
-                if (historiaEnElipse) {
-                    console.log(`✅ Historia encontrada en la Elipse: "${historiaEnElipse.titulo}" (ID: ${historiaEnElipse.id})`);
-                    historiaBase = await db.get('historias', parseInt(historiaId));
-                    if (historiaBase) {
-                        frasesBase = await db.obtenerFrasesPorHistoria(historiaBase.id);
-                        console.log(`📝 ${frasesBase.length} frases en la historia base`);
-                    }
-                } else {
-                    console.log(`🔍 Buscando historia ${historiaId} directamente en la DB...`);
-                    historiaBase = await db.get('historias', parseInt(historiaId));
-                    if (historiaBase) {
-                        console.log(`✅ Historia encontrada en la DB: "${historiaBase.titulo}" (ID: ${historiaBase.id})`);
-                        if (historiaBase.temaId != temaId) {
-                            console.warn(`⚠️ La historia ${historiaId} no pertenece al tema ${temaId}`);
-                            historiaBase = null;
-                        } else {
-                            frasesBase = await db.obtenerFrasesPorHistoria(historiaBase.id);
-                            console.log(`📝 ${frasesBase.length} frases en la historia base`);
-                        }
-                    }
-                }
-            }
-            
-            // 🔥 SI NO SE ENCONTRÓ, USAR LA ÚLTIMA ONDA
-            if (!historiaBase && todasHistoriasElipse.length > 0) {
-                console.log(`📖 Usando última historia de la elipse...`);
-                const ultima = [...todasHistoriasElipse].sort((a, b) => (b.indice || 0) - (a.indice || 0))[0];
-                if (ultima) {
-                    console.log(`📖 Última historia de la elipse: "${ultima.titulo}" (onda ${ultima.indice + 1})`);
-                    historiaBase = await db.get('historias', ultima.id);
-                    if (historiaBase) {
-                        frasesBase = await db.obtenerFrasesPorHistoria(historiaBase.id);
-                        console.log(`📝 ${frasesBase.length} frases en la historia base`);
-                    }
-                }
-            }
-            
-            // 🔥 SI NO HAY ONDAS, USAR LA PRIMERA HISTORIA DEL TEMA
-            if (!historiaBase) {
-                console.log(`📭 No hay ondas en la elipse. Buscando historia base en el tema...`);
-                const historiasDelTema = await db.obtenerHistoriasPorTema(parseInt(temaId));
-                const historiasFiltradas = historiasDelTema.filter(h => 
-                    h.idioma === idiomaObjetivo && 
-                    !this._esOndaCruzada(h)
-                );
-                
-                if (historiasFiltradas.length > 0) {
-                    historiaBase = historiasFiltradas[0];
-                    console.log(`📖 Usando primera historia del tema como base: "${historiaBase?.titulo}" (ID: ${historiaBase?.id})`);
-                    frasesBase = await db.obtenerFrasesPorHistoria(historiaBase.id);
-                    console.log(`📝 ${frasesBase.length} frases en la historia base`);
-                    
-                    if (window.modoElipse && historiaBase) {
-                        await this.iniciarElipse(temaId, historiaBase.id);
-                        console.log(`✅ Elipse iniciada con "${historiaBase.titulo}"`);
-                    }
-                } else {
-                    console.warn(`⚠️ No hay historias disponibles en el tema ${temaId}`);
-                    if (this._core) this._core.mostrarToast('❌ No hay historias disponibles en este tema', 'error');
-                    this._generando = false;
-                    return null;
-                }
-            }
-            
-            if (!historiaBase) {
-                console.error('❌ No se pudo encontrar una historia base');
-                if (this._core) this._core.mostrarToast('❌ No se encontró historia base', 'error');
-                this._generando = false;
-                return null;
-            }
-            
-            if (frasesBase.length === 0) {
-                console.warn(`⚠️ La historia base "${historiaBase.titulo}" no tiene frases`);
-                frasesBase = await db.obtenerFrasesPorHistoria(historiaBase.id);
-                if (frasesBase.length === 0) {
-                    console.warn(`⚠️ La historia base no tiene frases`);
-                    if (this._core) this._core.mostrarToast('❌ La historia base no tiene frases', 'error');
-                    this._generando = false;
-                    return null;
-                }
-            }
-            
-            const indiceActual = todasHistoriasElipse.length;
-            const nivelActual = this._calcularNivelOnda(indiceActual);
-            const numPalabrasNuevas = Math.min(
-                this._config.palabrasNuevasPorOnda + Math.floor(indiceActual / 2),
-                8
-            );
-            
-            console.log(`📊 Nueva onda ${indiceActual + 1}: nivel ${nivelActual}, ${numPalabrasNuevas} palabras nuevas`);
-            
-            // 🔥 CONSTRUIR RECUERDO COMPLETO
-            const recuerdoCompleto = await this._construirRecuerdoCompleto(temaId, todasHistoriasElipse);
-            
-            const plantilla = this._construirPlantillaConRecuerdoCompleto(
-                tema,
-                historiaBase,
-                frasesBase,
-                nivelActual,
-                numPalabrasNuevas,
-                indiceActual,
-                idiomaObjetivo,
-                idiomaPrompt,
-                nombreIdiomaObjetivo,
-                nombreIdiomaPrompt,
-                esJeroglifico,
-                descripcion,
-                recuerdoCompleto
-            );
-            
-            console.log(`✅ Plantilla generada para onda ${indiceActual + 1} con recuerdo de ${Object.keys(recuerdoCompleto).length} ondas`);
-            this._generando = false;
-            return plantilla;
-            
-        } catch (error) {
-            console.error('❌ Error en generarPlantillaOnda:', error);
-            if (this._core) {
-                this._core.mostrarToast('❌ Error generando plantilla: ' + error.message, 'error');
-            }
-            this._generando = false;
-            return null;
-        }
+            const idioma = this._obtenerIdiomaActual();
+            const contexto = await db.obtenerContextoTema(temaId);
+            if (contexto.tema.idioma !== idioma) throw new Error('Topic language does not match');
+            const normales = contexto.historias.filter(h => !this._esOndaCruzada(h));
+            const historiaBase = historiaId ? contexto.historias.find(h => h.id === Number(historiaId)) : normales[normales.length - 1];
+            if (!historiaBase || !historiaBase.frases.length) throw new Error('Story not found or empty');
+            const indice = normales.length;
+            // El nivel pertenece al tema; crear contenido no demuestra subir de nivel.
+            const nivel = contexto.tema.nivel || this._config.nivelBase || 'A1';
+            const nuevas = Math.min(this._config.palabrasNuevasPorOnda || 3, 8);
+            const nativo = this._obtenerIdiomaNativo() || 'es';
+            const recuerdo = await this._construirRecuerdoCompleto(temaId);
+            return this._construirPlantillaConRecuerdoCompleto(contexto.tema, historiaBase, historiaBase.frases,
+                nivel, nuevas, indice, idioma, nativo, this._getNombreIdioma(idioma), this._getNombreIdioma(nativo),
+                window.gestorIdiomas?._esJeroglifico(idioma) || false, descripcion, recuerdo);
+        } finally { this._generando = false; }
     }
 
-    // ============================================================
-    // 🔥 CONSTRUIR RECUERDO COMPLETO
-    // ============================================================
-
-    async _construirRecuerdoCompleto(temaId, todasHistoriasElipse) {
+    async _construirRecuerdoCompleto(temaId) {
+        const contexto = await db.obtenerContextoTema(temaId);
         const recuerdo = {};
-        
-        const historiasOrdenadas = [...todasHistoriasElipse].sort((a, b) => (a.indice || 0) - (b.indice || 0));
-        
-        for (const h of historiasOrdenadas) {
-            try {
-                const frases = await db.obtenerFrasesPorHistoria(h.id);
-                const textoCompleto = frases.map(f => f.original).join(' ');
-                const esBase = h.esBase || false;
-                const label = esBase ? '🌟 BASE' : `🌊 Onda ${(h.indice || 0) + 1}`;
-                
-                recuerdo[h.indice || 0] = {
-                    indice: h.indice || 0,
-                    label: label,
-                    titulo: h.titulo || 'Sin título',
-                    resumen: textoCompleto.substring(0, 200) + (textoCompleto.length > 200 ? '...' : ''),
-                    palabrasNuevas: h.palabrasNuevas || [],
-                    nivel: h.nivel || 'A1',
-                    completada: h.completada || false,
-                    esBase: esBase
-                };
-            } catch (e) {
-                console.warn(`⚠️ Error obteniendo frases para historia ${h.id}:`, e);
-            }
-        }
-        
-        console.log(`📚 Recuerdo completo construido con ${Object.keys(recuerdo).length} ondas`);
+        contexto.historias.forEach((h, indice) => {
+            recuerdo[h.id] = { id: h.id, indice, label: indice === 0 ? 'BASE' : 'Historia ' + (indice + 1),
+                titulo: h.titulo || '', resumen: h.texto, ultimasFrases: h.frases.slice(-3).map(f => f.original),
+                palabrasNuevas: h.palabrasNuevas, vocabulario: h.frases.flatMap(f => f.palabras || []).map(p => typeof p === 'string' ? p : p.palabra || p.hanzi).filter(Boolean),
+                nivel: h.nivel || contexto.tema.nivel, completada: h.completada, esBase: indice === 0,
+                esOndaCruzada: this._esOndaCruzada(h) };
+        });
         return recuerdo;
     }
-
-    // ============================================================
-    // 🔥 CONSTRUIR PLANTILLA CON RECUERDO COMPLETO
-    // ============================================================
 
     _construirPlantillaConRecuerdoCompleto(tema, historiaBase, frasesBase, nivel, numPalabrasNuevas, indice, idiomaObjetivo, idiomaPrompt, nombreIdiomaObjetivo, nombreIdiomaPrompt, esJeroglifico, descripcion, recuerdoCompleto) {
         const temaNombre = tema.nombre || `Tema ${tema.id}`;
         const tituloAnterior = historiaBase.titulo || 'Historia anterior';
-        const contenidoAnterior = frasesBase.slice(0, 4).map(f => f.original).join(' ');
+        const contenidoAnterior = frasesBase.map(f => f.original).join(' ');
         
         let recuerdoTexto = `📖 **RESUMEN DE TODAS LAS ONDAS ANTERIORES:**\n\n`;
         
-        const indices = Object.keys(recuerdoCompleto).sort((a, b) => parseInt(a) - parseInt(b));
+        const indices = Object.keys(recuerdoCompleto).sort((a, b) => recuerdoCompleto[a].indice - recuerdoCompleto[b].indice);
         
         for (const idx of indices) {
             const r = recuerdoCompleto[idx];
@@ -1839,7 +1393,9 @@ class ModoElipse {
             recuerdoTexto += `**${r.label}:** "${r.titulo}"\n`;
             recuerdoTexto += `📝 ${r.resumen}\n`;
             if (r.palabrasNuevas && r.palabrasNuevas.length > 0) {
-                const palabrasFiltradas = r.palabrasNuevas.filter(p => p && typeof p === 'string' && p.trim().length > 0);
+                const palabrasFiltradas = r.palabrasNuevas
+                    .map(p => typeof p === 'string' ? p : (p?.palabra || p?.hanzi || p?.caracter || ''))
+                    .filter(p => p && p.trim().length > 0);
                 if (palabrasFiltradas.length > 0) {
                     recuerdoTexto += `📝 Palabras nuevas: ${palabrasFiltradas.join(', ')}\n`;
                 }
@@ -1854,7 +1410,7 @@ class ModoElipse {
             recuerdoTexto += `🔴 **DEBES incorporar estos elementos en la nueva historia.**\n\n`;
         }
         
-        recuerdoTexto += `⚠️ **IMPORTANTE:** Esta es la ONDA ${indice + 1}. Debes CONTINUAR la historia desde donde quedó la última onda.`;
+        recuerdoTexto += `⚠️ **IMPORTANTE:** Esta es la ONDA ${indice + 1}. Continúa desde el final de la historia base seleccionada y respeta los hechos de todas las historias del tema.`;
         
         const promptCompleto = `Genera una NUEVA historia (onda ${indice + 1}) que sea una CONTINUACIÓN DIRECTA de la historia anterior.\n\n` +
             `Idioma objetivo: ${nombreIdiomaObjetivo} (${idiomaObjetivo})\n` +
@@ -2105,7 +1661,11 @@ class ModoElipse {
 
             const palabrasNuevas = data.palabras_nuevas || [];
 
-            const historiasElipse = this._historiasElipse.filter(h => h.temaId == temaIdNumerico);
+            const contextoTema = typeof db.obtenerContextoTema === 'function'
+                ? await db.obtenerContextoTema(temaIdNumerico)
+                : null;
+            const historiasElipse = (contextoTema?.historias || this._historiasElipse)
+                .filter(h => h.temaId == temaIdNumerico && h._esOndaCruzada !== true);
             const ultimaHistoria = historiasElipse.sort((a, b) => (b.indice || 0) - (a.indice || 0))[0];
             const historiaBaseId = ultimaHistoria ? ultimaHistoria.id : null;
 

@@ -1126,119 +1126,84 @@ La pista debe ser breve (máx 15 palabras) y en español.`;
     // PROCESAR RESPUESTA
     // ============================================================
     
-    async procesarRespuesta(tipo) {
-        if (!this.fraseActual || this.frases.length === 0) return;
-
-        const progreso = this.fraseActual.progreso;
-        let cambioRCN = 0;
-
-        switch (tipo) {
-            case 'correcto': 
-                cambioRCN = 1.0 + this.neuroParams.refuerzoPositivo * (1 - Math.random() * 0.2);
-                progreso.repasosExitosos = (progreso.repasosExitosos || 0) + 1;
-                break;
-            case 'parcial': 
-                cambioRCN = 0.2 + Math.random() * 0.2;
-                progreso.repasosExitosos = (progreso.repasosExitosos || 0) + 0.5;
-                break;
-            case 'duda': 
-                cambioRCN = -0.1 - Math.random() * 0.15;
-                progreso.repasosFallidos = (progreso.repasosFallidos || 0) + 1;
-                break;
-            case 'fallo': 
-                cambioRCN = -0.4 - Math.random() * 0.1;
-                progreso.repasosFallidos = (progreso.repasosFallidos || 0) + 1;
-                break;
-            default: return;
-        }
-
-        progreso.rcn = Math.max(-1, Math.min(5, (progreso.rcn || 0) + cambioRCN));
-        progreso.ultimoRepaso = Date.now();
-        this.estadoNeuro.rcn = progreso.rcn;
-
-        const intervalos = this._calcularIntervaloOptimo(progreso);
-        progreso.proximoRepaso = Date.now() + intervalos;
-        progreso.intervaloActual = intervalos;
-        
-        if (progreso.rcn >= 4 && this.faseActual < 7) {
-            this.faseActual++;
-        } else if (progreso.rcn < 0 && this.faseActual > 1) {
-            this.faseActual--;
-        }
-
-        if (progreso.rcn >= 4) {
-            progreso.estado = 'completada';
-            this._frasesCompletadasDesdeUltimaEvaluacion++;
-        }
-
-        progreso.fase = this.faseActual;
-        progreso.idioma = this.idiomaObjetivo;
-        await db.guardarProgreso(progreso);
-        this.fraseActual.progreso = progreso;
-
-        this.turnosEnFase++;
-        this._avanzarSiguienteFrase();
-        if (vigia && vigia.escanear) vigia.escanear();
-    }
-
-    _calcularIntervaloOptimo(progreso) {
-        const rcn = progreso.rcn || 0;
-        const repasos = (progreso.repasosExitosos || 0) + (progreso.repasosFallidos || 0);
-        let intervalo = this.neuroParams.intervaloBase * (1 + rcn * 0.5);
-        intervalo *= Math.pow(this.neuroParams.factorEspaciado, repasos / 3);
-        intervalo = Math.min(this.neuroParams.maxIntervalo, intervalo);
-        intervalo = Math.max(this.neuroParams.intervaloBase / 2, intervalo);
-        const ruido = 1 + (Math.random() - 0.5) * 0.2;
-        intervalo *= ruido;
-        return Math.round(intervalo);
-    }
-
-    _avanzarSiguienteFrase() {
-        const frasesEnCurso = this.frases.filter(f => 
-            f.progreso?.estado !== 'completada'
-        );
-        
-        if (frasesEnCurso.length === 0) {
-            this.indiceFrase = (this.indiceFrase + 1) % this.frases.length;
-        } else {
-            frasesEnCurso.sort((a, b) => (a.progreso?.rcn || 0) - (b.progreso?.rcn || 0));
-            const idx = frasesEnCurso.findIndex(f => f.id === this.fraseActual.id);
-            if (idx >= 0 && idx < frasesEnCurso.length - 1) {
-                this.indiceFrase = this.frases.indexOf(frasesEnCurso[idx + 1]);
-            } else {
-                this.indiceFrase = this.frases.indexOf(frasesEnCurso[0]);
+    async procesarRespuesta(tipo, opciones = {}) {
+        if (this._procesandoRespuesta || !this.fraseActual || !['correcto','parcial','duda','fallo'].includes(tipo)) return false;
+        this._procesandoRespuesta = true;
+        const frase = this.fraseActual;
+        const idioma = frase.idioma || this.idiomaObjetivo;
+        try {
+            const anterior = await db.obtenerProgreso(frase.id);
+            const progreso = { ...(anterior || frase.progreso || {}), fraseId: frase.id, idioma };
+            const faseAnterior = progreso.fase || 1;
+            const rcnAnterior = progreso.rcn || 0;
+            const cambios = { correcto: 1.25, parcial: 0.3, duda: -0.15, fallo: -0.45 };
+            progreso.rcn = Math.max(-1, Math.min(5, rcnAnterior + cambios[tipo]));
+            progreso.repasosExitosos = (progreso.repasosExitosos || 0) + (tipo === 'correcto' ? 1 : tipo === 'parcial' ? 0.5 : 0);
+            progreso.repasosFallidos = (progreso.repasosFallidos || 0) + (['fallo','duda'].includes(tipo) ? 1 : 0);
+            progreso.ultimoRepaso = Date.now();
+            progreso.intervaloActual = this._calcularIntervaloOptimo(progreso, tipo);
+            progreso.proximoRepaso = progreso.ultimoRepaso + progreso.intervaloActual;
+            progreso.estado = progreso.rcn >= 4 ? 'completada' : 'en_curso';
+            progreso.fase = progreso.rcn >= 4 ? Math.min(7, faseAnterior + 1) : progreso.rcn < 0 ? Math.max(1, faseAnterior - 1) : faseAnterior;
+            const guardado = await db.guardarProgreso(progreso);
+            if (!guardado) throw new Error('Progress was not saved');
+            frase.progreso = guardado;
+            if (this.fraseActual === frase) {
+                this.faseActual = guardado.fase;
+                this.estadoNeuro.rcn = guardado.rcn;
             }
-        }
-        
-        this.cargarFrase(this.indiceFrase);
-        this._guardarIndiceEstudio();
-        
-        const completadas = this.frases.filter(f => 
-            f.progreso?.estado === 'completada' || (f.progreso?.rcn || 0) >= 4
-        ).length;
-        
-        const tiempoDesdeUltimaEval = Date.now() - this._ultimaEvaluacion;
-        if (completadas % 10 === 0 && completadas > 0 && 
-            this._frasesCompletadasDesdeUltimaEvaluacion >= 10 &&
-            tiempoDesdeUltimaEval > 60000) {
-            try {
-                const usuario = db.getUsuario ? db.getUsuario() : null;
-                if (usuario && usuario.id) {
-                    const idioma = this.idiomaObjetivo || 'es';
-                    console.log('📊 Evaluando nivel automático...');
-                    gestorNiveles.evaluarNivelAutomatico(usuario.id, idioma);
-                    this._frasesCompletadasDesdeUltimaEvaluacion = 0;
-                    this._ultimaEvaluacion = Date.now();
-                }
-            } catch (e) {
-                console.warn('⚠️ Error evaluando nivel:', e);
+            if (rcnAnterior < 4 && guardado.rcn >= 4) this._frasesCompletadasDesdeUltimaEvaluacion++;
+            this.turnosEnFase++;
+            if (frase.historiaId && window.gestorProgresoHistorias) {
+                const frases = await db.obtenerFrasesPorHistoria(frase.historiaId);
+                const progresos = await Promise.all(frases.map(f => db.obtenerProgreso(f.id)));
+                const promedio = frases.length ? progresos.reduce((n,p) => n + (p?.rcn || 0), 0) / frases.length : 0;
+                await window.gestorProgresoHistorias.actualizarDesdeSRS(frase.historiaId, promedio,
+                    frases.length > 0 && progresos.every(p => p && p.rcn >= 4));
+            }
+            window.dispatchEvent(new CustomEvent('respuestaEstudio', { detail: {
+                tipo, fraseId: frase.id, historiaId: frase.historiaId || null, temaId: this._temaActual,
+                idioma, rcn: guardado.rcn, fase: guardado.fase, completada: guardado.estado === 'completada'
+            }}));
+            if (faseAnterior !== guardado.fase) window.dispatchEvent(new CustomEvent('cambioFase', {
+                detail: { fraseId: frase.id, historiaId: frase.historiaId, idioma, fase: guardado.fase, faseAnterior }
+            }));
+            if (opciones.avanzar !== false && this.fraseActual === frase && this.idiomaObjetivo === idioma) await this._avanzarSiguienteFrase();
+            if (window.vigia?.escanear) window.vigia.escanear();
+            return true;
+        } finally { this._procesandoRespuesta = false; }
+    }
+
+    _calcularIntervaloOptimo(progreso, tipo = 'correcto') {
+        const base = this.neuroParams.intervaloBase;
+        const anterior = progreso.intervaloActual || base;
+        if (tipo === 'fallo') return Math.max(60000, Math.min(base / 2, anterior / 2));
+        if (tipo === 'duda') return Math.max(60000, Math.min(base, anterior * 0.75));
+        if (tipo === 'parcial') return Math.min(this.neuroParams.maxIntervalo, Math.max(base / 2, anterior));
+        const exitos = progreso.repasosExitosos || 0;
+        return Math.round(Math.min(this.neuroParams.maxIntervalo,
+            Math.max(base / 2, base * (1 + Math.max(0, progreso.rcn || 0) * 0.5) * Math.pow(this.neuroParams.factorEspaciado, exitos / 3))));
+    }
+
+    async _avanzarSiguienteFrase() {
+        if (!this.frases.length) return;
+        const ahora = Date.now();
+        const pendientes = this.frases.filter(f => !f.progreso || !f.progreso.proximoRepaso || f.progreso.proximoRepaso <= ahora);
+        pendientes.sort((a,b) => (a.progreso?.proximoRepaso || 0) - (b.progreso?.proximoRepaso || 0) || (a.progreso?.rcn || 0) - (b.progreso?.rcn || 0));
+        // Al agotar los vencidos se permite continuar como práctica voluntaria.
+        const siguiente = pendientes.find(f => f.id !== this.fraseActual?.id) || pendientes[0];
+        this.indiceFrase = siguiente ? this.frases.indexOf(siguiente) : (this.indiceFrase + 1) % this.frases.length;
+        await this.cargarFrase(this.indiceFrase);
+        await this._guardarIndiceEstudio();
+        if (this._frasesCompletadasDesdeUltimaEvaluacion >= 10 && Date.now() - this._ultimaEvaluacion > 60000) {
+            const usuario = await db.getUsuario();
+            if (usuario?.id && window.gestorNiveles) {
+                this._frasesCompletadasDesdeUltimaEvaluacion = 0;
+                this._ultimaEvaluacion = Date.now();
+                await window.gestorNiveles.evaluarNivelAutomatico(usuario.id, this.idiomaObjetivo);
             }
         }
     }
-
-    // ============================================================
-    // GUARDAR ÍNDICE DE ESTUDIO
-    // ============================================================
 
     async _guardarIndiceEstudio() {
         if (this.indiceFrase !== undefined && this.idiomaObjetivo) {

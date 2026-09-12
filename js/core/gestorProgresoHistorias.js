@@ -128,7 +128,7 @@ class GestorProgresoHistorias {
             return false;
         }
         this._ultimoCambio[key] = ahora;
-        this._cambioManual[historiaId] = ahora;
+        if (origen !== 'srs') this._cambioManual[historiaId] = ahora;
 
         this._procesando.add(historiaId);
         this._log(`🔄 Cambiando estado de historia ${historiaId} a ${completado ? 'completada' : 'no completada'} (origen: ${origen})`);
@@ -145,7 +145,7 @@ class GestorProgresoHistorias {
 
             const esOndaCruzada = historia._esOndaCruzada === true;
             const esOnda = historia._esOnda === true && !esOndaCruzada;
-            const esBase = historia._esBase === true || historia._esOnda === false;
+            const esBase = !esOndaCruzada && (historia._esBase === true || historia._esOnda === false);
 
             if (esOndaCruzada) {
                 this._log(`🌊 Onda CRUZADA detectada, NO se sincronizará con Elipse`);
@@ -170,68 +170,14 @@ class GestorProgresoHistorias {
                         }
                     }
                 }
-                rcnPromedio = count > 0 ? totalRCN / count : 0;
+                rcnPromedio = totalFrases > 0 ? totalRCN / totalFrases : 0;
             }
 
             let rcnFinal = rcnPromedio;
             let estadoFinal = completado ? 'completada' : 'en_curso';
 
-            if (esBase && completado) {
-                rcnFinal = 5.0;
-                this._log(`🌟 BASE marcada como completada, RCN forzado a 5.0`);
-            } else if (esBase && !completado) {
-                rcnFinal = 0;
-                this._log(`🌟 BASE desmarcada, RCN resetado a 0`);
-            } else if (completado && rcnPromedio < 4) {
-                rcnFinal = Math.max(4.0, rcnPromedio);
-                this._log(`⚠️ RCN bajo (${rcnPromedio.toFixed(1)}) forzado a ${rcnFinal.toFixed(1)} para completado`);
-            } else if (!completado) {
-                rcnFinal = 0;
-                this._log(`🔄 Historia desmarcada, RCN resetado a 0`);
-            }
-
-            if (!completado) {
-                this._log(`🔄 Resetear progreso de ${frases.length} frases`);
-                for (const f of frases) {
-                    const progreso = await db.obtenerProgreso(f.id);
-                    if (progreso) {
-                        progreso.rcn = 0;
-                        progreso.rg = 0;
-                        progreso.estado = 'nueva';
-                        progreso.repasosExitosos = 0;
-                        progreso.repasosFallidos = 0;
-                        progreso.ultimoRepaso = null;
-                        progreso.proximoRepaso = null;
-                        progreso.intervaloActual = 0;
-                        await db.guardarProgreso(progreso);
-                    }
-                }
-            } else if (completado && rcnPromedio < 4) {
-                this._log(`🔄 Forzando RCN a 4.0 en ${frases.length} frases`);
-                for (const f of frases) {
-                    const progreso = await db.obtenerProgreso(f.id);
-                    if (progreso) {
-                        progreso.rcn = 4.0;
-                        progreso.estado = 'completada';
-                        progreso.repasosExitosos = (progreso.repasosExitosos || 0) + 3;
-                        await db.guardarProgreso(progreso);
-                    } else {
-                        await db.guardarProgreso({
-                            fraseId: f.id,
-                            fase: 7,
-                            rcn: 4.0,
-                            rg: 1,
-                            ultimoRepaso: Date.now(),
-                            proximoRepaso: Date.now() + 86400000,
-                            estado: 'completada',
-                            repasosExitosos: 3,
-                            repasosFallidos: 0,
-                            intervaloActual: 86400000,
-                            fechaCreacion: Date.now()
-                        });
-                    }
-                }
-            }
+            // Marcar una historia organiza la biblioteca; no inventa intentos SRS.
+            if (origen !== 'srs') historia._completadaManual = completado;
 
             // Actualizar la historia en DB
             historia._rcnPromedio = rcnFinal;
@@ -536,32 +482,7 @@ class GestorProgresoHistorias {
     }
 
     async actualizarDesdeSRS(historiaId, rcnPromedio, completada) {
-        const cambioManual = this._cambioManual[historiaId];
-        if (cambioManual && (Date.now() - cambioManual < 5000)) {
-            this._log(`⏳ Ignorando actualización SRS para ${historiaId} (cambio manual reciente)`, 'warn');
-            return false;
-        }
-
-        const historia = await db.get('historias', historiaId);
-        if (!historia) return false;
-        
-        const estadoActual = historia.estado === 'completada' || historia._completada === true;
-        if (estadoActual === completada) {
-            return false;
-        }
-
-        if (completada && rcnPromedio < 4.0) {
-            this._log(`⏳ Ignorando SRS: RCN ${rcnPromedio.toFixed(1)} < 4.0 para ${historiaId}`, 'warn');
-            return false;
-        }
-
-        if (!completada && rcnPromedio >= 4.0) {
-            this._log(`⏳ Ignorando SRS: RCN ${rcnPromedio.toFixed(1)} >= 4.0, no se puede desmarcar desde SRS`, 'warn');
-            return false;
-        }
-
-        this._log(`🔄 SRS: Actualizando ${historiaId} a ${completada ? 'completada' : 'no completada'} (RCN: ${rcnPromedio.toFixed(1)})`);
-        return await this.cambiarEstadoHistoria(historiaId, completada, 'srs');
+        return this.cambiarEstadoHistoria(Number(historiaId), completada, 'srs');
     }
 
     _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn) {
