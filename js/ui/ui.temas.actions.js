@@ -605,6 +605,14 @@ class UITemasActions {
             `54. 🔥 ]`,
             `55. 🔥 **¡CADA PALABRA DE LA FRASE DEBE ESTAR EN EL ARRAY!**`
         ];
+        if (/^(en|english|inglés|ingles)$/i.test(idiomaActivo)) {
+            instruccionesDesglose.push(
+                `${instruccionesDesglose.length + 1}. 🔗 Para cada phrasal verb que aparezca, añade en la frase un objeto en "phrasal_verbs".`,
+                `${instruccionesDesglose.length + 2}. Cada objeto debe incluir "expresion", "verbo_base", "particula", "significado", "traduccion_contextual", "separable" y "nivel".`,
+                `${instruccionesDesglose.length + 3}. Incluye solo expresiones reales como "give up", "look for" o "turn on"; no marques una preposición aislada como phrasal verb.`,
+                `${instruccionesDesglose.length + 4}. Si no hay phrasal verbs, usa "phrasal_verbs": [].`
+            );
+        }
 
         const instrucciones = [
             `1. Genera ${numHistorias} mini-historias sobre "${temaNombre}"`,
@@ -672,7 +680,16 @@ class UITemasActions {
                     "familia": "Familia SEMÁNTICA de la lista permitida, según el contexto de la frase. Nunca una categoría gramatical. Para palabras funcionales, usa el contexto temático de la frase.",
                     "tipo": "Categoría GRAMATICAL según su uso en la frase: sustantivo, verbo, adjetivo, pronombre, artículo, preposición, clasificador, partícula, etc. No copies sustantivo por defecto.",
                     "significado": "Traducción al " + idiomaNativo
-                }
+                },
+                "campos_phrasal_verbs": /^(en|english|inglés|ingles)$/i.test(idiomaActivo) ? {
+                    "expresion": "Phrasal verb completo (ej: look for)",
+                    "verbo_base": "Verbo sin conjugar (ej: look)",
+                    "particula": "Partícula (ej: for)",
+                    "significado": "Significado general en " + idiomaNativo,
+                    "traduccion_contextual": "Traducción en esta frase al " + idiomaNativo,
+                    "separable": "true o false",
+                    "nivel": nivel
+                } : null
             },
             "meta": {
                 "tema": temaNombre,
@@ -1184,6 +1201,7 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
                             reglaGramatical: fraseData.regla_gramatical || null,
                             explicacionGramatical: fraseData.explicacion_gramatical || null,
                             tipoRegla: fraseData.tipo_regla || null,
+                            phrasalVerbs: Array.isArray(fraseData.phrasal_verbs) ? fraseData.phrasal_verbs : [],
                             familiaSemantica: 'Seleccionadas por Usuario',
                             _version_estandar: versionEstandar,
                             _esImportada: true
