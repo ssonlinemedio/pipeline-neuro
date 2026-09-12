@@ -659,6 +659,13 @@ class UIEspacioActions {
             mensajePrompt += `📖 **${textoMostrar}**\n`;
         }
         mensajePrompt += `📝 **Significado:** ${textoNativo}\n\n`;
+        const tipoGramatical = palabraObj.tipo || palabraObj.familiaGramatical || 'sin_clasificar';
+        const familiaSemantica = palabraObj.familiaSemantica || palabraObj.familia || 'sin_clasificar';
+        mensajePrompt += `📚 **Categoría gramatical:** ${tipoGramatical}\n`;
+        mensajePrompt += `🏷️ **Familia semántica:** ${familiaSemantica}\n`;
+        if (palabraObj.ejemploFrase) {
+            mensajePrompt += `💬 **Ejemplo:** ${palabraObj.ejemploFrase}\n`;
+        }
         mensajePrompt += `🌍 Idioma: ${uiEspacio._getNombreIdioma(idioma)}\n`;
         mensajePrompt += `🎯 Nivel: ${palabraObj.nivel || uiEspacio._obtenerNivelRealUsuario()}\n\n`;
         mensajePrompt += esJeroglifico ? '✍️ Escribe el carácter o pinyin:' : '✍️ Escribe la palabra:';

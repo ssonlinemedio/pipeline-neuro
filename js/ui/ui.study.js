@@ -2496,7 +2496,7 @@ REGLAS:
                     const familiaEscapada = (familia || 'sin_clasificar').replace(/'/g, "\\'");
                     
                     html += `<span style="display:inline-flex;flex-direction:column;align-items:center;padding:6px 14px;border-radius:12px;background:${color}15;border:1px solid ${color}30;cursor:pointer;" 
-                                onclick="window.UIStudy._abrirModalGuardarPalabra('${textoEscapado}', '${pinyinEscapado}', '${significadoEscapado}', '${familiaEscapada}', '${idioma}', '${nivelReal}')"
+                                onclick="window.UIStudy._abrirModalGuardarPalabra('${textoEscapado}', '${pinyinEscapado}', '${significadoEscapado}', '${familiaEscapada}', '${idioma}', '${nivelReal}', '${(tipo || 'sustantivo').replace(/'/g, "\\'")}')"
                                 onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
                                 onmouseout="this.style.transform='none';this.style.boxShadow='none'" 
                                 title="Haz clic para guardar en Mi Espacio">`;
@@ -3076,7 +3076,7 @@ REGLAS:
         // MODAL DE PALABRAS DESGLOSADAS AVANZADO
         // ============================================================
 
-        async _abrirModalGuardarPalabra(palabra, pinyin, significado, familia, idioma, nivel) {
+        async _abrirModalGuardarPalabra(palabra, pinyin, significado, familia, idioma, nivel, tipo = '') {
             try {
                 console.log('📖 Abriendo modal avanzado para palabra:', palabra);
                 
@@ -3164,7 +3164,7 @@ REGLAS:
                 }
                 
                 const familiaSemantica = palabraCompleta?.familiaSemantica || palabraCompleta?.familia || familia || 'General';
-                const familiaGramatical = palabraCompleta?.tipo || palabraCompleta?.familia || 'sustantivo';
+                const familiaGramatical = palabraCompleta?.tipo || tipo || 'sustantivo';
                 const colorSemantica = this._getColorFamiliaSemantica(familiaSemantica);
                 const colorGramatical = this._getColorFamiliaGramatical(familiaGramatical);
                 
@@ -3244,7 +3244,7 @@ REGLAS:
                     icono.textContent = palabraCompleta?.esCaracterRaiz ? '🌟' : (esJeroglifico ? '🀄' : '📖');
                 }
                 
-                this._configurarBotonesModalPalabraAvanzado(palabraId, palabra, idiomaReal, nivelReal, familiaSemantica);
+                this._configurarBotonesModalPalabraAvanzado(palabraId, palabra, idiomaReal, nivelReal, familiaSemantica, familiaGramatical);
                 
                 this._palabraModalActual = {
                     id: palabraId,
@@ -3715,7 +3715,7 @@ REGLAS:
                                             cursor: pointer;
                                             font-size: 12px;
                                             transition: all 0.2s;
-                                        " onclick="window.UIStudy._cerrarModalPalabraAvanzado();window.UIStudy._abrirModalGuardarPalabra('${pTexto.replace(/'/g, "\\'")}', '${pPinyin.replace(/'/g, "\\'")}', '${(p.significado || '').replace(/'/g, "\\'")}', '${(p.familia || p.familiaSemantica || 'General').replace(/'/g, "\\'")}', '${idioma}', '${p.nivel || nivel}')" 
+                                        " onclick="window.UIStudy._cerrarModalPalabraAvanzado();window.UIStudy._abrirModalGuardarPalabra('${pTexto.replace(/'/g, "\\'")}', '${pPinyin.replace(/'/g, "\\'")}', '${(p.significado || '').replace(/'/g, "\\'")}', '${(p.familia || p.familiaSemantica || 'General').replace(/'/g, "\\'")}', '${idioma}', '${p.nivel || nivel}', '${(p.tipo || 'sustantivo').replace(/'/g, "\\'")}')"
                                            onmouseover="this.style.borderColor='var(--primary)';this.style.transform='scale(1.05)'" 
                                            onmouseout="this.style.borderColor='var(--light)';this.style.transform='none'">
                                             <span style="font-weight:600;font-size:14px;">${pTexto}</span>
@@ -3768,13 +3768,13 @@ REGLAS:
         // CONFIGURAR BOTONES DEL MODAL AVANZADO
         // ============================================================
 
-        _configurarBotonesModalPalabraAvanzado(palabraId, palabra, idioma, nivel, familia) {
+        _configurarBotonesModalPalabraAvanzado(palabraId, palabra, idioma, nivel, familia, familiaGramatical = '') {
             const btnGuardar = document.getElementById('btnGuardarPalabraAvanzado');
             if (btnGuardar) {
                 const newBtn = btnGuardar.cloneNode(true);
                 btnGuardar.parentNode.replaceChild(newBtn, btnGuardar);
                 newBtn.onclick = async () => {
-                    await this._guardarPalabraEnEspacioDesdeModal(palabraId, palabra, idioma, nivel, familia);
+                    await this._guardarPalabraEnEspacioDesdeModal(palabraId, palabra, idioma, nivel, familia, familiaGramatical);
                 };
             }
             
@@ -3835,7 +3835,7 @@ REGLAS:
         // GUARDAR PALABRA EN MI ESPACIO DESDE MODAL
         // ============================================================
 
-        async _guardarPalabraEnEspacioDesdeModal(palabraId, palabra, idioma, nivel, familia) {
+        async _guardarPalabraEnEspacioDesdeModal(palabraId, palabra, idioma, nivel, familia, tipo = '') {
             try {
                 if (!window.gestorFavoritos) {
                     this.core?.mostrarToast('❌ Gestor de favoritos no disponible', 'error');
@@ -3871,7 +3871,7 @@ REGLAS:
                         familias: [familia || 'sin_clasificar'],
                         familiaSemantica: familia || 'sin_clasificar',
                         nivel: nivel,
-                        tipo: 'sustantivo',
+                        tipo: tipo || 'sustantivo',
                         idioma: idioma,
                         frecuencia: 1,
                         neuroScore: 0.5,
@@ -4436,7 +4436,7 @@ REGLAS:
                                         const significado = p.significado || '';
                                         return `
                                             <span style="display:inline-flex;flex-direction:column;align-items:center;padding:2px 10px;border-radius:10px;background:var(--bg);border:1px solid var(--light);cursor:pointer;font-size:12px;"
-                                                  onclick="window.UIStudy._abrirModalGuardarPalabra('${texto.replace(/'/g, "\\'")}', '${(esJeroglifico ? pinyinPalabra : transcripcionPalabra).replace(/'/g, "\\'")}', '${significado.replace(/'/g, "\\'")}', '${(p.familia || 'General').replace(/'/g, "\\'")}', '${idioma}', '${nivelReal}')"
+                                                  onclick="window.UIStudy._abrirModalGuardarPalabra('${texto.replace(/'/g, "\\'")}', '${(esJeroglifico ? pinyinPalabra : transcripcionPalabra).replace(/'/g, "\\'")}', '${significado.replace(/'/g, "\\'")}', '${(p.familia || 'General').replace(/'/g, "\\'")}', '${idioma}', '${nivelReal}', '${(p.tipo || 'sustantivo').replace(/'/g, "\\'")}')"
                                                   onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
                                                   onmouseout="this.style.transform='none';this.style.boxShadow='none'">
                                                 <span style="font-weight:600;font-size:14px;">${texto}</span>
