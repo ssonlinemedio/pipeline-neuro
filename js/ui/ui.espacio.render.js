@@ -3,6 +3,92 @@
 // ============================================================
 
 class UIEspacioRender {
+    static escapar(valor) {
+        return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+    }
+
+    static texto(valor) {
+        // The existing DOM translator must retain Spanish as its source so a
+        // later interface-language change can translate this node again.
+        return this.escapar(window.PipelineI18n ? window.PipelineI18n.t(valor, 'es') : valor);
+    }
+
+    static async obtenerResumen(frases, palabras) {
+        const progresos = await Promise.all(frases.map(f => db.obtenerProgreso(f.id)));
+        const ahora = Date.now();
+        const practicada = p => p && (Number(p.repasosExitosos || 0) + Number(p.repasosFallidos || 0)) > 0;
+        const pendientes = frases.filter((f, i) => {
+            const p = progresos[i];
+            return !practicada(p) || (Number(p.proximoRepaso) > 0 && Number(p.proximoRepaso) <= ahora);
+        });
+        return {
+            frases: frases.length, palabras: palabras.length, pendientes,
+            practicadas: progresos.filter(practicada).length,
+            familias: new Set([...frases, ...palabras].map(x => x.familiaSemantica || x.familia || 'sin_clasificar')).size
+        };
+    }
+
+    static renderizarCabecera(ui, idioma, nivel, resumen) {
+        const t = valor => this.texto(valor);
+        const porcentaje = resumen.frases ? Math.round(resumen.practicadas / resumen.frases * 100) : 0;
+        return `<div class="espacio-container espacio-workspace">
+            <header class="espacio-hero">
+                <div class="espacio-hero-copy">
+                    <span class="espacio-eyebrow">${t('APRENDIZAJE PERSONAL')}</span>
+                    <h2>${t('Mi Espacio')}<span class="espacio-hero-dot" aria-hidden="true">.</span></h2>
+                    <p>${t('Lo que guardas, lo que practicas, lo que haces tuyo.')}</p>
+                    <div class="espacio-badges"><span>${t(ui._getNombreIdioma(idioma))}</span><span>${t('Nivel')} <b>${this.escapar(nivel)}</b></span></div>
+                </div>
+                <div class="espacio-hero-art" aria-hidden="true"><span>Aa</span><span>语</span><span>あ</span></div>
+            </header>
+            <div class="espacio-overview">
+                <section class="espacio-session">
+                    <span class="espacio-eyebrow">${t('TU PRÓXIMO PASO')}</span>
+                    <h3>${t(resumen.frases ? 'Da vida a lo que has guardado' : 'Tu colección empieza aquí')}</h3>
+                    <p>${t(resumen.frases ? 'Practica hasta 10 frases de tu colección. Primero, las nuevas y las que toca repasar.' : 'Añade frases y palabras que quieras recordar y úsalas en tus próximas prácticas.')}</p>
+                    <div class="espacio-session-actions">
+                    ${resumen.frases ? `<button class="espacio-btn espacio-btn-primary" data-espacio-practicar><i class="fas fa-play" aria-hidden="true"></i> ${t('Practicar mi colección')}</button>` : ''}
+                    <button class="espacio-btn ${resumen.frases ? 'espacio-btn-light' : 'espacio-btn-primary'}" onclick="window.UIEspacio.abrirModalUnificado()"><i class="fas fa-plus" aria-hidden="true"></i> ${t('Añadir Contenido')}</button></div>
+                </section>
+                <section class="espacio-progress" aria-label="${t('Práctica de frases')}">
+                    <span class="espacio-eyebrow">${t('PRÁCTICA DE FRASES')}</span>
+                    <div class="espacio-progress-number">${resumen.practicadas}<span> / ${resumen.frases}</span></div>
+                    <p>${t('Frases practicadas al menos una vez')}</p>
+                    <progress max="100" value="${porcentaje}" aria-label="${t('Práctica de frases')}"></progress>
+                    <small><b>${resumen.pendientes.length}</b> ${t('nuevas o para repasar')}</small>
+                </section>
+            </div>
+            <div class="espacio-metrics">
+                ${[['fa-book-open', resumen.frases, 'Frases'], ['fa-font', resumen.palabras, 'Palabras'], ['fa-layer-group', resumen.familias, 'Familias']].map(([icono, numero, label]) => `<div><i class="fas ${icono}" aria-hidden="true"></i><strong>${numero}</strong><span>${t(label)}</span></div>`).join('')}
+            </div>
+            <nav class="espacio-tools" aria-label="${t('Herramientas de la colección')}">
+                <button class="espacio-btn" onclick="window.UIEspacio._mostrarSelectorEjercicios()">${t('Ejercicios')}</button>
+                <button class="espacio-btn" onclick="window.UIEspacio._mostrarEstadisticasNivel(window.UIEspacio._idiomaActual)">${t('Estadísticas')}</button>
+                <button class="espacio-btn" onclick="window.UIEspacio._exportarFavoritos()"><i class="fas fa-download" aria-hidden="true"></i> ${t('Exportar')}</button>
+                <button class="espacio-btn" onclick="window.UIEspacio._importarFavoritos()"><i class="fas fa-upload" aria-hidden="true"></i> ${t('Importar')}</button>
+            </nav>`;
+    }
+
+    static async practicarGuardadas(ui) {
+        if (ui._iniciandoColeccion) return;
+        ui._iniciandoColeccion = true;
+        const idioma = gestorIdiomas.getIdiomaActivo();
+        try {
+            const frases = (await gestorFavoritos.obtenerFrasesFavoritas()).filter(f => f.idioma === idioma);
+            const resumen = await this.obtenerResumen(frases, []);
+            if (gestorIdiomas.getIdiomaActivo() !== idioma) return;
+            const pendientes = new Set(resumen.pendientes.map(f => f.id));
+            const seleccion = [...resumen.pendientes, ...frases.filter(f => !pendientes.has(f.id))].slice(0, 10);
+            if (!seleccion.length) return;
+            pipeline.frases = seleccion;
+            pipeline.indiceFrase = 0;
+            await pipeline.cargarFrase(0);
+            ui._getCore()?.irAModulo('study');
+        } catch (error) {
+            console.error('Error iniciando colección:', error);
+            ui._mostrarToast(window.PipelineI18n.t('No se pudo iniciar la práctica. Inténtalo de nuevo.'), 'error');
+        } finally { ui._iniciandoColeccion = false; }
+    }
     // ============================================================
     // RENDERIZAR MI ESPACIO (VISTA PRINCIPAL)
     // ============================================================
@@ -10,6 +96,7 @@ class UIEspacioRender {
     static async renderizarMiEspacio(uiEspacio) {
         if (uiEspacio._cargando) return;
         uiEspacio._cargando = true;
+        const filtrosAlIniciar = JSON.stringify(uiEspacio._filtros);
         const container = document.getElementById('espacioContent');
         if (!container) {
             const moduleDiv = document.getElementById('espacioModule');
@@ -50,6 +137,8 @@ class UIEspacioRender {
             let frases = todasFrases.filter(f => f.idioma === idiomaActivo);
             let palabras = todasPalabras.filter(p => p.idioma === idiomaActivo);
 
+            const frasesIdioma = frases;
+            const palabrasIdioma = palabras;
             const { frasesFiltradas, palabrasFiltradas } = window.UIEspacioActions.aplicarFiltros(frases, palabras, uiEspacio);
             frases = frasesFiltradas;
             palabras = palabrasFiltradas;
@@ -100,50 +189,28 @@ class UIEspacioRender {
             const finNiveles = Math.min(inicioNiveles + uiEspacio._nivelesPorPagina, nivelesOrdenados.length);
             const nivelesPagina = nivelesOrdenados.slice(inicioNiveles, finNiveles);
 
-            let html = `
-                <div class="espacio-container" style="padding:16px;">
-                    <div class="espacio-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-                        <div>
-                            <h2 style="font-size:24px;font-weight:800;color:var(--dark);margin:0;">⭐ Mi Espacio</h2>
-                            <p style="color:var(--gray);font-size:14px;margin:4px 0 0;">
-                                Tus frases y vocabulario guardados · <strong>${uiEspacio._getNombreIdioma(idiomaActivo)}</strong>${totalFavoritos > 0 ? ` · ${totalFavoritos} elementos` : ''}
-                            </p>
-                            <p style="color:var(--gray-light);font-size:12px;margin:2px 0 0;">
-                                📚 Organizado por Nivel → Familia Semántica · <strong>Nivel actual: ${nivelReal}</strong>
-                                ${uiEspacio._totalPaginasNiveles > 1 ? ` · 📄 Página ${paginaActualNiveles}/${uiEspacio._totalPaginasNiveles}` : ''}
-                            </p>
-                            <p style="color:var(--gray-light);font-size:11px;margin:2px 0 0;">
-                                🎤 Transcripción fonética en <strong>${uiEspacio._getNombreIdioma(idiomaNativo)}</strong>
-                            </p>
-                        </div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="window.UIEspacio.abrirModalUnificado()" style="padding:10px 20px;font-size:14px;font-weight:700;border:none;border-radius:10px;cursor:pointer;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 20px rgba(108,92,231,0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'"><i class="fas fa-plus-circle"></i> Añadir Contenido</button>
-                            <button class="btn-secondary" onclick="window.UIEspacio._exportarFavoritos()" style="padding:6px 14px;font-size:12px;"><i class="fas fa-download"></i> Exportar</button>
-                            <button class="btn-secondary" onclick="window.UIEspacio._importarFavoritos()" style="padding:6px 14px;font-size:12px;"><i class="fas fa-upload"></i> Importar</button>
-                            <button class="btn-primary" onclick="window.UIEspacio._mostrarSelectorEjercicios()" style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#FD79A8,#E17055);color:white;border:none;border-radius:8px;cursor:pointer;"><i class="fas fa-dumbbell"></i> Ejercicios</button>
-                            <button class="btn-secondary" onclick="window.UIEspacio._mostrarRankingFamilias('${idiomaActivo}')" style="padding:6px 14px;font-size:12px;"><i class="fas fa-trophy"></i> Ranking</button>
-                            <button class="btn-secondary" onclick="window.UIEspacio._mostrarEstadisticasNivel('${idiomaActivo}')" style="padding:6px 14px;font-size:12px;"><i class="fas fa-chart-bar"></i> Stats</button>
-                        </div>
-                    </div>
-                    ${uiEspacio._renderizarBarraBusqueda()}
-                    <div class="espacio-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;">
-                        <div style="background:var(--white);padding:14px;border-radius:12px;text-align:center;box-shadow:var(--shadow);border-top:3px solid var(--primary);"><div style="font-size:28px;font-weight:800;color:var(--primary);">${frases.length}</div><div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Frases</div></div>
-                        <div style="background:var(--white);padding:14px;border-radius:12px;text-align:center;box-shadow:var(--shadow);border-top:3px solid var(--secondary);"><div style="font-size:28px;font-weight:800;color:var(--secondary);">${palabras.length}</div><div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Palabras</div></div>
-                        <div style="background:var(--white);padding:14px;border-radius:12px;text-align:center;box-shadow:var(--shadow);border-top:3px solid var(--success);"><div style="font-size:28px;font-weight:800;color:var(--success);">${nivelesOrdenados.length}</div><div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Niveles</div></div>
-                        <div style="background:var(--white);padding:14px;border-radius:12px;text-align:center;box-shadow:var(--shadow);border-top:3px solid var(--warning);"><div style="font-size:28px;font-weight:800;color:var(--warning);">${nivelReal}</div><div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Nivel Actual</div></div>
-                    </div>
-            `;
-
+            const resumen = await this.obtenerResumen(frasesIdioma, palabrasIdioma);
+            let html = this.renderizarCabecera(uiEspacio, idiomaActivo, nivelReal, resumen);
+            html += `<section class="espacio-biblioteca" aria-labelledby="espacioBibliotecaTitulo">
+                <div class="espacio-section-heading"><div><span class="espacio-eyebrow">${this.texto("TU COLECCIÓN")}</span>
+                <h3 id="espacioBibliotecaTitulo">${this.texto("Biblioteca personal")}</h3></div>
+                <span>${this.texto("Organizada por nivel y familia")}</span></div>
+                ${uiEspacio._renderizarBarraBusqueda()}`;
             if (uiEspacio._totalPaginasNiveles > 1) {
                 html += uiEspacio._renderizarPaginador(paginaActualNiveles, uiEspacio._totalPaginasNiveles, 'niveles');
             }
 
             if (nivelesPagina.length === 0) {
-                html += `<div style="text-align:center;padding:40px;color:var(--gray);background:var(--bg);border-radius:12px;border:2px dashed var(--light);"><i class="fas fa-star" style="font-size:48px;color:var(--primary-light);display:block;margin-bottom:16px;"></i><p style="font-size:16px;font-weight:500;">No hay elementos en Mi Espacio para ${uiEspacio._getNombreIdioma(idiomaActivo)}</p><p style="font-size:13px;color:var(--gray-light);">Haz clic en "Añadir Contenido" para empezar.</p><p style="font-size:12px;color:var(--primary);margin-top:8px;">🎯 Nivel actual: ${nivelReal}</p></div>`;
+                const tieneContenido = frasesIdioma.length + palabrasIdioma.length > 0;
+                html += `<div class="espacio-empty"><i class="fas fa-${tieneContenido ? 'search' : 'bookmark'}" aria-hidden="true"></i>
+                    <h3>${this.texto(tieneContenido ? 'Sin resultados para estos filtros' : 'Tu colección empieza aquí')}</h3>
+                    <p>${this.texto(tieneContenido ? 'Prueba otra búsqueda o limpia los filtros.' : 'Añade frases y palabras que quieras recordar y úsalas en tus próximas prácticas.')}</p>
+                    <button class="espacio-btn espacio-btn-light" onclick="window.UIEspacio.${tieneContenido ? '_limpiarFiltrosEspacio' : 'abrirModalUnificado'}()">${this.texto(tieneContenido ? 'Limpiar filtros' : 'Añadir Contenido')}</button></div>`;
+
             } else {
                 for (const nivel of nivelesPagina) {
                     const data = estructuraPorNivel[nivel];
-                    const familias = Object.keys(data.familias).filter(f => f && f !== 'sin_clasificar' && f !== uiEspacio.GRUPO_USUARIO).sort();
+                    const familias = Object.keys(data.familias).filter(Boolean).sort();
                     const esNivelActual = nivel === nivelReal;
                     const colorNivel = uiEspacio.COLORES_NIVEL[nivel] || 'var(--primary)';
                     const emojiNivel = uiEspacio.EMOJIS_NIVEL[nivel] || '📚';
@@ -158,15 +225,15 @@ class UIEspacioRender {
                     const familiasPagina = familias.slice(inicioFamilias, finFamilias);
 
                     html += `
-                        <div style="margin-bottom:16px;background:var(--white);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid ${esNivelActual ? colorNivel : 'var(--light)'};">
+                        <div class="espacio-nivel" style="margin-bottom:16px;background:var(--white);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);border-left:4px solid ${esNivelActual ? colorNivel : 'var(--light)'};">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:4px;">
                                 <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin:0;">
-                                    ${emojiNivel} Nivel ${nivel}
+                                    ${emojiNivel} <span>${this.texto("Nivel")}</span> ${nivel}
                                     ${esNivelActual ? '<span style="font-size:11px;color:var(--primary);font-weight:400;margin-left:8px;">🎯 ACTUAL</span>' : ''}
-                                    <span style="font-size:12px;font-weight:400;color:var(--gray);">(${data.totalPalabras + data.totalFrases} elementos · ${totalFamilias} familias)</span>
+                                    <span style="font-size:12px;font-weight:400;color:var(--gray);">(${data.totalPalabras + data.totalFrases} <span>${this.texto("elementos")}</span> · ${totalFamilias} <span>${this.texto("familias")}</span>)</span>
                                     ${uiEspacio._totalPaginasFamilias[nivel] > 1 ? ` · 📄 Página ${paginaFamilias}/${uiEspacio._totalPaginasFamilias[nivel]}` : ''}
                                 </h3>
-                                <span style="font-size:11px;color:var(--gray-light);">${data.totalPalabras} palabras · ${data.totalFrases} frases</span>
+                                <span style="font-size:11px;color:var(--gray-light);">${data.totalPalabras} <span>${this.texto("palabras")}</span> · ${data.totalFrases} <span>${this.texto("frases")}</span></span>
                             </div>
                     `;
 
@@ -186,16 +253,16 @@ class UIEspacioRender {
                             const colorSemantica = uiEspacio._getColorFamiliaSemantica(familia);
 
                             html += `
-                                <div style="margin-left:${esCompacto ? '8px' : '16px'};margin-bottom:${esCompacto ? '6px' : '10px'};background:var(--bg);border-radius:${esCompacto ? '8px' : '10px'};padding:${esCompacto ? '8px 12px' : '12px 16px'};border-left:3px solid ${colorSemantica};transition:all 0.3s;">
+                                <div class="espacio-familia" style="margin-left:${esCompacto ? '8px' : '16px'};margin-bottom:${esCompacto ? '6px' : '10px'};background:var(--bg);border-radius:${esCompacto ? '8px' : '10px'};padding:${esCompacto ? '8px 12px' : '12px 16px'};border-left:3px solid ${colorSemantica};transition:all 0.3s;">
                                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
                                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                            <span style="font-size:${esCompacto ? '13px' : '14px'};font-weight:600;color:var(--dark);">📂 ${familia}</span>
+                                            <span style="font-size:${esCompacto ? '13px' : '14px'};font-weight:600;color:var(--dark);">${this.escapar(familia === "sin_clasificar" ? this.texto("Sin clasificar") : familia)}</span>
                                             ${logros.length > 0 ? logros.slice(-3).map(l => `<span style="font-size:14px;" title="${l}">${l}</span>`).join('') : ''}
                                             ${racha > 0 ? `<span style="font-size:12px;color:var(--primary);">🔥 ${racha}</span>` : ''}
                                         </div>
                                         <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--gray);">
                                             <span>${statsDominio.icono} ${statsDominio.estado}</span>
-                                            <span>${totalItems} elementos</span>
+                                            <span>${totalItems} <span>${this.texto("elementos")}</span></span>
                                         </div>
                                     </div>
                                     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -256,7 +323,7 @@ class UIEspacioRender {
             }
 
             html += `
-                    <div class="espacio-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+                    </section><div class="espacio-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
                         <button class="btn-primary" onclick="window.UIEspacio._verFrases()" style="padding:14px 18px;font-size:15px;text-align:center;"><div style="font-size:32px;">📖</div><div style="font-weight:700;">Ver Todas las Frases</div><div style="font-size:12px;font-weight:400;opacity:0.8;">${frases.length} frases</div></button>
                         <button class="btn-primary" onclick="window.UIEspacio._verPalabras()" style="padding:14px 18px;font-size:15px;text-align:center;background:linear-gradient(135deg,#00CEC9,#81ECEC);"><div style="font-size:32px;">📝</div><div style="font-weight:700;">Ver Todas las Palabras</div><div style="font-size:12px;font-weight:400;opacity:0.8;">${palabras.length} palabras</div></button>
                     </div>
@@ -411,17 +478,24 @@ class UIEspacioRender {
                 console.warn('⚠️ Error renderizando familias de caracteres:', e);
             }
 
+            const foco = document.activeElement?.id === 'buscarEnEspacio' ? document.activeElement.selectionStart : null;
             container.innerHTML = html;
             uiEspacio._configurarEventosBusqueda();
+            container.querySelector('[data-espacio-practicar]')?.addEventListener('click', () => this.practicarGuardadas(uiEspacio));
+            if (foco !== null) {
+                const input = container.querySelector('#buscarEnEspacio');
+                input?.focus();
+                input?.setSelectionRange(foco, foco);
+            }
 
             const resultadosSpan = document.getElementById('resultadosFiltroEspacio');
             if (resultadosSpan) {
                 const total = frases.length + palabras.length;
-                const totalSinFiltros = todasFrases.length + todasPalabras.length;
+                const totalSinFiltros = frasesIdioma.length + palabrasIdioma.length;
                 if (uiEspacio._filtros.busqueda || uiEspacio._filtros.nivel || uiEspacio._filtros.familia || uiEspacio._filtros.tipo !== 'todos') {
-                    resultadosSpan.textContent = `${total} de ${totalSinFiltros} elementos`;
+                    resultadosSpan.innerHTML = `<span>${this.texto('Resultados')}</span>: ${total} / ${totalSinFiltros}`;
                 } else {
-                    resultadosSpan.textContent = `${total} elementos totales`;
+                    resultadosSpan.innerHTML = `<span>${this.texto('Resultados')}</span>: ${total}`;
                 }
             }
 
@@ -437,6 +511,9 @@ class UIEspacioRender {
             `;
         }
         uiEspacio._cargando = false;
+        if (filtrosAlIniciar !== JSON.stringify(uiEspacio._filtros)) {
+            setTimeout(() => uiEspacio._renderizarMiEspacio(), 0);
+        }
     }
 
     // ============================================================
@@ -473,10 +550,10 @@ class UIEspacioRender {
 
     static renderizarBarraBusqueda(uiEspacio) {
         return `
-            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;background:var(--white);padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);align-items:center;">
+            <div class="espacio-filtros" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;background:var(--white);padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);align-items:center;">
                 <div style="flex:2;min-width:200px;position:relative;">
                     <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray);"></i>
-                    <input type="text" id="buscarEnEspacio" placeholder="🔍 Buscar palabras, frases, familias..." style="width:100%;padding:10px 14px 10px 38px;border:2px solid var(--light);border-radius:10px;font-size:14px;font-family:var(--font);transition:all 0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--light)'" value="${uiEspacio._filtros.busqueda || ''}">
+                    <input type="text" id="buscarEnEspacio" placeholder="🔍 Buscar palabras, frases, familias..." style="width:100%;padding:10px 14px 10px 38px;border:2px solid var(--light);border-radius:10px;font-size:14px;font-family:var(--font);transition:all 0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--light)'" value="${this.escapar(uiEspacio._filtros.busqueda || '')}">
                 </div>
                 <select id="filtroNivelEspacio" style="padding:10px 14px;border:2px solid var(--light);border-radius:10px;font-size:13px;font-family:var(--font);background:var(--white);min-width:120px;">
                     <option value="">📚 Todos los niveles</option>

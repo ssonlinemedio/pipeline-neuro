@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi Espacio · prueba aislada</title>
+<link rel="stylesheet" href="../css/style.css"><link rel="stylesheet" href="../css/espacio.css">
+<body><aside style="padding:12px" data-i18n-skip>Prueba aislada · datos ficticios · no usa IndexedDB
+<button onclick="PipelineI18n.setLanguage('es')">ES</button><button onclick="PipelineI18n.setLanguage('en')">EN</button><button onclick="PipelineI18n.setLanguage('zh')">中文</button>
+<button onclick="location.href='?empty'">Vacío</button><button onclick="location.href='?'">Con contenido</button>
+<button onclick="document.documentElement.style.maxWidth='390px';document.documentElement.style.margin='auto'">390 px</button>
+<output id="resultadoPrueba"></output></aside><main id="espacioContent"></main>
+<script>
+const vacio=location.search.includes('empty');
+const frasesPrueba=vacio?[]:[
+{id:1,idioma:'en',nivel:'A1',original:'I would like a coffee, please.',traduccion:'Quisiera un café, por favor.',familiaSemantica:'Comida y Bebida'},
+{id:2,idioma:'en',nivel:'A1',original:'Where does this train stop?',traduccion:'¿Dónde para este tren?',familiaSemantica:'Transporte'},
+{id:3,idioma:'en',nivel:'A2',original:'We visited our friends yesterday.',traduccion:'Ayer visitamos a nuestros amigos.'}];
+const palabrasPrueba=vacio?[]:[{id:1,idioma:'en',nivel:'A1',palabra:'coffee',significado:'café',familia:'Comida y Bebida'},{id:2,idioma:'en',nivel:'A1',palabra:'platform',significado:'andén',familia:'Transporte'}];
+window.gestorIdiomas={getIdiomaActivo:()=> 'en'};
+window.gestorFavoritos={recargar:async()=>{},obtenerFrasesFavoritas:async()=>frasesPrueba,obtenerPalabrasFavoritas:async()=>palabrasPrueba};
+window.db={obtenerProgreso:async id=>id===1?{rcn:2,ultimoRepaso:1,repasosExitosos:1,proximoRepaso:1}:null,obtenerProgresoCaracter:async()=>null,obtenerPalabrasPorIdioma:async()=>[],obtenerFrasesPorIdioma:async()=>[]};
+window.pipeline={cargarFrase:async()=>{document.getElementById('resultadoPrueba').textContent='Sesión: '+pipeline.frases.length+' frases';}};
+</script>
+<script src="../js/ui/ui.i18n.js"></script><script src="../js/ui/ui.espacio.actions.js"></script><script src="../js/ui/ui.espacio.render.js"></script><script src="../js/ui/ui.espacio.core.js"></script>
+<script>
+UIEspacio._getUsuarioSeguro=async()=>({nombre:'Prueba'});
+UIEspacio._obtenerNivelRealUsuario=()=> 'A1';
+UIEspacio._obtenerIdiomaNativo=()=> 'es';
+UIEspacio._getCore=()=>({irAModulo:()=>{}});
+UIEspacio._renderizarElementoEspacio=(x,t)=>'<span data-i18n-skip>'+UIEspacioRender.escapar(x.original||x.palabra)+'</span>';
+UIEspacio._renderizarMiEspacio();
+</script></body></html>

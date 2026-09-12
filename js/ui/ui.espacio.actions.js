@@ -1624,7 +1624,10 @@ class UIEspacioActions {
     // ============================================================
 
     static limpiarFiltrosEspacio(uiEspacio) {
+        clearTimeout(uiEspacio._busquedaTimer);
         uiEspacio._filtros = { busqueda: '', nivel: '', familia: '', tipo: 'todos' };
+        uiEspacio._paginaNivel = 1;
+        uiEspacio._paginaFamilias = {};
         const busquedaInput = document.getElementById('buscarEnEspacio');
         if (busquedaInput) busquedaInput.value = '';
         const nivelSelect = document.getElementById('filtroNivelEspacio');
@@ -1646,18 +1649,27 @@ class UIEspacioActions {
         if (busquedaInput) {
             busquedaInput.addEventListener('input', () => {
                 uiEspacio._filtros.busqueda = busquedaInput.value;
-                uiEspacio._renderizarMiEspacio();
+                clearTimeout(uiEspacio._busquedaTimer);
+                uiEspacio._busquedaTimer = setTimeout(() => {
+                    uiEspacio._paginaNivel = 1;
+                    uiEspacio._paginaFamilias = {};
+                    uiEspacio._renderizarMiEspacio();
+                }, 250);
             });
         }
         if (nivelSelect) {
             nivelSelect.addEventListener('change', () => {
                 uiEspacio._filtros.nivel = nivelSelect.value;
+                uiEspacio._paginaNivel = 1;
+                uiEspacio._paginaFamilias = {};
                 uiEspacio._renderizarMiEspacio();
             });
         }
         if (tipoSelect) {
             tipoSelect.addEventListener('change', () => {
                 uiEspacio._filtros.tipo = tipoSelect.value;
+                uiEspacio._paginaNivel = 1;
+                uiEspacio._paginaFamilias = {};
                 uiEspacio._renderizarMiEspacio();
             });
         }
@@ -1697,14 +1709,15 @@ class UIEspacioActions {
         let totalRCN = 0;
         let elementosConRCN = 0;
         for (const p of palabras) {
-            const progreso = await db.obtenerProgreso(p.id);
+            const progreso = await db.obtenerProgresoCaracter(p.id);
             if (progreso && progreso.rcn !== undefined) { totalRCN += progreso.rcn; elementosConRCN++; }
         }
         for (const f of frases) {
             const progreso = await db.obtenerProgreso(f.id);
             if (progreso && progreso.rcn !== undefined) { totalRCN += progreso.rcn; elementosConRCN++; }
         }
-        const rcnPromedio = elementosConRCN > 0 ? totalRCN / elementosConRCN : 0;
+        const totalElementos = palabras.length + frases.length;
+        const rcnPromedio = totalElementos > 0 ? totalRCN / totalElementos : 0;
         const dominio = Math.min(100, Math.round((rcnPromedio / 4) * 100));
         let color = 'var(--danger)', estado = '🔴 Necesita práctica', icono = '🔴';
         if (dominio >= 90) { color = 'var(--success)'; estado = '🏆 Dominio avanzado'; icono = '🏆'; }
@@ -1736,11 +1749,8 @@ class UIEspacioActions {
             const diff = Math.floor((Date.now() - parseInt(ultimoRepaso)) / 86400000);
             if (diff <= 1) {
                 racha = parseInt(localStorage.getItem(rachaCountKey) || '0');
-                if (diff === 0) racha++;
-                localStorage.setItem(rachaCountKey, String(racha));
-            } else if (diff > 1) { racha = 0; localStorage.setItem(rachaCountKey, '0'); }
+            } else if (diff > 1) { racha = 0; }
         }
-        localStorage.setItem(rachaKey, String(Date.now()));
         return { logros, racha };
     }
 
@@ -1751,10 +1761,12 @@ class UIEspacioActions {
     static async estudiarFamiliaDesdeEspacio(familia, nivel, uiEspacio) {
         const core = uiEspacio._getCore();
         const idioma = gestorIdiomas.getIdiomaActivo() || 'es';
-        const todasPalabras = await db.obtenerPalabrasPorIdioma(idioma);
-        const todasFrases = await db.obtenerFrasesPorIdioma(idioma);
-        const palabrasFamilia = todasPalabras.filter(p => (p.familia || p.familiaSemantica || '') === familia);
-        const frasesFamilia = todasFrases.filter(f => (f.familiaSemantica || '') === familia);
+        const todasPalabras = await gestorFavoritos.obtenerPalabrasFavoritas();
+        const todasFrases = await gestorFavoritos.obtenerFrasesFavoritas();
+        const nivelActual = uiEspacio._obtenerNivelRealUsuario();
+        const pertenece = item => item.idioma === idioma && (!nivel || (item.nivel || nivelActual) === nivel);
+        const palabrasFamilia = todasPalabras.filter(p => pertenece(p) && (p.familiaSemantica || p.familia || 'sin_clasificar') === familia);
+        const frasesFamilia = todasFrases.filter(f => pertenece(f) && (f.familiaSemantica || 'sin_clasificar') === familia);
 
         if (palabrasFamilia.length === 0 && frasesFamilia.length === 0) {
             uiEspacio._mostrarToast('❌ No hay elementos en esta familia', 'error');
