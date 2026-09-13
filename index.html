@@ -47,6 +47,12 @@
     <meta name="twitter:title" content="Pipeline Neuro">
     <meta name="twitter:description" content="Aprende idiomas con neurociencia e IA">
     <meta name="twitter:image" content="icons/og-image.png">
+
+    <!-- CSS crítico: evita FOUC mientras llegan las hojas principales en redes lentas. -->
+    <style>
+        html, body { margin: 0; min-height: 100%; background: #f5f6fa; }
+        #registroScreen, #mainScreen { display: none !important; }
+    </style>
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/espacio.css">
