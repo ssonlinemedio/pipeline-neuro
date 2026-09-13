@@ -2,28 +2,41 @@
 // APP v23.7 - PARCHE DE EMERGENCIA: CONEXIÓN VIGÍA Y LIMPIEZA
 // ============================================================
 
+const APP_BOOT_STATE = Object.freeze({
+    BOOT: 'BOOT',
+    DATABASE: 'DATABASE',
+    USER: 'USER',
+    MODULES: 'MODULES',
+    UI: 'UI',
+    READY: 'READY',
+    ERROR: 'ERROR'
+});
+
+const APP_BOOT_ORDER = Object.freeze([
+    APP_BOOT_STATE.BOOT,
+    APP_BOOT_STATE.DATABASE,
+    APP_BOOT_STATE.USER,
+    APP_BOOT_STATE.MODULES,
+    APP_BOOT_STATE.UI,
+    APP_BOOT_STATE.READY
+]);
+
 class App {
     constructor() {
-        // Flags de estado
-        this.inicializada = false;
-        this._iniciando = false;
-        this._initDone = false;
+        // Estado único del arranque. Los estados operativos independientes
+        // (como _dbReady o _usuarioCargado) se mantienen fuera de esta máquina.
+        this._bootState = APP_BOOT_STATE.BOOT;
+        this._bootError = null;
+
         this._dbReady = false;
         this._registrando = false;
         this._guardandoDatos = false;
         this._usuarioCargado = false;
-        this._datosCargados = false;
         this._recuperandoDatos = false;
-        this._esperandoDB = false;
-        this._dbInicializada = false;
-        this._cargaCompletada = false;
         this._eventosGlobalesRegistrados = false;
         this._registroCompletado = false;
         this._cargaMostrada = false;
         this._registroOculto = false;
-        this._dashboardRenderizado = false;
-        this._modulosEsencialesListos = false;
-        this._dashboardMostrado = false;
         
         // Timeouts y reintentos
         this._tiempoEsperaDB = 0;
@@ -134,6 +147,70 @@ class App {
         // 🔥 NUEVO: Control de idioma válido
         this._idiomaValido = false;
         this._idiomaCorregido = null;
+    }
+
+    get inicializada() {
+        return this._bootState === APP_BOOT_STATE.READY;
+    }
+
+    get bootState() {
+        return this._bootState;
+    }
+
+    // Compatibilidad con UI Core y módulos que esperan esta señal histórica.
+    get _datosCargados() {
+        return this._bootAtLeast(APP_BOOT_STATE.UI);
+    }
+
+    _setBootState(nextState, error = null) {
+        if (!Object.values(APP_BOOT_STATE).includes(nextState)) {
+            throw new Error('Estado de arranque no válido: ' + nextState);
+        }
+
+        const previousState = this._bootState;
+
+        if (nextState === APP_BOOT_STATE.ERROR) {
+            this._bootState = APP_BOOT_STATE.ERROR;
+            this._bootError = error || null;
+            console.error('❌ Boot:', previousState, '→ ERROR', error || '');
+            return;
+        }
+
+        if (previousState === APP_BOOT_STATE.ERROR) {
+            throw new Error('El arranque está en ERROR. Usa _resetBootState() antes de reintentar.');
+        }
+
+        const currentIndex = APP_BOOT_ORDER.indexOf(previousState);
+        const nextIndex = APP_BOOT_ORDER.indexOf(nextState);
+
+        if (currentIndex !== -1 && nextIndex < currentIndex) {
+            throw new Error('Transición de arranque inválida: ' + previousState + ' → ' + nextState);
+        }
+
+        this._bootState = nextState;
+        this._bootError = null;
+
+        if (previousState !== nextState) {
+            console.log('🚦 Boot:', previousState, '→', nextState);
+        }
+    }
+
+    _resetBootState() {
+        this._bootState = APP_BOOT_STATE.BOOT;
+        this._bootError = null;
+    }
+
+    _bootAtLeast(state) {
+        if (this._bootState === APP_BOOT_STATE.ERROR) return false;
+        return APP_BOOT_ORDER.indexOf(this._bootState) >= APP_BOOT_ORDER.indexOf(state);
+    }
+
+    _bootInProgress() {
+        return ![
+            APP_BOOT_STATE.BOOT,
+            APP_BOOT_STATE.READY,
+            APP_BOOT_STATE.ERROR
+        ].includes(this._bootState);
     }
 
     // ============================================================
@@ -722,11 +799,11 @@ class App {
             
             let pct = Math.min(85, tiempo * 15);
             
-            if (this._modulosEsencialesListos) {
+            if (this._bootAtLeast(APP_BOOT_STATE.MODULES)) {
                 pct = Math.min(100, pct + 15);
             }
             
-            if (this._dashboardRenderizado) {
+            if (this._bootAtLeast(APP_BOOT_STATE.UI)) {
                 pct = 100;
             }
 
@@ -750,7 +827,7 @@ class App {
                 }
             }
 
-            if (this._cargaProgress >= 100 && this._dashboardRenderizado) {
+            if (this._cargaProgress >= 100 && this._bootAtLeast(APP_BOOT_STATE.UI)) {
                 this._ocultarPantallaCargaYMostrarDashboard();
             }
         }, 200);
@@ -761,9 +838,7 @@ class App {
                 clearInterval(this._cargaInterval);
                 this._cargaInterval = null;
             }
-            this._cargaCompletada = true;
-            this._modulosEsencialesListos = true;
-            this._dashboardRenderizado = true;
+            // El timeout es solo un fallback visual: no falsea estados internos.
             this._ocultarPantallaCargaYMostrarDashboard();
         }, 3000);
     }
@@ -793,7 +868,6 @@ class App {
         }
 
         this._cargaMostrada = false;
-        this._cargaCompletada = true;
 
         this._mostrarDashboard();
         
@@ -808,7 +882,8 @@ class App {
     // ============================================================
 
     _mostrarDashboard() {
-        if (this._dashboardMostrado) return;
+        const mainScreenActual = document.getElementById('mainScreen');
+        if (mainScreenActual?.classList.contains('active')) return;
         
         const verificacion = this._verificarRegistroCompleto();
         
@@ -817,8 +892,6 @@ class App {
             this._showRegisterScreen();
             return;
         }
-        
-        this._dashboardMostrado = true;
         
         const registroScreen = document.getElementById('registroScreen');
         const mainScreen = document.getElementById('mainScreen');
@@ -1020,14 +1093,24 @@ class App {
     // ============================================================
 
     async init() {
-        if (this._iniciando || this._initDone) return;
-        this._iniciando = true;
+        if (this._bootInProgress() || this._bootState === APP_BOOT_STATE.READY) return;
+        if (this._bootState === APP_BOOT_STATE.ERROR) this._resetBootState();
 
         try {
+            this._setBootState(APP_BOOT_STATE.DATABASE);
             console.log('🚀 Iniciando Pipeline v23.7 - Parche de emergencia...');
             
             // 🔥 DETENER BUCLES INFINITOS AL INICIO
             this._detenerBuclesInfinitos();
+
+            // ⚡ FAST BOOT: si el perfil completo ya está en localStorage no bloqueamos
+            // la primera pintura del dashboard con IndexedDB, idiomas, pipeline o red.
+            const usuarioFast = this._getUsuarioLocalStorage();
+            const verificacionFast = this._verificarRegistroCompleto();
+            if (usuarioFast?.nombre && verificacionFast.completo) {
+                await this._iniciarDashboardRapido(usuarioFast);
+                return;
+            }
             
             // 🔥 LIMPIAR DATOS RESIDUALES DE IDIOMAS
             // Recuperar antes de decidir que el registro está incompleto.
@@ -1048,7 +1131,7 @@ class App {
             if (!verificacion.completo) {
                 console.log('📝 Registro incompleto, mostrando pantalla de registro. Faltan:', verificacion.faltan);
                 this._showRegisterScreen();
-                this._iniciando = false;
+                this._resetBootState();
                 return;
             }
 
@@ -1059,12 +1142,11 @@ class App {
             } else {
                 console.warn('⚠️ Verificación pasó pero no hay usuario en localStorage, mostrando registro');
                 this._showRegisterScreen();
-                this._iniciando = false;
+                this._resetBootState();
                 return;
             }
 
             console.log('📀 Inicializando Database...');
-            this._esperandoDB = true;
             this._dbReady = false;
             
             try {
@@ -1075,14 +1157,13 @@ class App {
                     )
                 ]);
                 this._dbReady = true;
-                this._dbInicializada = true;
                 console.log('✅ Database inicializada');
             } catch (dbError) {
                 console.warn('⚠️ Error inicializando DB, usando localStorage:', dbError.message);
                 this._dbReady = false;
-                this._dbInicializada = false;
             }
-            this._esperandoDB = false;
+
+            this._setBootState(APP_BOOT_STATE.USER);
 
             if (window.balanceadorGroq) {
                 try {
@@ -1143,14 +1224,14 @@ class App {
             if (!verificacionFinal.completo) {
                 console.warn('⚠️ Registro incompleto después de carga, mostrando registro. Faltan:', verificacionFinal.faltan);
                 this._showRegisterScreen();
-                this._iniciando = false;
+                this._resetBootState();
                 return;
             }
 
             if (!usuario || !usuario.nombre || !usuario.idiomasObjetivo || usuario.idiomasObjetivo.length === 0) {
                 console.log('👤 No hay usuario valido, mostrando registro');
                 this._showRegisterScreen();
-                this._iniciando = false;
+                this._resetBootState();
                 return;
             }
 
@@ -1189,6 +1270,7 @@ class App {
                 }
             }
             
+            this._setBootState(APP_BOOT_STATE.MODULES);
             this._registrarEventosGlobales();
             
             if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
@@ -1216,21 +1298,19 @@ class App {
                 }
             }
             
-            this._modulosEsencialesListos = true;
             
+            this._setBootState(APP_BOOT_STATE.UI);
             console.log('📊 Renderizando dashboard...');
             try {
                 await this._renderizarDashboardInmediato(usuario);
-                this._dashboardRenderizado = true;
-                this._datosCargados = true;
                 console.log('✅ Dashboard renderizado');
             } catch (e) {
                 console.error('❌ Error renderizando dashboard:', e);
-                this._dashboardRenderizado = true;
             }
             
             console.log('📊 Mostrando dashboard...');
             this._ocultarPantallaCargaYMostrarDashboard();
+            this._setBootState(APP_BOOT_STATE.READY);
             
             // 🔥 INICIAR MÓDULOS EN SEGUNDO PLANO CON CONTROL DE BUCLE
             this._iniciarModulosEnSegundoPlano(usuario);
@@ -1267,8 +1347,6 @@ class App {
                 }
             }, 4000);
             
-            this.inicializada = true;
-            this._initDone = true;
             console.log('✅ App iniciada correctamente');
 
         } catch (error) {
@@ -1276,13 +1354,14 @@ class App {
             const localUser = this._getUsuarioLocalStorage();
             if (localUser && localUser.nombre) {
                 try {
+                    this._resetBootState();
                     await this._iniciarConLocalStorage(localUser);
                     return;
                 } catch (e) {}
             }
+            this._setBootState(APP_BOOT_STATE.ERROR, error);
             this._showError(error);
         } finally {
-            this._iniciando = false;
             if (this._checkInterval) {
                 clearInterval(this._checkInterval);
                 this._checkInterval = null;
@@ -1293,6 +1372,148 @@ class App {
     // ============================================================
     // RENDERIZAR DASHBOARD INMEDIATO
     // ============================================================
+
+    async _iniciarDashboardRapido(usuario) {
+        console.log('⚡ Fast boot: mostrando dashboard desde localStorage');
+
+        this._usuarioCargado = true;
+        this._setBootState(APP_BOOT_STATE.USER);
+
+        // Preparar solo el estado mínimo que necesita la primera pintura.
+        if (window.gestorIdiomas && Array.isArray(usuario.idiomasObjetivo) && usuario.idiomasObjetivo.length) {
+            try {
+                const actuales = gestorIdiomas.getIdiomas?.() || gestorIdiomas.idiomas || [];
+                if (!actuales.length) {
+                    gestorIdiomas.idiomas = usuario.idiomasObjetivo.map((item) => ({
+                        idioma: item.idioma,
+                        nivel: item.nivel || 'B1',
+                        progreso: item.progreso || 0,
+                        frasesCompletadas: item.frasesCompletadas || 0,
+                        totalFrases: item.totalFrases || 0,
+                        totalHistorias: item.totalHistorias || 0,
+                        totalTemas: item.totalTemas || 0,
+                        esJeroglifico: gestorIdiomas._esJeroglifico?.(item.idioma) || false
+                    }));
+                }
+                const persistido = localStorage.getItem('pipeline_idioma_activo') || usuario.idiomaActivo;
+                const valido = persistido && gestorIdiomas.idiomas.some((i) => i.idioma === persistido);
+                gestorIdiomas.idiomaActivo = valido ? persistido : usuario.idiomasObjetivo[0].idioma;
+            } catch (e) {
+                console.warn('⚠️ Fast boot: gestorIdiomas mínimo no disponible:', e);
+            }
+        }
+
+        this._setBootState(APP_BOOT_STATE.MODULES);
+        this._registrarEventosGlobales();
+        this._setupPersistenciaCritica();
+        this._setupOrientationHandler();
+
+        // Dashboard ligero, síncrono: el usuario deja de esperar aquí.
+        this._setBootState(APP_BOOT_STATE.UI);
+        this._renderizarDashboardFallback(usuario, { totalFrases: 0, progreso: 0 });
+        this._ocultarPantallaCargaYMostrarDashboard();
+        this._setBootState(APP_BOOT_STATE.READY);
+
+        // Dejar que el navegador pinte antes de iniciar el trabajo pesado.
+        setTimeout(() => {
+            this._hidratarDashboardEnSegundoPlano(usuario).catch((error) => {
+                console.warn('⚠️ Fast boot: hidratación parcial falló:', error);
+            });
+        }, 0);
+    }
+
+    async _hidratarDashboardEnSegundoPlano(usuario) {
+        console.log('🔄 Fast boot: hidratando datos y módulos en segundo plano');
+
+        try {
+            await Promise.race([
+                this._inicializarDBConReintentos(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout DB background (3s)')), 3000)
+                )
+            ]);
+            this._dbReady = true;
+
+            try {
+                const usuarioDB = await db.getUsuario();
+                if (usuarioDB?.nombre && !this._getUsuarioLocalStorage()?.nombre) {
+                    this._saveUsuarioLocalStorage(usuarioDB);
+                }
+            } catch (e) {}
+
+            if (!localStorage.getItem('pipeline_api_key')) {
+                try {
+                    const clave = await db.obtenerApiKey();
+                    if (clave) localStorage.setItem('pipeline_api_key', clave);
+                } catch (e) {}
+            }
+        } catch (e) {
+            this._dbReady = false;
+            console.warn('⚠️ Fast boot: IndexedDB no disponible; continúa localStorage:', e.message || e);
+        }
+
+        if (window.balanceadorGroq?.init) {
+            try { await window.balanceadorGroq.init(); }
+            catch (e) { console.warn('⚠️ Fast boot: balanceador no disponible:', e); }
+        }
+
+        try {
+            await Promise.race([
+                this._forzarCargaIdiomas(usuario),
+                new Promise((resolve) => setTimeout(resolve, 1500))
+            ]);
+        } catch (e) {
+            console.warn('⚠️ Fast boot: carga de idiomas parcial:', e);
+        }
+
+        const idiomaPersistido = localStorage.getItem('pipeline_idioma_activo') || usuario.idiomaActivo;
+        const primerIdioma = usuario.idiomasObjetivo?.[0]?.idioma;
+        const idiomaObjetivo = usuario.idiomasObjetivo?.some((i) => i.idioma === idiomaPersistido)
+            ? idiomaPersistido : primerIdioma;
+
+        if (idiomaObjetivo && window.gestorIdiomas?.cambiarIdioma) {
+            try { await gestorIdiomas.cambiarIdioma(idiomaObjetivo); }
+            catch (e) { console.warn('⚠️ Fast boot: activación de idioma parcial:', e); }
+        }
+
+        if (window.uiCore?.init) {
+            try {
+                await Promise.race([
+                    window.uiCore.init(),
+                    new Promise((resolve) => setTimeout(resolve, 1200))
+                ]);
+            } catch (e) {
+                console.warn('⚠️ Fast boot: uiCore parcial:', e);
+            }
+        }
+
+        if (window.pipeline) {
+            try {
+                await Promise.race([
+                    pipeline.cargarFrasesPorIdioma(gestorIdiomas?.getIdiomaActivo?.() || idiomaObjetivo || 'es'),
+                    new Promise((resolve) => setTimeout(resolve, 1200))
+                ]);
+                Promise.resolve(pipeline.cargarProgreso?.()).catch((e) =>
+                    console.warn('⚠️ Fast boot: progreso parcial:', e)
+                );
+            } catch (e) {
+                console.warn('⚠️ Fast boot: pipeline parcial:', e);
+            }
+        }
+
+        // Reemplaza el dashboard ligero por el dashboard real ya hidratado.
+        await this._renderizarDashboardInmediato(usuario);
+        this._iniciarModulosEnSegundoPlano(usuario);
+
+        const apiKey = localStorage.getItem('pipeline_api_key');
+        if (apiKey) setTimeout(() => this._forzarConexionVigia(apiKey), 500);
+
+        setTimeout(() => {
+            if (window.app) window.app._ejecutarVerificacionesGroq();
+        }, 1500);
+
+        console.log('✅ Fast boot: hidratación completada');
+    }
 
     async _renderizarDashboardInmediato(usuario) {
         try {
@@ -1525,7 +1746,10 @@ class App {
     async _iniciarConLocalStorage(usuario) {
         console.log('🔄 Iniciando en modo localStorage (emergencia)');
         try {
+            if (this._bootState === APP_BOOT_STATE.ERROR) this._resetBootState();
+            this._setBootState(APP_BOOT_STATE.DATABASE);
             this._mostrarPantallaCargaInmediata('Recuperando datos...');
+            this._setBootState(APP_BOOT_STATE.USER);
             
             // 🔥 LIMPIAR Y RECONSTRUIR IDIOMAS
             if (usuario.idiomasObjetivo && usuario.idiomasObjetivo.length > 0 && window.gestorIdiomas) {
@@ -1552,6 +1776,7 @@ class App {
                 localStorage.setItem('pipeline_idioma_activo', gestorIdiomas.idiomaActivo);
             }
             
+            this._setBootState(APP_BOOT_STATE.MODULES);
             this._registrarEventosGlobales();
             this._setupPersistenciaCritica();
             this._setupOrientationHandler();
@@ -1562,11 +1787,10 @@ class App {
                 } catch (e) {}
             }
             
+            this._setBootState(APP_BOOT_STATE.UI);
             await this._renderizarDashboardInmediato(usuario);
-            this._dashboardRenderizado = true;
-            this._datosCargados = true;
-            this._modulosEsencialesListos = true;
             this._ocultarPantallaCargaYMostrarDashboard();
+            this._setBootState(APP_BOOT_STATE.READY);
             
             this._iniciarModulosEnSegundoPlano(usuario);
             
@@ -1574,11 +1798,10 @@ class App {
                 if (window.app) window.app._ejecutarVerificacionesGroq(); 
             }, 3000);
             
-            this.inicializada = true;
-            this._initDone = true;
             console.log('✅ App iniciada en modo localStorage');
         } catch (e) {
             console.error('❌ Error en modo localStorage:', e);
+            this._setBootState(APP_BOOT_STATE.ERROR, e);
             this._ocultarPantallaCargaYMostrarDashboard();
             this._showError(e);
         }
@@ -1671,7 +1894,7 @@ class App {
         }
         
         this._registroOculto = false;
-        this._dashboardMostrado = false;
+        if (this._bootState !== APP_BOOT_STATE.BOOT) this._resetBootState();
         this._setupRegisterForm();
         console.log('📝 Pantalla de registro mostrada');
     }
@@ -1840,6 +2063,11 @@ class App {
                 await this._forzarCargaIdiomas(usuario);
             }
 
+            if (this._bootState === APP_BOOT_STATE.BOOT) {
+                this._setBootState(APP_BOOT_STATE.DATABASE);
+                this._setBootState(APP_BOOT_STATE.USER);
+            }
+            this._setBootState(APP_BOOT_STATE.MODULES);
             this._registrarEventosGlobales();
             
             if (typeof window.uiCore !== 'undefined' && window.uiCore.init) {
@@ -1857,13 +2085,12 @@ class App {
             this._setupOrientationHandler();
             
             console.log('📊 Renderizando dashboard...');
+            this._setBootState(APP_BOOT_STATE.UI);
             await this._renderizarDashboardInmediato(usuario);
-            this._dashboardRenderizado = true;
-            this._datosCargados = true;
-            this._modulosEsencialesListos = true;
             
             console.log('✅ Dashboard renderizado, mostrando...');
             this._ocultarPantallaCargaYMostrarDashboard();
+            this._setBootState(APP_BOOT_STATE.READY);
             
             this._iniciarModulosEnSegundoPlano(usuario);
             
@@ -1886,8 +2113,8 @@ class App {
 
         } catch (error) {
             console.error('❌ Error en registro:', error);
+            this._setBootState(APP_BOOT_STATE.ERROR, error);
             await this._showToast('Error: ' + error.message, 'error');
-            this._dashboardRenderizado = true;
             this._ocultarPantallaCargaYMostrarDashboard();
         }
     }
@@ -2079,7 +2306,7 @@ class App {
         var self = this;
         var timeout = null;
         var handle = function() {
-            if (self._initDone) return;
+            if (self._bootState === APP_BOOT_STATE.READY) return;
             if (timeout) clearTimeout(timeout);
             timeout = setTimeout(function() {
                 var usuario = self._getUsuarioLocalStorage();
