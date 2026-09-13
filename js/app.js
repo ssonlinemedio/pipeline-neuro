@@ -1411,6 +1411,12 @@ class App {
         // Dashboard ligero, síncrono: el usuario deja de esperar aquí.
         this._setBootState(APP_BOOT_STATE.UI);
         this._renderizarDashboardFallback(usuario, { totalFrases: 0, progreso: 0 });
+        const mainScreen = document.getElementById('mainScreen');
+        if (mainScreen) {
+            // El fallback no debe ser visible: se sustituye por el dashboard hidratado.
+            mainScreen.style.visibility = 'hidden';
+            mainScreen.style.opacity = '0';
+        }
         this._ocultarPantallaCargaYMostrarDashboard();
         this._setBootState(APP_BOOT_STATE.READY);
 
@@ -1418,8 +1424,16 @@ class App {
         setTimeout(() => {
             this._hidratarDashboardEnSegundoPlano(usuario).catch((error) => {
                 console.warn('⚠️ Fast boot: hidratación parcial falló:', error);
+                this._mostrarDashboardHidratado();
             });
         }, 0);
+    }
+
+    _mostrarDashboardHidratado() {
+        const mainScreen = document.getElementById('mainScreen');
+        if (!mainScreen) return;
+        mainScreen.style.visibility = 'visible';
+        mainScreen.style.opacity = '1';
     }
 
     async _hidratarDashboardEnSegundoPlano(usuario) {
@@ -1503,6 +1517,7 @@ class App {
 
         // Reemplaza el dashboard ligero por el dashboard real ya hidratado.
         await this._renderizarDashboardInmediato(usuario);
+        this._mostrarDashboardHidratado();
         this._iniciarModulosEnSegundoPlano(usuario);
 
         const apiKey = localStorage.getItem('pipeline_api_key');
