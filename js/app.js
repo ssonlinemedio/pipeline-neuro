@@ -904,7 +904,9 @@ class App {
         }
         
         if (mainScreen) {
-            mainScreen.style.display = 'block';
+            // La visibilidad la controla .active en CSS. No forzar display inline:
+            // durante una red lenta podría mostrar el HTML sin estilos.
+            mainScreen.style.removeProperty('display');
             mainScreen.classList.add('active');
             mainScreen.scrollTop = 0;
         }
