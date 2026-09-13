@@ -676,8 +676,10 @@ class UIConfig {
         } catch (e) {}
 
         const progresoNiveles = {};
-        if (activo && window.UITemas && window.UITemas._TEMAS_PREDEFINIDOS) {
-            const niveles = window.UITemas._NIVELES;
+        const temasPredefinidos = window.UITemas?.TEMAS_PREDEFINIDOS || window.UITemas?._TEMAS_PREDEFINIDOS;
+        const nivelesDisponibles = window.UITemas?.NIVELES || window.UITemas?._NIVELES || this._NIVELES;
+        if (activo && window.UITemas && temasPredefinidos) {
+            const niveles = nivelesDisponibles;
             for (const nivel of niveles) {
                 const progresoNivel = await window.UITemas._obtenerProgresoNivel(activo, nivel, versionActiva);
                 progresoNiveles[nivel] = progresoNivel;
