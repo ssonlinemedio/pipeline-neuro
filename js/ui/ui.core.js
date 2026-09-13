@@ -1,6 +1,6 @@
 // ============================================================
-// UI CORE v18.37 - COMPLETO Y CORREGIDO
-// CON TODOS LOS MÓDULOS REGISTRADOS Y ERRORES SOLUCIONADOS
+// UI CORE v18.38 - COMPLETO Y CORREGIDO
+// CON MULTIDIOMA DE TOASTS (VIGÍA/CENTINELA) Y TODOS LOS MÓDULOS
 // ============================================================
 
 class UICore {
@@ -372,7 +372,7 @@ class UICore {
     async init() {
         if (this._initDone || this._inicializado) return this;
         
-        console.log('🎨 Inicializando UI Core v18.37 con soporte para todos los módulos...');
+        console.log('🎨 Inicializando UI Core v18.38 con soporte para todos los módulos...');
         
         try {
             this._esperandoDatos = true;
@@ -442,13 +442,14 @@ class UICore {
             
             this._inicializado = true;
             this._initDone = true;
-            console.log('🎨 UI Core v18.37: Inicializada correctamente');
+            console.log('🎨 UI Core v18.38: Inicializada correctamente');
             console.log(`   📌 Modo Dashboard: ${this._modoDashboard === 'lite' ? '🧘 Lite' : '🚀 Expandido'}`);
             console.log('  📌 Módulos registrados:', Object.keys(this._moduleNames));
             console.log('  🎵 Módulo "tonos" registrado correctamente');
             console.log('  📚 Biblioteca v2.0: Registrada');
             console.log('  📖 Manual Interactivo: Registrado');
             console.log('  📊 Estadísticas: Registrado');
+            console.log('  🌐 Toasts multiidioma: ACTIVADO');
         } catch (e) {
             console.warn('⚠️ UI Core init parcial:', e);
             this._inicializado = true;
@@ -1326,11 +1327,28 @@ class UICore {
         return this._dialogs.prompt(message, defaultValue, placeholder, title);
     }
 
+    // ============================================================
+    // MOSTRAR TOAST - CON MULTIDIOMA (VIGÍA/CENTINELA)
+    // ============================================================
+
     mostrarToast(mensaje, tipo) {
         if (this._toastActive) return;
         this._toastActive = true;
         
         try {
+            // 🔥 MULTIDIOMA: Traducir el mensaje antes de mostrarlo
+            // Solo aplica a los mensajes de UI (Vigía/Centinela/sistema).
+            // Si no hay coincidencia, se muestra el mensaje original tal cual.
+            let mensajeMostrar = mensaje;
+            try {
+                if (window.PipelineI18n && typeof window.PipelineI18n.toast === 'function') {
+                    mensajeMostrar = window.PipelineI18n.toast(mensaje);
+                }
+            } catch (i18nErr) {
+                console.warn('⚠️ Error traduciendo toast:', i18nErr);
+                mensajeMostrar = mensaje;
+            }
+
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
             if (this.toastTimeout) {
@@ -1340,7 +1358,7 @@ class UICore {
 
             const toast = document.createElement('div');
             toast.className = 'toast ' + (tipo || 'info');
-            toast.textContent = mensaje || '';
+            toast.textContent = mensajeMostrar || '';
             document.body.appendChild(toast);
 
             this.toastTimeout = setTimeout(() => {
@@ -3060,7 +3078,7 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
         }
         
         const existingSelector = document.getElementById('idiomaSelectorWrapper');
-        if (existingSelector) existingWrapper.remove();
+        if (existingSelector) existingSelector.remove();
         
         this._crearIndicadorBalanceador();
         this._configurarModoInverso();
@@ -3113,7 +3131,8 @@ ${pctDiario < 60 ? '🟢 Todo en orden. Sigue practicando.' : ''}
 window.uiCore = new UICore();
 window.ui = window.uiCore;
 
-console.log('✅ UI Core v18.37 - COMPLETO Y CORREGIDO');
+console.log('✅ UI Core v18.38 - COMPLETO Y CORREGIDO');
+console.log('  🌐 Toasts multiidioma (Vigía/Centinela): ACTIVADO');
 console.log('  📊 Módulo "stats" corregido - usa UIDashboard._cargarDashboardInicial');
 console.log('  🎵 Módulo "tonos" registrado correctamente');
 console.log('  📚 Módulo "biblioteca v2.0" registrado correctamente');
