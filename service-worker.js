@@ -2,9 +2,9 @@
 // SERVICE WORKER v15.0 - NEURO CACHE OPTIMIZADO
 // ============================================================
 
-const CACHE_NAME = 'pipeline-neuro-v15.5';
-const OFFLINE_CACHE = 'pipeline-offline-v15.5';
-const DYNAMIC_CACHE = 'pipeline-dynamic-v15.5';
+const CACHE_NAME = 'pipeline-neuro-v15.6';
+const OFFLINE_CACHE = 'pipeline-offline-v15.6';
+const DYNAMIC_CACHE = 'pipeline-dynamic-v15.6';
 
 // Assets estáticos para cache
 const STATIC_ASSETS = [
@@ -18,11 +18,14 @@ const STATIC_ASSETS = [
     '/js/app.js',
     '/js/database.js',
     '/js/core/ttsManager.js',
+    '/js/ui/ui.biblioteca.js',
     '/js/vigia.js',
     '/js/centinela.js',
     '/js/pipeline.js',
     '/js/gramatica.js',
     '/js/core/phrasalVerbs.js',
+    '/js/core/ttsManager.js',
+    '/js/ui/ui.biblioteca.js',
     '/js/ui.js',
     '/manifest.json',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
