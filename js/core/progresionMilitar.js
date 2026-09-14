@@ -77,11 +77,12 @@
                 this.estado.ultimoRango = indice;
                 this._guardar();
             }
+            const hoyActivo = this.estado.ultimoDia === new Date().toISOString().slice(0, 10);
             const misiones = [
-                { texto: 'Completa una historia u onda', hecho: completadas > 0, icono: '📚' },
-                { texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, icono: '🧠' },
-                { texto: 'Mantén una sesión hoy', hecho: this.estado.ultimoDia === new Date().toISOString().slice(0, 10), icono: '🔥' },
-                { texto: 'Objetivo semanal: domina 10 frases', hecho: dominadas >= 10, icono: '📅' }
+                { paso: 1, texto: 'Completa una historia u onda', hecho: completadas > 0, actual: Math.min(completadas, 1), meta: 1, icono: '📚', detalle: completadas > 0 ? '1/1 conseguido' : '0/1 · abre Biblioteca o Elipse' },
+                { paso: 2, texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, actual: Math.min(dominadas, 5), meta: 5, icono: '🧠', detalle: `${Math.min(dominadas, 5)}/5 · ${Math.max(0, 5 - dominadas)} restantes` },
+                { paso: 3, texto: 'Mantén una sesión hoy', hecho: hoyActivo, actual: hoyActivo ? 1 : 0, meta: 1, icono: '🔥', detalle: hoyActivo ? '1/1 · sesión registrada hoy' : '0/1 · estudia una frase o historia' },
+                { paso: 4, texto: 'Objetivo semanal: domina 10 frases', hecho: dominadas >= 10, actual: Math.min(dominadas, 10), meta: 10, icono: '📅', detalle: `${Math.min(dominadas, 10)}/10 · ${Math.max(0, 10 - dominadas)} restantes esta semana` }
             ];
             const condecoraciones = [
                 completadas >= 1 && 'Primera misión',
@@ -108,7 +109,7 @@
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
-                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} ${m.texto}</span>`).join('')}
+                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} Paso ${m.paso}: ${m.texto} · ${m.detalle}</span>`).join('')}
                 </div>
                 ${s.condecoraciones.length ? `<div style="margin-top:10px;font-size:11px;color:var(--secondary);">🏅 ${s.condecoraciones.join(' · ')}</div>` : ''}
                 <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanel()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
@@ -125,7 +126,7 @@
             overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
                 <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.3</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
-                <h3>🎯 Misiones activas</h3><div style="display:grid;gap:8px;">${s.misiones.map(m => `<div style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};">${m.hecho ? '✅' : m.icono} ${m.texto}</div>`).join('')}</div>
+                <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} Paso ${m.paso}/4 · ${m.texto}</div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.detalle}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
                 <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
             </div>`;
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
