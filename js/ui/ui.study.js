@@ -3055,6 +3055,14 @@ REGLAS:
         }
 
         _reproducirFrase(texto, idioma) {
+            if (window.TTS) {
+                if (!window.TTS.isSupported()) {
+                    this.core?.mostrarToast(window.PipelineI18n?.t('Voz no disponible') || 'Voz no disponible', 'warning');
+                    return;
+                }
+                window.TTS.speak(texto, { lang: idioma || 'es' });
+                return;
+            }
             if (!window.speechSynthesis) {
                 this.core.mostrarToast('⚠️ Tu navegador no soporta síntesis de voz.', 'error');
                 return;
@@ -4258,6 +4266,7 @@ REGLAS:
 
         _volverDelLibro() {
             console.log('🔙 Volviendo del libro al estudio');
+            window.TTS?.stop();
             this._cerrandoLibro = true;
             this._modoVista = 'frase';
             this._libroAbierto = false;
@@ -4410,6 +4419,11 @@ REGLAS:
                             <h2 style="font-size:22px;font-weight:800;color:var(--dark);margin:0;flex:1;">📖 ${this._historiaTitulo}</h2>
                             <span style="font-size:12px;color:var(--gray-light);">${this._historiaActual.length} frases</span>
                             <button class="btn-primary" onclick="window.UIStudy._estudiarHistoriaDesdeLibro(${this._historiaIdActual})" style="padding:4px 12px;font-size:11px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-play"></i> Estudiar todo</button>
+                            <button class="btn-secondary" onclick="window.UIStudy._ttsEscucharHistoriaCompleta()" title="Escuchar" style="padding:4px 10px;font-size:11px;border:1px solid var(--primary);color:var(--primary);border-radius:6px;cursor:pointer;"><i class="fas fa-volume-up"></i> Escuchar</button>
+                            <button class="btn-secondary" onclick="window.UIStudy._ttsPausa()" title="Pausa" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-pause"></i></button>
+                            <button class="btn-secondary" onclick="window.UIStudy._ttsContinuar()" title="Continuar" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-play"></i></button>
+                            <button class="btn-secondary" onclick="window.UIStudy._ttsDetener()" title="Detener" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-stop"></i></button>
+                            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);"><i class="fas fa-gauge-high"></i><input type="range" min="0.6" max="1.4" step="0.1" value="${window.TTS?.getRate?.() || 1}" oninput="window.UIStudy._ttsVelocidad(this.value)" style="width:64px;"></label>
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;padding:4px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--light);">
                                 <input type="checkbox" ${this._historiasLeidas.has(this._historiaIdActual) ? 'checked' : ''} onchange="window.UIStudy._toggleHistoriaLeida(${this._historiaIdActual}, this.checked)" style="width:14px;height:14px;cursor:pointer;">
                                 <span>✅ Marcar como leída</span>
@@ -4463,6 +4477,7 @@ REGLAS:
                                     ${frase.reglaGramatical ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;padding:4px 8px;background:var(--bg);border-radius:4px;display:inline-block;margin-left:22px;">📋 ${frase.reglaGramatical}</div>` : ''}
                                 </div>
                                 <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                    <button class="btn-secondary" onclick="window.UIStudy._ttsEscucharFraseHistoria(${numFrase - 1})" title="Escuchar" style="padding:2px 8px;font-size:10px;border:1px solid var(--primary);color:var(--primary);border-radius:4px;cursor:pointer;"><i class="fas fa-volume-up"></i></button>
                                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;padding:4px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--light);">
                                         <input type="checkbox" ${esFavorita ? 'checked' : ''} onchange="window.UIStudy._toggleFraseFavorita(${frase.id}, this.checked)" style="width:14px;height:14px;cursor:pointer;">
                                         <span>⭐</span>
@@ -4499,7 +4514,22 @@ REGLAS:
         // CERRAR HISTORIA COMPLETA
         // ============================================================
 
-        _cerrarHistoriaCompleta() { this._volverDelLibro(); }
+        _ttsEscucharHistoriaCompleta() {
+            const textos = (this._historiaActual || []).map(frase => frase.original || '').filter(Boolean);
+            window.TTS?.speak(textos, { lang: this._historiaActual?.[0]?.idioma || gestorIdiomas?.getIdiomaActivo?.() || 'es' });
+        }
+
+        _ttsEscucharFraseHistoria(index) {
+            const frase = this._historiaActual?.[index];
+            if (frase) this._reproducirFrase(frase.original || '', frase.idioma || gestorIdiomas?.getIdiomaActivo?.() || 'es');
+        }
+
+        _ttsPausa() { window.TTS?.pause(); }
+        _ttsContinuar() { window.TTS?.resume(); }
+        _ttsDetener() { window.TTS?.stop(); }
+        _ttsVelocidad(rate) { window.TTS?.setRate(rate); }
+
+        _cerrarHistoriaCompleta() { window.TTS?.stop(); this._volverDelLibro(); }
 
         // ============================================================
         // ESTUDIAR FRASE DESDE HISTORIA
