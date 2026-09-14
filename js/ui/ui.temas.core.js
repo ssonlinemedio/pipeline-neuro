@@ -946,6 +946,14 @@ class UITemasCore {
                 await this._desbloquearSiguienteNivel(idioma);
             }
         }
+
+        // La bandera de desbloqueo habilita la ruta visual; la promoción
+        // persistente del usuario la realiza el gestor central únicamente
+        // cuando el nivel actual está completamente terminado.
+        const usuario = await db.getUsuario();
+        if (window.gestorNiveles && usuario?.id) {
+            await window.gestorNiveles.promoverPorContenido(usuario.id, idioma);
+        }
     }
 
     async _desbloquearSiguienteNivel(idioma) {

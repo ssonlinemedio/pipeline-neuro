@@ -183,7 +183,9 @@ class GestorNiveles {
                 await this._guardarExamen(examen);
                 
                 if (aprobado) {
-                    await this._actualizarNivelUsuario(usuarioId, idioma, nivel);
+                    // Un examen mide el dominio y concede bonus, pero no promociona
+                    // el nivel lingüístico: la promoción oficial depende del
+                    // contenido predefinido completado (ver promoverPorContenido).
                     if (window.UIConfig) {
                         window.UIConfig._mostrarCelebracionExamen(nivel, resultado.puntuacion);
                     }
@@ -253,18 +255,10 @@ class GestorNiveles {
 
             let mensaje = '';
             if (debeSubir) {
-                mensaje = `🎉 ¡Felicidades! Has alcanzado el nivel ${nivelAlcanzado}.`;
-                await this._actualizarNivelUsuario(usuarioId, idioma, nivelAlcanzado);
-                
-                window.dispatchEvent(new CustomEvent('cambioNivel', {
-                    detail: { 
-                        nivelAnterior: nivelActual, 
-                        nivelNuevo: nivelAlcanzado,
-                        usuarioId: usuarioId,
-                        idioma: idioma,
-                        gapAnalysis: gapAnalysis
-                    }
-                }));
+                // Este cálculo sigue siendo útil como diagnóstico, pero no puede
+                // cambiar el nivel: evita que RCN/eficiencia o campañas salten
+                // contenidos que el alumno aún no ha completado.
+                mensaje = `📊 Tu dominio estadístico apunta a ${nivelAlcanzado}, pero el nivel oficial avanzará al completar todos los temas predefinidos.`;
             }
 
             const evaluacion = {
@@ -312,6 +306,34 @@ class GestorNiveles {
 
         } catch (error) {
             console.error('❌ Error evaluando nivel:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Promoción oficial por currículo. Es la única vía automática para subir
+     * de nivel: todos los temas predefinidos del nivel actual deben estar
+     * completados. Las campañas, rangos, logros y exámenes no la sustituyen.
+     */
+    async promoverPorContenido(usuarioId, idioma) {
+        try {
+            const usuario = await db.getUsuario();
+            const info = usuario?.idiomasObjetivo?.find(i => i.idioma === idioma);
+            const nivelActual = info?.nivel || 'A1';
+            const indice = this.niveles.indexOf(nivelActual);
+            if (indice < 0 || indice >= this.niveles.length - 1) return null;
+
+            const siguiente = this.niveles[indice + 1];
+            const progreso = await window.UITemas?._obtenerProgresoNivel?.(idioma, nivelActual);
+            if (!progreso || progreso.total === 0 || progreso.completados < progreso.total) return null;
+
+            await this._actualizarNivelUsuario(usuarioId || usuario?.id, idioma, siguiente);
+            window.dispatchEvent(new CustomEvent('cambioNivel', {
+                detail: { nivelAnterior: nivelActual, nivelNuevo: siguiente, usuarioId: usuario?.id, idioma, motivo: 'contenido_predefinido_completo' }
+            }));
+            return { nivelAnterior: nivelActual, nivelNuevo: siguiente, cambiado: true, motivo: 'contenido_predefinido_completo' };
+        } catch (error) {
+            console.error('❌ Error promocionando por contenido:', error);
             return null;
         }
     }

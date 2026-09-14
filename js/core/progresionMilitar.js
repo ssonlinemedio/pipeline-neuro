@@ -84,7 +84,11 @@
             const formacionCompleta = this.estado.formacionRecluta === true;
             const nivel = this._obtenerNivelActivo();
             const rangoPorNivel = RANGO_POR_NIVEL[nivel] ?? 1;
-            const indice = formacionCompleta ? Math.max(rangoPorNivel, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0)) : 0;
+            const rangoPorPuntos = RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0);
+            // El rango militar acompaña al nivel lingüístico, pero no puede
+            // adelantarse a él. Las campañas siguen siendo infinitas y útiles
+            // dentro del nivel, aunque el rango queda temporalmente en su techo.
+            const indice = formacionCompleta ? Math.min(rangoPorNivel, rangoPorPuntos) : 0;
             const rango = RANGOS[indice];
             const siguiente = RANGOS[indice + 1] || null;
             const progresoRango = siguiente ? Math.round(((puntos - rango.minimo) / (siguiente.minimo - rango.minimo)) * 100) : 100;
@@ -237,6 +241,21 @@
                 }
                 return m.detalle;
             };
+            const porPagina = 4;
+            const paginaMisiones = Math.max(1, Number(this._paginaMisiones || 1));
+            const paginaLogros = Math.max(1, Number(this._paginaLogros || 1));
+            const paginar = (items, pagina, clave) => {
+                const totalPaginas = Math.max(1, Math.ceil(items.length / porPagina));
+                const paginaSegura = Math.min(pagina, totalPaginas);
+                const inicio = (paginaSegura - 1) * porPagina;
+                const visibles = items.slice(inicio, inicio + porPagina);
+                const botones = totalPaginas > 1
+                    ? `<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px;"><button onclick="window.ProgresionMilitar.cambiarPaginaPanel('${clave}',${paginaSegura - 1})" ${paginaSegura <= 1 ? 'disabled' : ''}>‹</button><span style="font-size:11px;color:var(--gray);">${paginaSegura}/${totalPaginas}</span><button onclick="window.ProgresionMilitar.cambiarPaginaPanel('${clave}',${paginaSegura + 1})" ${paginaSegura >= totalPaginas ? 'disabled' : ''}>›</button></div>`
+                    : '';
+                return { visibles, botones };
+            };
+            const misionesPagina = paginar(s.misiones, paginaMisiones, 'misiones');
+            const logrosPagina = paginar(s.condecoraciones, paginaLogros, 'logros');
             document.getElementById('pipeline-campana-overlay')?.remove();
             const overlay = document.createElement('div');
             overlay.id = 'pipeline-campana-overlay';
@@ -244,12 +263,18 @@
             overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
                 <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.4</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2><div style="font-size:12px;color:var(--secondary);">Nivel lingüístico ${s.nivel} · ruta objetivo: ${RANGOS[s.rangoPorNivel]?.nombre || 'Soldado'}</div></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
-                <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} ${lang === 'en' ? 'Step' : lang === 'zh' ? '步骤' : 'Paso'} ${m.paso}/4 · ${textoPaso(m)} <span style="float:right;color:var(--primary);font-size:11px;">→ ${lang === 'en' ? 'Open' : lang === 'zh' ? '打开' : 'Abrir'}</span></div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${detallePaso(m)}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
-                <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
+                <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${misionesPagina.visibles.map(m => `<div onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} ${lang === 'en' ? 'Step' : lang === 'zh' ? '步骤' : 'Paso'} ${m.paso}/4 · ${textoPaso(m)} <span style="float:right;color:var(--primary);font-size:11px;">→ ${lang === 'en' ? 'Open' : lang === 'zh' ? '打开' : 'Abrir'}</span></div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${detallePaso(m)}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>${misionesPagina.botones}
+                <h3>🏅 Condecoraciones y logros</h3><div style="color:var(--secondary);">${logrosPagina.visibles.length ? logrosPagina.visibles.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>${logrosPagina.botones}
             </div>`;
             overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
             document.body.appendChild(overlay);
+        }
+
+        cambiarPaginaPanel(tipo, pagina) {
+            if (tipo === 'misiones') this._paginaMisiones = Math.max(1, Number(pagina) || 1);
+            if (tipo === 'logros') this._paginaLogros = Math.max(1, Number(pagina) || 1);
+            this.abrirPanel();
         }
     }
 
