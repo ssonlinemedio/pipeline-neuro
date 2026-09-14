@@ -626,6 +626,12 @@ class UITemasCore {
 
             // Actualizar cache
             this._temaCompletadoCache[key] = completado;
+            // Un mismo tema puede llegar desde la UI con su ID interno o con
+            // _temaOriginalId. Mantener ambas claves evita que campañas y
+            // progreso de nivel lean estados distintos.
+            const idOriginal = temaEncontrado._temaOriginalId || temaIdReal;
+            this._temaCompletadoCache[`${idioma}_${idOriginal}`] = completado;
+            this._temaCompletadoCache[`${idioma}_${temaEncontrado.id}`] = completado;
             if (!this._temasCompletadosPorIdioma[idioma]) {
                 this._temasCompletadosPorIdioma[idioma] = {};
             }
@@ -1009,8 +1015,8 @@ class UITemasCore {
         
         try {
             const todosLosTemas = await db.obtenerTemasPorIdioma(idioma);
-            const temaEncontrado = todosLosTemas.find(t => 
-                t._temaOriginalId === temaId && 
+            const temaEncontrado = todosLosTemas.find(t =>
+                (t._temaOriginalId === temaId || String(t.id) === String(temaId)) &&
                 t._esPredefinido === true &&
                 t.idioma === idioma
             );
