@@ -40,7 +40,7 @@ class GestorProgresoHistorias {
                     const estadoActual = historia.estado === 'completada' || historia._completada === true;
                     if (estadoActual !== detail.completado) {
                         this._log(`⚠️ Inconsistencia detectada: estado actual ${estadoActual} vs evento ${detail.completado}`, 'warn');
-                        await this.cambiarEstadoHistoria(detail.historiaId, estadoActual, 'sincronizacion_forzada');
+                        await this.cambiarEstadoHistoria(detail.historiaId, detail.completado, 'sincronizacion_forzada');
                     }
                 }
             }
