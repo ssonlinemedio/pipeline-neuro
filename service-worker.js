@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
     '/js/ui/ui.i18n.js',
     '/js/app.js',
     '/js/database.js',
+    '/js/core/ttsManager.js',
     '/js/vigia.js',
     '/js/centinela.js',
     '/js/pipeline.js',
