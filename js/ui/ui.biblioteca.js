@@ -30,6 +30,7 @@ class UIBiblioteca {
         this._vistaAgrupada = true;
         this._mostrarTraduccion = true;
         this._dualTTS = localStorage.getItem('pipeline_biblioteca_tts_dual') === 'true';
+        this._dualTTSToken = 0;
         
         this._NIVELES_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         this._NIVEL_WEIGHT = {
@@ -1431,12 +1432,20 @@ class UIBiblioteca {
         if (!window.TTS?.isSupported?.()) return this._core?.mostrarToast(window.PipelineI18n?.t('Voz no disponible') || 'Voz no disponible', 'warning');
         const idiomaObjetivo = this._historiaSeleccionada?.idioma || 'es';
         const idiomaNativo = window.gestorIdiomas?.obtenerIdiomaNativoActivo?.()?.nombre || 'es';
-        const textos = [];
-        for (const frase of (this._frasesActuales || [])) {
-            if (frase.original) textos.push({ text: frase.original, lang: idiomaObjetivo });
-            if (this._dualTTS && frase.traduccion) textos.push({ text: frase.traduccion, lang: idiomaNativo });
+        const token = ++this._dualTTSToken;
+        const frases = this._frasesActuales || [];
+        if (!this._dualTTS) {
+            window.TTS.speak(frases.map(frase => frase.original || '').filter(Boolean), { lang: idiomaObjetivo });
+            return;
         }
-        window.TTS.speak(textos, { lang: idiomaObjetivo });
+        (async () => {
+            for (const frase of frases) {
+                if (token !== this._dualTTSToken) return;
+                if (frase.original) await window.TTS.speak(frase.original, { lang: idiomaObjetivo });
+                if (token !== this._dualTTSToken) return;
+                if (frase.traduccion) await window.TTS.speak(frase.traduccion, { lang: idiomaNativo });
+            }
+        })();
     }
 
     _ttsEscucharFrase(index) {
@@ -1447,7 +1456,7 @@ class UIBiblioteca {
 
     _ttsPausa() { window.TTS?.pause(); }
     _ttsContinuar() { window.TTS?.resume(); }
-    _ttsDetener() { window.TTS?.stop(); }
+    _ttsDetener() { this._dualTTSToken++; window.TTS?.stop(); }
     _ttsVelocidad(rate) { window.TTS?.setRate(rate); }
     _toggleDualTTS(enabled) {
         this._dualTTS = Boolean(enabled);
