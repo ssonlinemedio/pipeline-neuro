@@ -1439,9 +1439,9 @@ class UIBiblioteca {
         (async () => {
             for (const frase of frases) {
                 if (token !== this._dualTTSToken || playbackToken !== this._historiaPlaybackToken) return;
-                if (frase.original) await window.TTS.speak(frase.original, { lang: idiomaObjetivo });
-                if (token !== this._dualTTSToken || playbackToken !== this._historiaPlaybackToken) return;
                 if (this._dualTTS && frase.traduccion) await window.TTS.speak(frase.traduccion, { lang: idiomaNativo });
+                if (token !== this._dualTTSToken || playbackToken !== this._historiaPlaybackToken) return;
+                if (frase.original) await window.TTS.speak(frase.original, { lang: idiomaObjetivo });
             }
         })();
     }

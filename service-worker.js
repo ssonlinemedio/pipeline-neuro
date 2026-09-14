@@ -2,9 +2,9 @@
 // SERVICE WORKER v15.0 - NEURO CACHE OPTIMIZADO
 // ============================================================
 
-const CACHE_NAME = 'pipeline-neuro-v18.1';
-const OFFLINE_CACHE = 'pipeline-offline-v18.1';
-const DYNAMIC_CACHE = 'pipeline-dynamic-v18.1';
+const CACHE_NAME = 'pipeline-neuro-v18.2';
+const OFFLINE_CACHE = 'pipeline-offline-v18.2';
+const DYNAMIC_CACHE = 'pipeline-dynamic-v18.2';
 
 // Assets estáticos para cache
 const STATIC_ASSETS = [
