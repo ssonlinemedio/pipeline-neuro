@@ -402,8 +402,27 @@
                     const condecoraciones = Array.isArray(s.condecoraciones) ? s.condecoraciones : [];
                     const rango = s.rango || { icono: '🎖️', nombre: 'Formación' };
                     const listaCampañas = Array.isArray(campañas.lista) ? campañas.lista : [];
-                    const t = value => window.PipelineI18n?.t?.(value) || value;
-                    const escape = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' })[c]);
+                    const t = value => {
+                        const original = String(value ?? '');
+                        const lang = window.PipelineI18n?.getLanguage?.() || 'es';
+                        const direct = {
+                            'Condecoraciones y logros': { en: 'Decorations and achievements', zh: '勋章与成就' },
+                            'Campaña': { en: 'Campaign', zh: '战役' },
+                            'Ver otras campañas': { en: 'View other campaigns', zh: '查看其他战役' }
+                        };
+                        if (direct[original]?.[lang]) return direct[original][lang];
+                        let translated = window.PipelineI18n?.t?.(original) || original;
+                        if (lang === 'en') translated = translated.replace(/(\d+) restantes esta semana/g, '$1 remaining this week').replace(/(\d+) restantes/g, '$1 remaining');
+                        if (lang === 'zh') translated = translated.replace(/(\d+) restantes esta semana/g, '本周还剩 $1 个').replace(/(\d+) restantes/g, '还剩 $1 个');
+                        return translated;
+                    };
+                    const escape = value => {
+                        let texto = String(window.PipelineI18n?.t?.(String(value ?? '')) || (value ?? ''));
+                        const idiomaVista = window.PipelineI18n?.getLanguage?.() || 'es';
+                        if (idiomaVista === 'en') texto = texto.replace(/Campaña/g, 'Campaign');
+                        if (idiomaVista === 'zh') texto = texto.replace(/Campaña/g, '战役');
+                        return texto.replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' })[c]);
+                    };
                     const pendientes = misiones.filter(m => !m.hecho);
                     const completadas = misiones.filter(m => m.hecho);
                     const fallback = document.createElement('div');
@@ -411,7 +430,7 @@
                     fallback.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
                     fallback.innerHTML = `<div style="width:min(720px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;background:var(--white);border-radius:20px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.3);"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div><div style="font-size:11px;color:var(--secondary);font-weight:700;">🎖️ ${escape(s.campaña)}</div><h2 style="margin:4px 0;color:var(--primary);">${rango.icono} ${escape(rango.nombre)} · ${escape(s.nivel)}</h2><div style="font-size:12px;color:var(--gray);">${t('Informe de campaña')}</div></div><button type="button" data-cerrar-informe style="border:0;background:var(--bg);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:18px;">×</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${campañas.completadas}/${campañas.total}</b><small style="display:block;color:var(--gray);">${t('Temas completados')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">${t('Historias completadas')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">${t('Frases dominadas')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">${t('Días activos')}</small></div></div><div style="padding:14px;border-left:4px solid var(--primary);background:var(--primary)08;border-radius:10px;margin-bottom:16px;"><div style="font-weight:700;color:var(--dark);">🎯 ${t('Campaña actual')}</div><div style="margin-top:5px;color:var(--gray);">${campañas.temaActual ? `${t('Siguiente tema')}: <strong>${escape(campañas.temaActual.nombre)}</strong>` : t('Nivel completado')}</div><div style="height:7px;background:var(--light);border-radius:8px;margin-top:10px;overflow:hidden;"><div style="height:100%;width:${campañas.total ? Math.round((campañas.completadas / campañas.total) * 100) : 0}%;background:linear-gradient(90deg,var(--primary),var(--secondary));"></div></div></div><h3 style="margin:12px 0 8px;">📋 ${t('Lo que falta')}</h3><div style="display:grid;gap:8px;">${pendientes.length ? pendientes.map(m => `<div style="padding:10px 12px;background:var(--bg);border-radius:9px;color:var(--gray);">${m.icono} ${t('Tema pendiente')}: ${escape(m.texto)}<div style="font-size:11px;margin-top:3px;">${escape(m.detalle)}</div></div>`).join('') : `<div style="padding:10px 12px;background:var(--success)12;border-radius:9px;color:var(--success);">✅ ${t('No hay misiones pendientes')}</div>`}</div><h3 style="margin:16px 0 8px;">🏅 ${t('Condecoraciones y logros')}</h3><div style="display:flex;gap:6px;flex-wrap:wrap;">${condecoraciones.length ? condecoraciones.map(x => `<span style="padding:7px 10px;background:var(--secondary)12;border-radius:10px;color:var(--secondary);">${escape(x)}</span>`).join('') : `<span style="color:var(--gray);">${t('Aún no hay condecoraciones. La primera misión te espera.')}</span>`}</div>${completadas.length ? `<h3 style="margin:16px 0 8px;">✅ ${t('Hitos conseguidos')}</h3><div style="display:grid;gap:6px;">${completadas.map(m => `<div style="padding:8px 10px;background:var(--success)08;border-radius:8px;color:var(--success);">✅ ${escape(m.texto)}</div>`).join('')}</div>` : ''}</div>`;
                     const campañaActual = campañas.temaActual?.nombre || t('Nivel completado');
-                    const hitosHtml = misiones.map(m => `<div style="padding:9px 11px;border-radius:9px;background:${m.hecho ? 'var(--success)08' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : '⬜'} ${t(m.texto)}<div style="font-size:11px;margin-top:3px;">${escape(m.detalle)}</div></div>`).join('');
+                    const hitosHtml = misiones.map(m => `<div style="padding:9px 11px;border-radius:9px;background:${m.hecho ? 'var(--success)08' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : '⬜'} ${t(m.texto)}<div style="font-size:11px;margin-top:3px;">${escape(t(m.detalle))}</div></div>`).join('');
                     const campañasHechas = listaCampañas.filter(c => c.completado).map(c => `<div style="padding:8px 10px;color:var(--success);">✅ ${t('Campaña')} ${c.indice}: ${escape(c.nombre)}</div>`).join('');
                     const campañasPendientes = listaCampañas.filter(c => !c.completado).map(c => `<div style="padding:8px 10px;color:var(--gray);">🎯 ${t('Campaña')} ${c.indice}: ${escape(c.nombre)}</div>`).join('');
                     const contenedor = fallback.firstElementChild;
@@ -422,6 +441,10 @@
                     const tituloCondecoraciones = [...(contenedor?.querySelectorAll('h3') || [])].find(h => h.textContent.includes('Condecoraciones'));
                     tituloCondecoraciones?.insertAdjacentHTML('beforebegin', `<h3 style="margin:16px 0 8px;">🎯 ${t('Campaña actual')} · ${escape(campañaActual)}</h3><div style="display:grid;gap:8px;">${hitosHtml || `<div style="color:var(--gray);">${t('No hay hitos registrados')}</div>`}</div>`);
                     if (campañasHechas || campañasPendientes) contenedor?.insertAdjacentHTML('beforeend', `<details style="margin-top:16px;"><summary style="cursor:pointer;font-weight:700;color:var(--gray);">🗂️ ${t('Ver otras campañas')}</summary><div style="display:grid;gap:4px;margin-top:8px;">${campañasHechas}${campañasPendientes}</div></details>`);
+                    fallback.innerHTML = fallback.innerHTML.replace(/Completa el tema:/g, t('Completa el tema:')).replace(/Condecoraciones y logros/g, t('Condecoraciones y logros'));
+                    fallback.querySelectorAll('div').forEach(elemento => {
+                        if (elemento.textContent.includes('Tema pendiente:')) elemento.innerHTML = elemento.innerHTML.replace(/(Completa una historia u onda|Domina 5 frases con RCN ≥ 4|Mantén una sesión hoy|Objetivo semanal: domina 10 frases)/g, texto => t(texto));
+                    });
                     fallback.querySelector('button')?.addEventListener('click', () => fallback.remove());
                     fallback.addEventListener('click', e => { if (e.target === fallback) fallback.remove(); });
                     document.getElementById('pipeline-campana-overlay')?.remove();
