@@ -16,6 +16,7 @@
         { nombre: 'Comandante', icono: '🛡️', minimo: 240 },
         { nombre: 'Teniente Coronel', icono: '🎗️', minimo: 350 }
     ];
+    const RANGO_POR_NIVEL = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
 
     class ProgresionMilitar {
         constructor() {
@@ -37,6 +38,16 @@
 
         _guardar() {
             try { localStorage.setItem(CLAVE, JSON.stringify(this.estado)); } catch (e) { /* almacenamiento opcional */ }
+        }
+
+        _obtenerNivelActivo() {
+            const info = window.gestorIdiomas?.getInfoActivo?.();
+            if (info?.nivel) return String(info.nivel).toUpperCase();
+            try {
+                const usuario = JSON.parse(localStorage.getItem('pipeline_usuario') || '{}');
+                const idioma = window.gestorIdiomas?.getIdiomaActivo?.();
+                return String(usuario.idiomasObjetivo?.find(i => i.idioma === idioma)?.nivel || 'A1').toUpperCase();
+            } catch (e) { return 'A1'; }
         }
 
         _escucharActividad() {
@@ -71,7 +82,9 @@
                 this._guardar();
             }
             const formacionCompleta = this.estado.formacionRecluta === true;
-            const indice = formacionCompleta ? Math.max(0, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0)) : 0;
+            const nivel = this._obtenerNivelActivo();
+            const rangoPorNivel = RANGO_POR_NIVEL[nivel] ?? 1;
+            const indice = formacionCompleta ? Math.max(rangoPorNivel, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0)) : 0;
             const rango = RANGOS[indice];
             const siguiente = RANGOS[indice + 1] || null;
             const progresoRango = siguiente ? Math.round(((puntos - rango.minimo) / (siguiente.minimo - rango.minimo)) * 100) : 100;
@@ -105,7 +118,7 @@
             const campañas = { en: 'Operación Londres', fr: 'Misión París', de: 'Campaña Berlín', it: 'Ruta Roma', zh: 'Ruta Pekín', ja: 'Desafío Tokio' };
             const idiomaBase = String(idioma || '').toLowerCase().slice(0, 2);
             const campaña = campañas[idiomaBase] || `Campaña ${idioma || 'global'}`;
-            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0), campaña, formacionCompleta };
+            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0), campaña, formacionCompleta, nivel, rangoPorNivel };
         }
 
         async renderDashboard(idioma) {
@@ -120,6 +133,7 @@
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
+                <div style="margin:8px 0;font-size:10px;color:var(--gray);">Ruta de ascenso por nivel: A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
                     ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} Paso ${m.paso}: ${m.texto} · ${m.detalle}</span>`).join('')}
                 </div>
@@ -158,7 +172,7 @@
             overlay.id = 'pipeline-campana-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
             overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
-                <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.3</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.4</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2><div style="font-size:12px;color:var(--secondary);">Nivel lingüístico ${s.nivel} · ruta objetivo: ${RANGOS[s.rangoPorNivel]?.nombre || 'Soldado'}</div></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
                 <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} Paso ${m.paso}/4 · ${m.texto}</div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.detalle}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
                 <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
