@@ -162,6 +162,15 @@ class GestorProgresoHistorias {
             let frasesCompletadas = 0;
             let totalFrases = frases.length;
 
+            const cambioManual = origen !== 'srs';
+            const yaDominadaManual = historia._completadaManual === true;
+            if (cambioManual && completado && !yaDominadaManual) {
+                historia._progresoAntesDominada = await this._capturarProgresoFrases(frases);
+            } else if (cambioManual && !completado && yaDominadaManual) {
+                await this._restaurarProgresoFrases(frases, historia._progresoAntesDominada);
+                delete historia._progresoAntesDominada;
+            }
+
             // En Elipse/Temas, marcar manualmente una onda significa dominarla.
             // Elevamos sus frases a RCN 5 sin borrar datos de repasos anteriores.
             if (completado && origen !== 'srs') {
@@ -523,6 +532,27 @@ class GestorProgresoHistorias {
             actual.proximoRepaso = proximoRepaso;
             actual.fechaCreacion = actual.fechaCreacion || ahora;
             await db.guardarProgreso(actual);
+        }
+    }
+
+    async _capturarProgresoFrases(frases) {
+        const snapshot = {};
+        for (const frase of frases || []) {
+            snapshot[frase.id] = await db.obtenerProgreso(frase.id);
+        }
+        return snapshot;
+    }
+
+    async _restaurarProgresoFrases(frases, snapshot) {
+        if (!snapshot || typeof snapshot !== 'object') return;
+        for (const frase of frases || []) {
+            const anterior = snapshot[frase.id];
+            const actual = await db.obtenerProgreso(frase.id);
+            if (anterior) {
+                await db.guardarProgreso(anterior);
+            } else if (actual?.id) {
+                await db.delete('progreso', actual.id);
+            }
         }
     }
 
