@@ -786,11 +786,22 @@ class UIManual {
     // RENDERIZAR MANUAL SUPER POTENTE
     // ============================================================
 
+    _contenidoInicioTraducido(contenido) {
+        const lang = window.PipelineI18n?.getLanguage?.() || 'es';
+        if (lang === 'es') return contenido;
+        const textos = {
+            en: '<p style="font-size:14px;color:var(--dark);line-height:1.6;"><strong>Pipeline Neuro</strong> is not a conventional language learning application. It is a <strong>linguistic neuroplasticity laboratory</strong> designed to orchestrate a symphony of cognitive processes that imitate and enhance the natural way the human brain acquires and consolidates knowledge.</p>',
+            zh: '<p style="font-size:14px;color:var(--dark);line-height:1.6;"><strong>Pipeline Neuro</strong> 不是普通的语言学习应用。它是一个<strong>语言神经可塑性实验室</strong>，旨在协调模仿并增强人类大脑自然获取和巩固知识的认知过程。</p>'
+        };
+        return contenido.replace(/<p style="font-size:14px;color:var\(--dark\);line-height:1\.6;">[\s\S]*?<\/p>/, textos[lang] || textos.en);
+    }
+
     _renderizarManual() {
         if (!this._container) return;
         
         const secciones = Object.values(this._SECCIONES);
         const seccionActual = this._SECCIONES[this._seccionActual] || this._SECCIONES['inicio'];
+        const contenidoSeccion = seccionActual.id === 'inicio' ? this._contenidoInicioTraducido(seccionActual.contenido) : seccionActual.contenido;
         const totalFavoritos = this._favoritosManual.size;
         
         // Aplicar filtro de búsqueda
@@ -886,7 +897,7 @@ class UIManual {
 
                 <!-- CONTENIDO DE LA SECCIÓN -->
                 <div style="background:var(--white);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);min-height:400px;">
-                    ${this._modoVista === 'tarjetas' ? this._renderizarVistaTarjetas(seccionesPagina) : seccionActual.contenido}
+                    ${this._modoVista === 'tarjetas' ? this._renderizarVistaTarjetas(seccionesPagina) : contenidoSeccion}
                 </div>
 
                 <!-- NAVEGACIÓN Y ACCIONES MEJORADAS -->
