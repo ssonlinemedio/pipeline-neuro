@@ -40,7 +40,7 @@ class GestorProgresoHistorias {
                     const estadoActual = historia.estado === 'completada' || historia._completada === true;
                     if (estadoActual !== detail.completado) {
                         this._log(`⚠️ Inconsistencia detectada: estado actual ${estadoActual} vs evento ${detail.completado}`, 'warn');
-                        await this.cambiarEstadoHistoria(detail.historiaId, estadoActual, 'sincronizacion_forzada');
+                        await this.cambiarEstadoHistoria(detail.historiaId, detail.completado, 'sincronizacion_forzada');
                     }
                 }
             }
@@ -141,6 +141,12 @@ class GestorProgresoHistorias {
                 return false;
             }
 
+            // El SRS no debe sobrescribir un cambio manual del checkbox ni competir
+            // con él mientras IndexedDB/UI terminan de sincronizarse.
+            if (origen === 'srs' && typeof historia._completadaManual === 'boolean') {
+                completado = historia._completadaManual;
+            }
+
             this._log(`📖 Historia: "${historia.titulo}" (estado: ${historia.estado || 'sin_estado'})`);
 
             const esOndaCruzada = historia._esOndaCruzada === true;
@@ -155,6 +161,21 @@ class GestorProgresoHistorias {
             let rcnPromedio = 0;
             let frasesCompletadas = 0;
             let totalFrases = frases.length;
+
+            const cambioManual = origen !== 'srs';
+            const yaDominadaManual = historia._completadaManual === true;
+            if (cambioManual && completado && !yaDominadaManual) {
+                historia._progresoAntesDominada = await this._capturarProgresoFrases(frases);
+            } else if (cambioManual && !completado && yaDominadaManual) {
+                await this._restaurarProgresoFrases(frases, historia._progresoAntesDominada);
+                delete historia._progresoAntesDominada;
+            }
+
+            // En Elipse/Temas, marcar manualmente una onda significa dominarla.
+            // Elevamos sus frases a RCN 5 sin borrar datos de repasos anteriores.
+            if (completado && origen !== 'srs') {
+                await this._marcarFrasesComoDominadas(frases);
+            }
 
             if (totalFrases > 0) {
                 let totalRCN = 0;
@@ -197,6 +218,7 @@ class GestorProgresoHistorias {
                 if (elipseHistoria) {
                     this._log(`🌌 Actualizando ${esBase ? 'BASE' : 'onda'} en Modo Elipse: ${historia.titulo}`);
                     elipseHistoria.completada = completado;
+                    elipseHistoria._completadaManual = completado;
                     elipseHistoria.rcnPromedio = rcnFinal;
                     
                     if (completado) {
@@ -236,7 +258,7 @@ class GestorProgresoHistorias {
             await this._verificarYActualizarEstadoTema(historia.temaId);
 
             // 🔥 DISPARAR EVENTO DE ESTADO CAMBIADO
-            this._dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcnFinal);
+            this._dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcnFinal, historia.temaId);
             
             // 🔥 FORZAR ACTUALIZACIÓN DE UI
             await this._forzarActualizacionUI(historiaId, completado, esOnda, esOndaCruzada);
@@ -482,10 +504,59 @@ class GestorProgresoHistorias {
     }
 
     async actualizarDesdeSRS(historiaId, rcnPromedio, completada) {
+        const ultimoCambioManual = this._cambioManual[Number(historiaId)] || 0;
+        if (ultimoCambioManual && Date.now() - ultimoCambioManual < 3000) {
+            this._log(`⏳ Ignorando actualización SRS inmediata tras cambio manual de historia ${historiaId}`, 'info');
+            return false;
+        }
         return this.cambiarEstadoHistoria(Number(historiaId), completada, 'srs');
     }
 
-    _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn) {
+    async _marcarFrasesComoDominadas(frases) {
+        const ahora = Date.now();
+        const proximoRepaso = ahora + (365 * 24 * 60 * 60 * 1000);
+        for (const frase of frases || []) {
+            const actual = await db.obtenerProgreso(frase.id) || {
+                fraseId: frase.id,
+                fase: 1,
+                rg: 0,
+                repasosExitosos: 0,
+                repasosFallidos: 0,
+                intervaloActual: 0,
+                neuroMetrics: { historialRCN: [], historialIntervalos: [], curvaOlvido: [], eficiencia: 1 }
+            };
+            actual.rcn = 5;
+            actual.fase = Math.max(Number(actual.fase) || 1, 5);
+            actual.estado = 'completada';
+            actual.ultimoRepaso = ahora;
+            actual.proximoRepaso = proximoRepaso;
+            actual.fechaCreacion = actual.fechaCreacion || ahora;
+            await db.guardarProgreso(actual);
+        }
+    }
+
+    async _capturarProgresoFrases(frases) {
+        const snapshot = {};
+        for (const frase of frases || []) {
+            snapshot[frase.id] = await db.obtenerProgreso(frase.id);
+        }
+        return snapshot;
+    }
+
+    async _restaurarProgresoFrases(frases, snapshot) {
+        if (!snapshot || typeof snapshot !== 'object') return;
+        for (const frase of frases || []) {
+            const anterior = snapshot[frase.id];
+            const actual = await db.obtenerProgreso(frase.id);
+            if (anterior) {
+                await db.guardarProgreso(anterior);
+            } else if (actual?.id) {
+                await db.delete('progreso', actual.id);
+            }
+        }
+    }
+
+    _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn, temaId) {
         let tipo = 'historia';
         if (esOndaCruzada) {
             tipo = 'onda_cruzada';
@@ -500,6 +571,7 @@ class GestorProgresoHistorias {
                 origen: origen,
                 tipo: tipo,
                 rcn: rcn || 0,
+                temaId: temaId || null,
                 esOndaCruzada: esOndaCruzada,
                 esOnda: esOnda
             }

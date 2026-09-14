@@ -1287,6 +1287,14 @@ class UIBiblioteca {
         const emojiNivel = this._getEmojiNivel(nivel);
         const colorNivel = this._getColorNivel(nivel);
         const nivelTema = historia._nivelTema || nivel;
+        const t = texto => window.PipelineI18n?.t(texto) || texto;
+        // El gestor puede cargarse antes de que Web Speech termine de exponer sus voces.
+        // Mostramos los controles si la capa está presente y dejamos que ella gestione
+        // el fallback, especialmente importante en WebView/Android.
+        // Los controles forman parte de la UI de lectura aunque el motor no esté
+        // disponible: así el usuario recibe feedback del fallback del dispositivo.
+        const ttsDisponible = true;
+        const idiomaVoz = idioma;
         
         let html = `
             <div style="padding:16px;max-width:900px;margin:0 auto;">
@@ -1308,6 +1316,15 @@ class UIBiblioteca {
                         </p>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                        ${ttsDisponible ? `
+                        <button class="btn-secondary" onclick="window.UIBiblioteca._ttsEscucharHistoria()" style="padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid var(--primary);color:var(--primary);cursor:pointer;" title="${t('Escuchar')}">
+                            <i class="fas fa-volume-up"></i> ${t('Escuchar')}
+                        </button>
+                        <button class="btn-secondary" onclick="window.UIBiblioteca._ttsPausa()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Pausa')}"><i class="fas fa-pause"></i></button>
+                        <button class="btn-secondary" onclick="window.UIBiblioteca._ttsContinuar()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Continuar')}"><i class="fas fa-play"></i></button>
+                        <button class="btn-secondary" onclick="window.UIBiblioteca._ttsDetener()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Detener')}"><i class="fas fa-stop"></i></button>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);" title="${t('Velocidad')}"><i class="fas fa-gauge-high"></i><input type="range" min="0.6" max="1.4" step="0.1" value="${window.TTS.getRate()}" oninput="window.UIBiblioteca._ttsVelocidad(this.value)" style="width:72px;"></label>
+                        ` : ''}
                         <button onclick="window.UIBiblioteca._toggleMostrarTraduccion()" 
                                 style="padding:4px 12px;font-size:11px;border-radius:6px;border:2px solid ${this._mostrarTraduccion ? 'var(--success)' : 'var(--gray)'};background:${this._mostrarTraduccion ? 'var(--success)10' : 'var(--bg)'};color:${this._mostrarTraduccion ? 'var(--success)' : 'var(--gray)'};cursor:pointer;transition:all 0.3s;"
                                 onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'"
@@ -1350,8 +1367,11 @@ class UIBiblioteca {
                     <div style="display:flex;gap:8px;align-items:start;">
                         <span style="font-size:12px;font-weight:600;color:var(--gray-light);min-width:28px;">${numFrase}.</span>
                         <div style="flex:1;">
-                            <div style="font-size:${esJeroglificoF ? '22px' : '18px'};font-weight:700;color:var(--dark);line-height:1.6;">
+                            <div style="display:flex;gap:8px;align-items:flex-start;">
+                            <div style="flex:1;font-size:${esJeroglificoF ? '22px' : '18px'};font-weight:700;color:var(--dark);line-height:1.6;">
                                 ${esJeroglificoF ? (f.segmentacion?.hanzi || f.original) : f.original}
+                            </div>
+                            ${ttsDisponible ? `<button class="btn-secondary" onclick="window.UIBiblioteca._ttsEscucharFrase(${numFrase - 1})" title="${t('Escuchar')}" style="flex:none;padding:4px 8px;border:1px solid var(--primary);color:var(--primary);border-radius:6px;cursor:pointer;"><i class="fas fa-volume-up"></i></button>` : ''}
                             </div>
                             ${transcripcion ? `
                                 <div style="font-size:14px;color:${esJeroglificoF ? 'var(--primary)' : 'var(--secondary)'};margin-top:2px;letter-spacing:1px;">
@@ -1401,6 +1421,23 @@ class UIBiblioteca {
         
         container.innerHTML = html;
     }
+
+    _ttsEscucharHistoria() {
+        if (!window.TTS?.isSupported?.()) return this._core?.mostrarToast(window.PipelineI18n?.t('Voz no disponible') || 'Voz no disponible', 'warning');
+        const textos = (this._frasesActuales || []).map(frase => frase.original || '').filter(Boolean);
+        window.TTS.speak(textos, { lang: this._historiaSeleccionada?.idioma || 'es' });
+    }
+
+    _ttsEscucharFrase(index) {
+        const frase = this._frasesActuales?.[index];
+        if (!frase) return;
+        window.TTS?.speak(frase.original || '', { lang: frase.idioma || this._historiaSeleccionada?.idioma || 'es' });
+    }
+
+    _ttsPausa() { window.TTS?.pause(); }
+    _ttsContinuar() { window.TTS?.resume(); }
+    _ttsDetener() { window.TTS?.stop(); }
+    _ttsVelocidad(rate) { window.TTS?.setRate(rate); }
 
     _toggleMostrarTraduccion() {
         this._mostrarTraduccion = !this._mostrarTraduccion;
@@ -1653,6 +1690,7 @@ class UIBiblioteca {
     }
 
     _volverALaBiblioteca() {
+        window.TTS?.stop();
         console.log('📚 Volviendo a la biblioteca...');
         
         this._esperandoRetorno = false;

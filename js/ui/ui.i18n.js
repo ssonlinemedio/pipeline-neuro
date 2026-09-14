@@ -98,6 +98,7 @@
   // traducciones pedagógicas ni valores de idioma nativo/objetivo.
 
   Object.assign(DICT.en, {
+    "Escuchar": "Listen", "Pausa": "Pause", "Continuar": "Resume", "Detener": "Stop", "Repetir frase": "Repeat sentence", "Velocidad": "Speed", "Voz no disponible": "Voice unavailable",
     "Limpiar filtros": "Clear filters",
     "📚 Todos los niveles": "📚 All levels",
     "🔍 Buscar palabras, frases, familias...": "🔍 Search words, sentences, families...",
@@ -117,6 +118,7 @@
     "Resultados": "Results"
   });
   Object.assign(DICT.zh, {
+    "Escuchar": "听取", "Pausa": "暂停", "Continuar": "继续", "Detener": "停止", "Repetir frase": "重复句子", "Velocidad": "速度", "Voz no disponible": "语音不可用",
     "Limpiar filtros": "清除筛选",
     "📚 Todos los niveles": "📚 所有等级",
     "🔍 Buscar palabras, frases, familias...": "🔍 搜索词语、句子、类别…",

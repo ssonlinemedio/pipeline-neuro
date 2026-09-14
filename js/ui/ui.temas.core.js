@@ -296,6 +296,22 @@ class UITemasCore {
                 window.UIDashboard._cargarDashboardInicial(this._core);
             }
         });
+
+        // Las ondas se pueden marcar desde Elipse sin que la vista Temas esté activa.
+        // Al volver a Temas, siempre se debe leer IndexedDB y no reutilizar el HTML anterior.
+        window.addEventListener('elipseEstadoActualizado', async (e) => {
+            const detail = e.detail || {};
+            const historia = detail.historiaId ? await db.get('historias', detail.historiaId) : null;
+            const temaId = historia?.temaId || this.temaSeleccionado;
+            if (!temaId) return;
+
+            await this._verificarYActualizarEstadoTema(temaId);
+            if (this.modoVistaTemas === 'detalle' && Number(this.temaSeleccionado) === Number(temaId)) {
+                await this._verTemaDetalle(temaId);
+            } else if (this.modoVistaTemas === 'lista') {
+                await this._renderTemas();
+            }
+        });
     }
 
     // ============================================================
