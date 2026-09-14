@@ -149,6 +149,12 @@
   Object.assign(DICT.zh, {'Soldado':'士兵','Cabo':'下士','Sargento':'中士','Teniente':'中尉','Capitán':'上尉','Comandante':'少校','Teniente Coronel':'中校','Paso':'步骤','Rango máximo':'最高等级','Campaña China':'中文战役'});
   Object.assign(DICT.en, {'Dual':'Dual','Lectura dual':'Dual reading'});
   Object.assign(DICT.zh, {'Dual':'双语','Lectura dual':'双语朗读'});
+  Object.assign(DICT.en, {
+    'Un Ecosistema Neuroadaptativo para el Aprendizaje de Idiomas':'A Neuroadaptive Ecosystem for Language Learning','Versión 22.4 · Guía Suprema del Sistema':'Version 22.4 · Ultimate System Guide','Bienvenido a la Guía Suprema de Pipeline Neuro':'Welcome to the Pipeline Neuro Ultimate Guide','Fundamentos':'Fundamentals','Modo Elipse':'Ellipse Mode','Ondas Cruzadas':'Cross-Waves','Biblioteca':'Library','Recargar':'Reload','Pipeline Neuro no es una aplicación de aprendizaje de idiomas al uso.':'Pipeline Neuro is not a conventional language learning application.','Es un':'It is a','laboratorio de neuroplasticidad lingüística':'linguistic neuroplasticity laboratory','diseñado para orquestar':'designed to orchestrate','una sinfonía de procesos cognitivos que imitan y potencian la manera natural en que':'a symphony of cognitive processes that imitate and enhance the natural way in which','el cerebro humano adquiere y consolida el conocimiento.':'the human brain acquires and consolidates knowledge.'
+  });
+  Object.assign(DICT.zh, {
+    'Un Ecosistema Neuroadaptativo para el Aprendizaje de Idiomas':'神经自适应语言学习生态系统','Versión 22.4 · Guía Suprema del Sistema':'版本 22.4 · 系统终极指南','Bienvenido a la Guía Suprema de Pipeline Neuro':'欢迎使用 Pipeline Neuro 终极指南','Fundamentos':'基础','Modo Elipse':'椭圆模式','Ondas Cruzadas':'交叉波','Biblioteca':'资料库','Recargar':'重新加载','Pipeline Neuro no es una aplicación de aprendizaje de idiomas al uso.':'Pipeline Neuro 不是普通的语言学习应用。','Es un':'它是一个','laboratorio de neuroplasticidad lingüística':'语言神经可塑性实验室','diseñado para orquestar':'旨在协调','una sinfonía de procesos cognitivos que imitan y potencian la manera natural en que':'模仿并增强大脑自然','el cerebro humano adquiere y consolida el conocimiento.':'获取和巩固知识的认知过程。'
+  });
 
   // Mi Espacio: Spanish source strings and equivalent UI translations.
   Object.assign(DICT.en, {
