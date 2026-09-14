@@ -97,6 +97,7 @@
   // No se incluyen nombres de idiomas, contenido de historias, vocabulario,
   // traducciones pedagógicas ni valores de idioma nativo/objetivo.
 
+  Object.assign(DICT.en, {
     "Escuchar": "Listen", "Pausa": "Pause", "Continuar": "Resume", "Detener": "Stop", "Repetir frase": "Repeat sentence", "Velocidad": "Speed", "Voz no disponible": "Voice unavailable",
     "Limpiar filtros": "Clear filters",
     "📚 Todos los niveles": "📚 All levels",
