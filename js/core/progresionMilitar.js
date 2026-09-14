@@ -123,19 +123,26 @@
 
         async renderDashboard(idioma) {
             const s = await this.obtenerSnapshot(idioma);
-            const siguiente = s.siguiente ? `${s.siguiente.icono} ${s.siguiente.nombre}` : 'Rango máximo';
+            const tr = (texto) => window.PipelineI18n?.t?.(texto) || texto;
+            const siguiente = s.siguiente ? `${s.siguiente.icono} ${tr(s.siguiente.nombre)}` : tr('Rango máximo');
+            const rutas = {
+                es: '🧭 Formación → A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel',
+                en: '🧭 Training → A1 Soldier → A2 Corporal → B1 Sergeant → B2 Lieutenant → C1 Captain → C2 Commander → mastery: Lieutenant Colonel',
+                zh: '🧭 培训 → A1 士兵 → A2 下士 → B1 中士 → B2 中尉 → C1 上尉 → C2 少校 → 掌握：中校'
+            };
+            const ruta = rutas[window.PipelineI18n?.getLanguage?.() || 'es'] || rutas.es;
             return `<section class="dm-neuro-panel" style="grid-column:1/-1;border:1px solid var(--primary);background:linear-gradient(135deg,var(--white),var(--bg));">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
-                    <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
+                    <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${tr(s.rango.nombre)}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
                     <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Abrir formación'}</button>
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
-                <div style="margin:8px 0;font-size:10px;color:var(--gray);">Ruta de ascenso: 🧭 Formación → A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel</div>
+                <div style="margin:8px 0;font-size:10px;color:var(--gray);">${ruta}</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
-                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} Paso ${m.paso}: ${m.texto} · ${m.detalle}</span>`).join('')}
+                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} ${tr('Paso')} ${m.paso}: ${tr(m.texto)} · ${tr(m.detalle)}</span>`).join('')}
                 </div>
                 ${s.condecoraciones.length ? `<div style="margin-top:10px;font-size:11px;color:var(--secondary);">🏅 ${s.condecoraciones.join(' · ')}</div>` : ''}
                 <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanel()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
