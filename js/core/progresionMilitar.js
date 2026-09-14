@@ -7,7 +7,7 @@
 
     const CLAVE = 'pipeline_progresion_militar_v1';
     const RANGOS = [
-        { nombre: 'Recluta', icono: '🪖', minimo: 0 },
+        { nombre: 'Formación', icono: '🧭', minimo: 0 },
         { nombre: 'Soldado', icono: '🎖️', minimo: 10 },
         { nombre: 'Cabo', icono: '⭐', minimo: 30 },
         { nombre: 'Sargento', icono: '⭐⭐', minimo: 60 },
@@ -76,7 +76,7 @@
             const progreso = await db?.obtenerTodoProgreso?.() || [];
             const dominadas = progreso.filter(p => Number(p.rcn || 0) >= 4 || p.estado === 'completada').length;
             const puntos = Math.min(999, (completadas * 10) + (dominadas * 2) + (Number(this.estado.diasActivos || 0) * 3));
-            // Migración segura: quien ya tiene contenido/progreso no vuelve a Recluta.
+            // Migración segura: quien ya tiene contenido/progreso no vuelve a Formación.
             if (this.estado.formacionRecluta === undefined && (filtradas.length > 0 || progreso.length > 0)) {
                 this.estado.formacionRecluta = true;
                 this._guardar();
@@ -129,11 +129,11 @@
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
-                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Formación de recluta'}</button>
+                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Abrir formación'}</button>
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
-                <div style="margin:8px 0;font-size:10px;color:var(--gray);">Ruta de ascenso por nivel: A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel</div>
+                <div style="margin:8px 0;font-size:10px;color:var(--gray);">Ruta de ascenso: 🧭 Formación → A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
                     ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} Paso ${m.paso}: ${m.texto} · ${m.detalle}</span>`).join('')}
                 </div>
@@ -147,7 +147,7 @@
             const overlay = document.createElement('div');
             overlay.id = 'pipeline-recluta-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
-            overlay.innerHTML = `<div style="width:min(620px,100%);background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);"><div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;color:var(--primary);">🪖 Instrucciones del recluta</h2><button onclick="this.closest('#pipeline-recluta-overlay').remove()" style="border:0;background:var(--bg);padding:8px;border-radius:8px;">✕</button></div><p style="color:var(--gray);">Completa estos cuatro pasos para aprender a usar Pipeline Neuro y ascender a Soldado.</p><ol style="line-height:2.2;">${pasos.map(p => `<li>${p}</li>`).join('')}</ol><button onclick="window.ProgresionMilitar.marcarFormacionCompleta()" style="border:0;border-radius:9px;padding:10px 14px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">✅ He completado la formación</button></div>`;
+            overlay.innerHTML = `<div style="width:min(620px,100%);background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);"><div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;color:var(--primary);">🧭 Formación inicial</h2><button onclick="this.closest('#pipeline-recluta-overlay').remove()" style="border:0;background:var(--bg);padding:8px;border-radius:8px;">✕</button></div><p style="color:var(--gray);">Completa estos cuatro pasos para aprender a usar Pipeline Neuro y acceder a la ruta de ascensos de tu nivel.</p><ol style="line-height:2.2;">${pasos.map(p => `<li>${p}</li>`).join('')}</ol><button onclick="window.ProgresionMilitar.marcarFormacionCompleta()" style="border:0;border-radius:9px;padding:10px 14px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">✅ He completado la formación</button></div>`;
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
             document.body.appendChild(overlay);
         }
