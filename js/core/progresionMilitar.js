@@ -83,6 +83,7 @@
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
+                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">📋 Campaña completa</button>
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
