@@ -141,6 +141,12 @@ class GestorProgresoHistorias {
                 return false;
             }
 
+            // El SRS no debe sobrescribir un cambio manual del checkbox ni competir
+            // con él mientras IndexedDB/UI terminan de sincronizarse.
+            if (origen === 'srs' && typeof historia._completadaManual === 'boolean') {
+                completado = historia._completadaManual;
+            }
+
             this._log(`📖 Historia: "${historia.titulo}" (estado: ${historia.estado || 'sin_estado'})`);
 
             const esOndaCruzada = historia._esOndaCruzada === true;
@@ -483,6 +489,11 @@ class GestorProgresoHistorias {
     }
 
     async actualizarDesdeSRS(historiaId, rcnPromedio, completada) {
+        const ultimoCambioManual = this._cambioManual[Number(historiaId)] || 0;
+        if (ultimoCambioManual && Date.now() - ultimoCambioManual < 3000) {
+            this._log(`⏳ Ignorando actualización SRS inmediata tras cambio manual de historia ${historiaId}`, 'info');
+            return false;
+        }
         return this.cambiarEstadoHistoria(Number(historiaId), completada, 'srs');
     }
 
