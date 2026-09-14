@@ -776,6 +776,12 @@ class UIManual {
         }
         
         if (this._container) {
+            // Abrir el manual interactivo constituye la evidencia del paso 1
+            // de formación; el progreso lo persiste y actualiza el dashboard.
+            localStorage.setItem('pipeline_formacion_manual_leido', 'true');
+            window.dispatchEvent(new CustomEvent('formacionPasoCompletado', {
+                detail: { paso: 1, campo: 'manualLeido', fecha: Date.now() }
+            }));
             this._renderizarManual();
         } else {
             console.warn('⚠️ manualContent no encontrado');

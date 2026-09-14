@@ -102,6 +102,8 @@
   Object.assign(DICT.zh, {'Campañas del nivel':'本等级战役','Campaña completada':'战役已完成','Campaña pendiente':'战役待完成','Campaña':'战役'});
   Object.assign(DICT.en, {'Ver otras campañas':'View other campaigns','No hay hitos registrados':'No milestones recorded'});
   Object.assign(DICT.zh, {'Ver otras campañas':'查看其他战役','No hay hitos registrados':'暂无里程碑'});
+  Object.assign(DICT.en, {'Abrir':'Open'});
+  Object.assign(DICT.zh, {'Abrir':'打开'});
   Object.assign(DICT.en, {'Completa una historia u onda':'Complete a story or wave','Domina 5 frases con RCN ≥ 4':'Master 5 phrases with RCN ≥ 4','Mantén una sesión hoy':'Keep a study session today','Objetivo semanal: domina 10 frases':'Weekly objective: master 10 phrases','Completa el tema:':'Complete the topic:','0/1 conseguido':'0/1 achieved','1/1 conseguido':'1/1 achieved','0/1 · abre Biblioteca o Elipse':'0/1 · open Library or Ellipse','0/1 · estudia una frase o historia':'0/1 · study a phrase or story','0/1 · tema de campaña pendiente':'0/1 · campaign topic pending','5 restantes':'5 remaining','10 restantes esta semana':'10 remaining this week'});
   Object.assign(DICT.zh, {'Completa una historia u onda':'完成一个故事或波','Domina 5 frases con RCN ≥ 4':'掌握 5 个 RCN ≥ 4 的短语','Mantén una sesión hoy':'今天完成一次学习','Objetivo semanal: domina 10 frases':'每周目标：掌握 10 个短语','Completa el tema:':'完成主题：','0/1 conseguido':'0/1 已完成','1/1 conseguido':'1/1 已完成','0/1 · abre Biblioteca o Elipse':'0/1 · 打开资料库或椭圆波','0/1 · estudia una frase o historia':'0/1 · 学习一个短语或故事','0/1 · tema de campaña pendiente':'0/1 · 战役主题待完成','5 restantes':'还剩 5 个','10 restantes esta semana':'本周还剩 10 个'});
 
