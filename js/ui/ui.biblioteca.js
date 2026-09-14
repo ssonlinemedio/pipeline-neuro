@@ -1288,7 +1288,10 @@ class UIBiblioteca {
         const colorNivel = this._getColorNivel(nivel);
         const nivelTema = historia._nivelTema || nivel;
         const t = texto => window.PipelineI18n?.t(texto) || texto;
-        const ttsDisponible = window.TTS?.isSupported?.() === true;
+        // El gestor puede cargarse antes de que Web Speech termine de exponer sus voces.
+        // Mostramos los controles si la capa está presente y dejamos que ella gestione
+        // el fallback, especialmente importante en WebView/Android.
+        const ttsDisponible = Boolean(window.TTS);
         const idiomaVoz = idioma;
         
         let html = `
