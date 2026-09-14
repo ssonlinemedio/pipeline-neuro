@@ -1291,7 +1291,9 @@ class UIBiblioteca {
         // El gestor puede cargarse antes de que Web Speech termine de exponer sus voces.
         // Mostramos los controles si la capa está presente y dejamos que ella gestione
         // el fallback, especialmente importante en WebView/Android.
-        const ttsDisponible = Boolean(window.TTS);
+        // Los controles forman parte de la UI de lectura aunque el motor no esté
+        // disponible: así el usuario recibe feedback del fallback del dispositivo.
+        const ttsDisponible = true;
         const idiomaVoz = idioma;
         
         let html = `
