@@ -50,7 +50,10 @@
         speak(text, options = {}) {
             if (!this.isSupported() || !String(text || '').trim()) return Promise.resolve(false);
             this.stop();
-            this._queue = (Array.isArray(text) ? text : [text]).map(t => String(t || '').trim()).filter(Boolean);
+            this._queue = (Array.isArray(text) ? text : [text]).map(item => {
+                if (item && typeof item === 'object') return { text: String(item.text || '').trim(), lang: item.lang || options.lang };
+                return { text: String(item || '').trim(), lang: options.lang };
+            }).filter(item => item.text);
             this._index = 0;
             this._current = { options, resolve: null };
             const token = ++this._token;
@@ -68,8 +71,9 @@
         _next(token) {
             if (!this._current || token !== this._token || this._index >= this._queue.length) { this._current?.resolve?.(true); this._current = null; return; }
             const settings = this._current.options;
-            const utterance = new global.SpeechSynthesisUtterance(this._queue[this._index++]);
-            const lang = settings.lang || 'es';
+            const item = this._queue[this._index++];
+            const utterance = new global.SpeechSynthesisUtterance(item.text);
+            const lang = item.lang || settings.lang || 'es';
             utterance.lang = this._codes(lang)[0] || lang;
             utterance.rate = Number.isFinite(Number(settings.rate)) ? this.setRate(settings.rate) : this._rate;
             utterance.pitch = Number(settings.pitch) || 1;

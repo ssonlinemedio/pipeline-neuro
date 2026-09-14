@@ -147,6 +147,8 @@
 
   Object.assign(DICT.en, {'Soldado':'Soldier','Cabo':'Corporal','Sargento':'Sergeant','Teniente':'Lieutenant','Capitán':'Captain','Comandante':'Commander','Teniente Coronel':'Lieutenant Colonel','Paso':'Step','Rango máximo':'Maximum rank','Campaña China':'China Campaign'});
   Object.assign(DICT.zh, {'Soldado':'士兵','Cabo':'下士','Sargento':'中士','Teniente':'中尉','Capitán':'上尉','Comandante':'少校','Teniente Coronel':'中校','Paso':'步骤','Rango máximo':'最高等级','Campaña China':'中文战役'});
+  Object.assign(DICT.en, {'Dual':'Dual','Lectura dual':'Dual reading'});
+  Object.assign(DICT.zh, {'Dual':'双语','Lectura dual':'双语朗读'});
 
   // Mi Espacio: Spanish source strings and equivalent UI translations.
   Object.assign(DICT.en, {

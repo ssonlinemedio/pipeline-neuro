@@ -29,6 +29,7 @@ class UIBiblioteca {
         
         this._vistaAgrupada = true;
         this._mostrarTraduccion = true;
+        this._dualTTS = localStorage.getItem('pipeline_biblioteca_tts_dual') === 'true';
         
         this._NIVELES_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         this._NIVEL_WEIGHT = {
@@ -1323,6 +1324,10 @@ class UIBiblioteca {
                         <button class="btn-secondary" onclick="window.UIBiblioteca._ttsPausa()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Pausa')}"><i class="fas fa-pause"></i></button>
                         <button class="btn-secondary" onclick="window.UIBiblioteca._ttsContinuar()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Continuar')}"><i class="fas fa-play"></i></button>
                         <button class="btn-secondary" onclick="window.UIBiblioteca._ttsDetener()" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--gray);cursor:pointer;" title="${t('Detener')}"><i class="fas fa-stop"></i></button>
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--gray);padding:2px 8px;border:1px solid ${this._dualTTS ? 'var(--secondary)' : 'var(--light)'};border-radius:8px;" title="${t('Lectura dual')}">
+                            <input type="checkbox" ${this._dualTTS ? 'checked' : ''} onchange="window.UIBiblioteca._toggleDualTTS(this.checked)" style="width:14px;height:14px;cursor:pointer;">
+                            <span>🔁 ${t('Dual')}</span>
+                        </label>
                         <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);" title="${t('Velocidad')}"><i class="fas fa-gauge-high"></i><input type="range" min="0.6" max="1.4" step="0.1" value="${window.TTS.getRate()}" oninput="window.UIBiblioteca._ttsVelocidad(this.value)" style="width:72px;"></label>
                         ` : ''}
                         <button onclick="window.UIBiblioteca._toggleMostrarTraduccion()" 
@@ -1424,8 +1429,14 @@ class UIBiblioteca {
 
     _ttsEscucharHistoria() {
         if (!window.TTS?.isSupported?.()) return this._core?.mostrarToast(window.PipelineI18n?.t('Voz no disponible') || 'Voz no disponible', 'warning');
-        const textos = (this._frasesActuales || []).map(frase => frase.original || '').filter(Boolean);
-        window.TTS.speak(textos, { lang: this._historiaSeleccionada?.idioma || 'es' });
+        const idiomaObjetivo = this._historiaSeleccionada?.idioma || 'es';
+        const idiomaNativo = window.gestorIdiomas?.obtenerIdiomaNativoActivo?.()?.nombre || 'es';
+        const textos = [];
+        for (const frase of (this._frasesActuales || [])) {
+            if (frase.original) textos.push({ text: frase.original, lang: idiomaObjetivo });
+            if (this._dualTTS && frase.traduccion) textos.push({ text: frase.traduccion, lang: idiomaNativo });
+        }
+        window.TTS.speak(textos, { lang: idiomaObjetivo });
     }
 
     _ttsEscucharFrase(index) {
@@ -1438,6 +1449,10 @@ class UIBiblioteca {
     _ttsContinuar() { window.TTS?.resume(); }
     _ttsDetener() { window.TTS?.stop(); }
     _ttsVelocidad(rate) { window.TTS?.setRate(rate); }
+    _toggleDualTTS(enabled) {
+        this._dualTTS = Boolean(enabled);
+        localStorage.setItem('pipeline_biblioteca_tts_dual', String(this._dualTTS));
+    }
 
     _toggleMostrarTraduccion() {
         this._mostrarTraduccion = !this._mostrarTraduccion;
