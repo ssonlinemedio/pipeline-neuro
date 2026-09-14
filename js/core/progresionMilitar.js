@@ -21,6 +21,13 @@
         constructor() {
             this.estado = this._leer();
             this._escucharActividad();
+            window.addEventListener('ascensoMilitar', (e) => {
+                const rango = e.detail?.rango;
+                if (!rango) return;
+                const mensaje = `🎖️ ¡Ascenso conseguido! Ahora eres ${rango.nombre}`;
+                if (window.uiCore?.mostrarToast) window.uiCore.mostrarToast(mensaje, 'success');
+                else console.log(mensaje);
+            });
         }
 
         _leer() {
@@ -61,6 +68,15 @@
             const rango = RANGOS[indice];
             const siguiente = RANGOS[indice + 1] || null;
             const progresoRango = siguiente ? Math.round(((puntos - rango.minimo) / (siguiente.minimo - rango.minimo)) * 100) : 100;
+            const rangoAnterior = Number(this.estado.ultimoRango || 0);
+            if (indice > rangoAnterior) {
+                this.estado.ultimoRango = indice;
+                this._guardar();
+                window.dispatchEvent(new CustomEvent('ascensoMilitar', { detail: { rango, indice } }));
+            } else if (this.estado.ultimoRango === undefined) {
+                this.estado.ultimoRango = indice;
+                this._guardar();
+            }
             const misiones = [
                 { texto: 'Completa una historia u onda', hecho: completadas > 0, icono: '📚' },
                 { texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, icono: '🧠' },
@@ -72,7 +88,7 @@
                 dominadas >= 25 && 'Memoria de acero',
                 Number(this.estado.diasActivos || 0) >= 7 && 'Constancia de campaña'
             ].filter(Boolean);
-            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones };
+            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0) };
         }
 
         async renderDashboard(idioma) {
@@ -84,7 +100,7 @@
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
                     <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">📋 Campaña completa</button>
-                    <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas</div>
+                    <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
@@ -104,7 +120,7 @@
             overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
             overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
                 <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ INFORME DE CAMPAÑA</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
                 <h3>🎯 Misiones activas</h3><div style="display:grid;gap:8px;">${s.misiones.map(m => `<div style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};">${m.hecho ? '✅' : m.icono} ${m.texto}</div>`).join('')}</div>
                 <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
             </div>`;
