@@ -28,6 +28,7 @@
                 if (window.uiCore?.mostrarToast) window.uiCore.mostrarToast(mensaje, 'success');
                 else console.log(mensaje);
             });
+            window.addEventListener('formacionReclutaCompletada', () => window.UIDashboard?._cargarDashboardInicial?.());
         }
 
         _leer() {
@@ -64,7 +65,8 @@
             const progreso = await db?.obtenerTodoProgreso?.() || [];
             const dominadas = progreso.filter(p => Number(p.rcn || 0) >= 4 || p.estado === 'completada').length;
             const puntos = Math.min(999, (completadas * 10) + (dominadas * 2) + (Number(this.estado.diasActivos || 0) * 3));
-            const indice = Math.max(0, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0));
+            const formacionCompleta = this.estado.formacionRecluta === true;
+            const indice = formacionCompleta ? Math.max(0, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0)) : 0;
             const rango = RANGOS[indice];
             const siguiente = RANGOS[indice + 1] || null;
             const progresoRango = siguiente ? Math.round(((puntos - rango.minimo) / (siguiente.minimo - rango.minimo)) * 100) : 100;
@@ -78,7 +80,12 @@
                 this._guardar();
             }
             const hoyActivo = this.estado.ultimoDia === new Date().toISOString().slice(0, 10);
-            const misiones = [
+            const misiones = !formacionCompleta ? [
+                { paso: 1, texto: 'Lee las instrucciones básicas', hecho: this.estado.manualLeido === true, actual: this.estado.manualLeido === true ? 1 : 0, meta: 1, icono: '📖', detalle: this.estado.manualLeido === true ? '1/1 · instrucciones revisadas' : '0/1 · abre el manual de usuario' },
+                { paso: 2, texto: 'Importa tu primera historia', hecho: this.estado.importacionProbada === true, actual: this.estado.importacionProbada === true ? 1 : 0, meta: 1, icono: '📥', detalle: this.estado.importacionProbada === true ? '1/1 · importación realizada' : '0/1 · usa Importar JSON en Temas' },
+                { paso: 3, texto: 'Crea una onda Elipse o Cruzada', hecho: this.estado.ondaProbada === true, actual: this.estado.ondaProbada === true ? 1 : 0, meta: 1, icono: '🌌', detalle: this.estado.ondaProbada === true ? '1/1 · onda creada' : '0/1 · genera una onda desde Temas' },
+                { paso: 4, texto: 'Completa el tutorial de estudio', hecho: this.estado.estudioProbado === true, actual: this.estado.estudioProbado === true ? 1 : 0, meta: 1, icono: '🎓', detalle: this.estado.estudioProbado === true ? '1/1 · flujo probado' : '0/1 · abre Study y escucha una frase' }
+            ] : [
                 { paso: 1, texto: 'Completa una historia u onda', hecho: completadas > 0, actual: Math.min(completadas, 1), meta: 1, icono: '📚', detalle: completadas > 0 ? '1/1 conseguido' : '0/1 · abre Biblioteca o Elipse' },
                 { paso: 2, texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, actual: Math.min(dominadas, 5), meta: 5, icono: '🧠', detalle: `${Math.min(dominadas, 5)}/5 · ${Math.max(0, 5 - dominadas)} restantes` },
                 { paso: 3, texto: 'Mantén una sesión hoy', hecho: hoyActivo, actual: hoyActivo ? 1 : 0, meta: 1, icono: '🔥', detalle: hoyActivo ? '1/1 · sesión registrada hoy' : '0/1 · estudia una frase o historia' },
@@ -93,7 +100,7 @@
             const campañas = { en: 'Operación Londres', fr: 'Misión París', de: 'Campaña Berlín', it: 'Ruta Roma', zh: 'Ruta Pekín', ja: 'Desafío Tokio' };
             const idiomaBase = String(idioma || '').toLowerCase().slice(0, 2);
             const campaña = campañas[idiomaBase] || `Campaña ${idioma || 'global'}`;
-            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0), campaña };
+            return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0), campaña, formacionCompleta };
         }
 
         async renderDashboard(idioma) {
@@ -104,7 +111,7 @@
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
-                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">📋 Informe de campaña</button>
+                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Formación de recluta'}</button>
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
@@ -114,6 +121,28 @@
                 ${s.condecoraciones.length ? `<div style="margin-top:10px;font-size:11px;color:var(--secondary);">🏅 ${s.condecoraciones.join(' · ')}</div>` : ''}
                 <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanel()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
             </section>`;
+        }
+
+        abrirInstrucciones() {
+            const pasos = ['Lee el manual de usuario y conoce el Dashboard', 'Importa una historia JSON desde Temas', 'Genera una onda Elipse u Onda Cruzada', 'Abre Study y escucha una frase con TTS'];
+            const overlay = document.createElement('div');
+            overlay.id = 'pipeline-recluta-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
+            overlay.innerHTML = `<div style="width:min(620px,100%);background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);"><div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;color:var(--primary);">🪖 Instrucciones del recluta</h2><button onclick="this.closest('#pipeline-recluta-overlay').remove()" style="border:0;background:var(--bg);padding:8px;border-radius:8px;">✕</button></div><p style="color:var(--gray);">Completa estos cuatro pasos para aprender a usar Pipeline Neuro y ascender a Soldado.</p><ol style="line-height:2.2;">${pasos.map(p => `<li>${p}</li>`).join('')}</ol><button onclick="window.ProgresionMilitar.marcarFormacionCompleta()" style="border:0;border-radius:9px;padding:10px 14px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">✅ He completado la formación</button></div>`;
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
+        }
+
+        marcarFormacionCompleta() {
+            this.estado.manualLeido = true;
+            this.estado.importacionProbada = true;
+            this.estado.ondaProbada = true;
+            this.estado.estudioProbado = true;
+            this.estado.formacionRecluta = true;
+            this._guardar();
+            document.getElementById('pipeline-recluta-overlay')?.remove();
+            window.dispatchEvent(new CustomEvent('formacionReclutaCompletada'));
+            window.uiCore?.mostrarToast?.('🎖️ Formación completada. Ya puedes ascender a Soldado.', 'success');
         }
 
         async abrirPanel() {
