@@ -197,6 +197,7 @@ class GestorProgresoHistorias {
                 if (elipseHistoria) {
                     this._log(`🌌 Actualizando ${esBase ? 'BASE' : 'onda'} en Modo Elipse: ${historia.titulo}`);
                     elipseHistoria.completada = completado;
+                    elipseHistoria._completadaManual = completado;
                     elipseHistoria.rcnPromedio = rcnFinal;
                     
                     if (completado) {

@@ -978,6 +978,7 @@ class ModoElipse {
             
             for (const h of historiasElipse) {
                 const frases = await db.obtenerFrasesPorHistoria(parseInt(h.id));
+                const historiaDB = await db.get('historias', parseInt(h.id));
                 if (frases.length === 0) {
                     h.rcnPromedio = 0;
                     h.completada = false;
@@ -1004,7 +1005,9 @@ class ModoElipse {
                 }
                 
                 const nuevoRCN = count > 0 ? totalRCN / count : 0;
-                const nuevaCompletada = completadas >= frases.length && frases.length > 0;
+                const manual = typeof historiaDB?._completadaManual === 'boolean' ? historiaDB._completadaManual : h._completadaManual;
+                const nuevaCompletada = typeof manual === 'boolean' ? manual : completadas >= frases.length && frases.length > 0;
+                if (typeof manual === 'boolean') h._completadaManual = manual;
                 
                 if (nuevoRCN !== h.rcnPromedio || nuevaCompletada !== h.completada) {
                     h.rcnPromedio = nuevoRCN;

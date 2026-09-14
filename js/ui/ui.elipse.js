@@ -3019,6 +3019,7 @@ class UIEclipse {
             const historia = window.modoElipse?.getHistoriaElipse(historiaId);
             if (historia) {
                 const frases = await db.obtenerFrasesPorHistoria(historiaId);
+                const historiaDB = await db.get('historias', historiaId);
                 let completadas = 0;
                 for (const f of frases) {
                     const progreso = await db.obtenerProgreso(f.id);
@@ -3026,7 +3027,9 @@ class UIEclipse {
                         completadas++;
                     }
                 }
-                historia.completada = completadas >= frases.length && frases.length > 0;
+                const manual = typeof historiaDB?._completadaManual === 'boolean' ? historiaDB._completadaManual : historia._completadaManual;
+                historia.completada = typeof manual === 'boolean' ? manual : completadas >= frases.length && frases.length > 0;
+                if (typeof manual === 'boolean') historia._completadaManual = manual;
                 window.modoElipse._guardarEstadoElipse();
                 this._actualizarRecomendaciones();
                 this._progresoOndas[historiaId] = {
