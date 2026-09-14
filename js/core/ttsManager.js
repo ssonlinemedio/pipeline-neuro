@@ -48,9 +48,11 @@
             try { global.localStorage?.setItem(`${PREFIX}voice_${this._normal(lang)}`, voice.voiceURI || voice.name); } catch (e) { /* opcional */ }
         }
         speak(text, options = {}) {
-            if (!this.isSupported() || !String(text || '').trim()) return Promise.resolve(false);
+            const entradas = Array.isArray(text) ? text : [text];
+            const tieneTexto = entradas.some(item => String(item?.text ?? item ?? '').trim());
+            if (!this.isSupported() || !tieneTexto) return Promise.resolve(false);
             this.stop();
-            this._queue = (Array.isArray(text) ? text : [text]).map(item => {
+            this._queue = entradas.map(item => {
                 if (item && typeof item === 'object') return { text: String(item.text || '').trim(), lang: item.lang || options.lang };
                 return { text: String(item || '').trim(), lang: options.lang };
             }).filter(item => item.text);
