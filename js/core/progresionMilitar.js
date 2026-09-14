@@ -66,6 +66,10 @@
             }
             this.estado.actividades = Number(this.estado.actividades || 0) + 1;
             this.estado[`actividad_${tipo}`] = Number(this.estado[`actividad_${tipo}`] || 0) + 1;
+            if (this.estado.campañaActiva) {
+                this.estado[`campaña_${tipo}`] = Number(this.estado[`campaña_${tipo}`] || 0) + 1;
+                this.estado.campañaUltimaActividad = new Date().toISOString().slice(0, 10);
+            }
             this._guardar();
         }
 
@@ -99,6 +103,15 @@
             const formacionCompleta = this.estado.formacionRecluta === true;
             const nivel = this._obtenerNivelActivo();
             const estadoCampañas = await this._obtenerEstadoCampañas(idioma, nivel);
+            const campañaClave = estadoCampañas.temaActual?.nombre || `${nivel}:completado`;
+            if (this.estado.campañaActiva !== campañaClave) {
+                this.estado.campañaActiva = campañaClave;
+                ['historia', 'onda', 'estudio'].forEach(tipo => { this.estado[`campaña_${tipo}`] = 0; });
+                this.estado.campañaFrases = 0;
+                this.estado.campañaSemana = 0;
+                this.estado.campañaUltimaActividad = null;
+                this._guardar();
+            }
             const rangoPorNivel = RANGO_POR_NIVEL[nivel] ?? 1;
             const rangoPorPuntos = RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0);
             // El rango militar acompaña al nivel lingüístico, pero no puede
@@ -126,10 +139,10 @@
                 { paso: 3, texto: 'Crea una onda Elipse o Cruzada', hecho: this.estado.ondaProbada === true, actual: this.estado.ondaProbada === true ? 1 : 0, meta: 1, icono: '🌌', detalle: this.estado.ondaProbada === true ? '1/1 · onda creada' : '0/1 · genera una onda desde Temas' },
                 { paso: 4, texto: 'Completa el tutorial de estudio', hecho: this.estado.estudioProbado === true, actual: this.estado.estudioProbado === true ? 1 : 0, meta: 1, icono: '🎓', detalle: this.estado.estudioProbado === true ? '1/1 · flujo probado' : '0/1 · abre Study y escucha una frase' }
             ] : [
-                { paso: 1, texto: 'Completa una historia u onda', hecho: completadas > 0, actual: Math.min(completadas, 1), meta: 1, icono: '📚', detalle: completadas > 0 ? '1/1 conseguido' : '0/1 · abre Biblioteca o Elipse' },
-                { paso: 2, texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, actual: Math.min(dominadas, 5), meta: 5, icono: '🧠', detalle: `${Math.min(dominadas, 5)}/5 · ${Math.max(0, 5 - dominadas)} restantes` },
-                { paso: 3, texto: 'Mantén una sesión hoy', hecho: hoyActivo, actual: hoyActivo ? 1 : 0, meta: 1, icono: '🔥', detalle: hoyActivo ? '1/1 · sesión registrada hoy' : '0/1 · estudia una frase o historia' },
-                { paso: 4, texto: 'Objetivo semanal: domina 10 frases', hecho: dominadas >= 10, actual: Math.min(dominadas, 10), meta: 10, icono: '📅', detalle: `${Math.min(dominadas, 10)}/10 · ${Math.max(0, 10 - dominadas)} restantes esta semana` },
+                { paso: 1, texto: 'Completa una historia u onda', hecho: Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0) > 0, actual: Math.min(Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0), 1), meta: 1, icono: '📚', detalle: Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0) > 0 ? '1/1 conseguido' : '0/1 · abre Biblioteca o Elipse' },
+                { paso: 2, texto: 'Domina 5 frases con RCN ≥ 4', hecho: Number(this.estado.campaña_frases || 0) >= 5, actual: Math.min(Number(this.estado.campaña_frases || 0), 5), meta: 5, icono: '🧠', detalle: `${Math.min(Number(this.estado.campaña_frases || 0), 5)}/5 · ${Math.max(0, 5 - Number(this.estado.campaña_frases || 0))} restantes` },
+                { paso: 3, texto: 'Mantén una sesión hoy', hecho: this.estado.campañaUltimaActividad === new Date().toISOString().slice(0, 10), actual: this.estado.campañaUltimaActividad === new Date().toISOString().slice(0, 10) ? 1 : 0, meta: 1, icono: '🔥', detalle: this.estado.campañaUltimaActividad === new Date().toISOString().slice(0, 10) ? '1/1 · sesión registrada hoy' : '0/1 · estudia una frase o historia' },
+                { paso: 4, texto: 'Objetivo semanal: domina 10 frases', hecho: Number(this.estado.campaña_semana || 0) >= 10, actual: Math.min(Number(this.estado.campaña_semana || 0), 10), meta: 10, icono: '📅', detalle: `${Math.min(Number(this.estado.campaña_semana || 0), 10)}/10 · ${Math.max(0, 10 - Number(this.estado.campaña_semana || 0))} restantes esta semana` },
                 { paso: 5, texto: estadoCampañas.temaActual ? `Completa el tema: ${estadoCampañas.temaActual.nombre}` : 'Completa el currículo del nivel', hecho: estadoCampañas.temaActual ? estadoCampañas.temaActual.completado : estadoCampañas.completadas >= estadoCampañas.total, actual: estadoCampañas.temaActual?.completado ? 1 : 0, meta: 1, icono: '🎯', detalle: estadoCampañas.temaActual ? `${estadoCampañas.temaActual.completado ? '1/1 · campaña completada' : '0/1 · tema de campaña pendiente'}` : '✅ nivel completado' }
             ];
             const condecoraciones = [
@@ -145,13 +158,14 @@
         }
 
         async _obtenerEstadoCampañas(idioma, nivel) {
-            const resultado = { total: 0, completadas: 0, indiceActual: 0, temaActual: null, condecoraciones: [] };
+            const resultado = { total: 0, completadas: 0, indiceActual: 0, temaActual: null, condecoraciones: [], lista: [] };
             try {
                 const temas = window.UITemas?._obtenerTemasPorNivelYVersion?.(window.UITemas._obtenerVersionEstandar?.(idioma), nivel) || [];
                 resultado.total = temas.length;
                 for (let i = 0; i < temas.length; i++) {
                     const tema = temas[i];
                     const completado = await window.UITemas._temaEstaCompletado(idioma, tema.id);
+                    resultado.lista.push({ indice: i + 1, nombre: tema.nombre, completado });
                     if (completado) {
                         resultado.completadas++;
                         resultado.condecoraciones.push(`🎖️ Campaña ${i + 1}: ${tema.nombre}`);
@@ -252,7 +266,7 @@
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${tr(s.rango.nombre)}</h3>
                     <div style="font-size:12px;color:var(--gray);">${progresoTexto}</div></div>
-                    <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Abrir formación'}</button>
+                    <button onclick="window.ProgresionMilitar.abrirPanelSeguro()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Abrir formación'}</button>
                     <div style="text-align:right;font-size:12px;color:var(--gray);">${resumen}</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
@@ -261,7 +275,7 @@
                     ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} ${tr('Paso')} ${m.paso}: ${misionTexto(m)} · ${misionDetalle(m)}</span>`).join('')}
                 </div>
                 ${s.condecoraciones.length ? `<div style="margin-top:10px;font-size:11px;color:var(--secondary);">🏅 ${s.condecoraciones.join(' · ')}</div>` : ''}
-                <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanel()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
+                <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanelSeguro()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
             </section>`;
         }
 
@@ -365,7 +379,11 @@
                 <h3>${formacionCompleta ? '🎯 Misiones recurrentes de campaña' : '🎯 Formación inicial · pasos'}</h3><div style="display:grid;gap:9px;">${misionesPagina.visibles.map(m => { const esActual = !m.hecho && m.paso === primerPendiente; const color = m.hecho ? 'var(--success)' : esActual ? 'var(--primary)' : 'var(--gray)'; const fondo = m.hecho ? 'var(--success)12' : esActual ? 'var(--primary)08' : 'var(--bg)'; return `<div data-formacion-paso="${m.paso}" onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${fondo};color:${color};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : esActual ? 'var(--primary)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : esActual ? '▶️' : m.icono} ${lang === 'en' ? 'Step' : lang === 'zh' ? '步骤' : 'Paso'} ${m.paso}/${formacionCompleta ? '5' : '4'} · ${textoPaso(m)}${esActual ? ` <span style="font-size:10px;">· ${lang === 'en' ? 'CURRENT' : lang === 'zh' ? '当前' : 'ACTUAL'}</span>` : ''} <span style="float:right;color:var(--primary);font-size:11px;">→ ${lang === 'en' ? 'Open' : lang === 'zh' ? '打开' : 'Abrir'}</span></div><div style="font-size:11px;margin-top:4px;color:${color};">${detallePaso(m)}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : esActual ? 'var(--primary)' : 'var(--light)'};"></div></div></div>`; }).join('')}</div>${misionesPagina.botones}
                 <h3>🏅 Condecoraciones y logros</h3><div style="color:var(--secondary);">${logrosPagina.visibles.length ? logrosPagina.visibles.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>${logrosPagina.botones}
             </div>`;
-            overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
+            try {
+                overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
+            } catch (error) {
+                console.warn('⚠️ No se pudo aplicar i18n al informe; se muestra el contenido original:', error);
+            }
             overlay.querySelectorAll('[data-formacion-paso="1"]').forEach(elemento => {
                 elemento.addEventListener('click', () => this.registrarPasoFormacion(1), { capture: true });
             });
@@ -373,10 +391,49 @@
             document.body.appendChild(overlay);
         }
 
+        abrirPanelSeguro() {
+            return this.abrirPanel().catch(async error => {
+                console.error('❌ Error abriendo informe de campaña:', error);
+                try {
+                    const idioma = window.gestorIdiomas?.getIdiomaActivo?.() || 'es';
+                    const s = await this.obtenerSnapshot(idioma);
+                    const campañas = s.campañas || { completadas: 0, total: 0, temaActual: null };
+                    const misiones = Array.isArray(s.misiones) ? s.misiones : [];
+                    const condecoraciones = Array.isArray(s.condecoraciones) ? s.condecoraciones : [];
+                    const rango = s.rango || { icono: '🎖️', nombre: 'Formación' };
+                    const listaCampañas = Array.isArray(campañas.lista) ? campañas.lista : [];
+                    const t = value => window.PipelineI18n?.t?.(value) || value;
+                    const escape = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' })[c]);
+                    const pendientes = misiones.filter(m => !m.hecho);
+                    const completadas = misiones.filter(m => m.hecho);
+                    const fallback = document.createElement('div');
+                    fallback.id = 'pipeline-campana-overlay';
+                    fallback.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
+                    fallback.innerHTML = `<div style="width:min(720px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;background:var(--white);border-radius:20px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.3);"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div><div style="font-size:11px;color:var(--secondary);font-weight:700;">🎖️ ${escape(s.campaña)}</div><h2 style="margin:4px 0;color:var(--primary);">${rango.icono} ${escape(rango.nombre)} · ${escape(s.nivel)}</h2><div style="font-size:12px;color:var(--gray);">${t('Informe de campaña')}</div></div><button type="button" data-cerrar-informe style="border:0;background:var(--bg);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:18px;">×</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${campañas.completadas}/${campañas.total}</b><small style="display:block;color:var(--gray);">${t('Temas completados')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">${t('Historias completadas')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">${t('Frases dominadas')}</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">${t('Días activos')}</small></div></div><div style="padding:14px;border-left:4px solid var(--primary);background:var(--primary)08;border-radius:10px;margin-bottom:16px;"><div style="font-weight:700;color:var(--dark);">🎯 ${t('Campaña actual')}</div><div style="margin-top:5px;color:var(--gray);">${campañas.temaActual ? `${t('Siguiente tema')}: <strong>${escape(campañas.temaActual.nombre)}</strong>` : t('Nivel completado')}</div><div style="height:7px;background:var(--light);border-radius:8px;margin-top:10px;overflow:hidden;"><div style="height:100%;width:${campañas.total ? Math.round((campañas.completadas / campañas.total) * 100) : 0}%;background:linear-gradient(90deg,var(--primary),var(--secondary));"></div></div></div><h3 style="margin:12px 0 8px;">📋 ${t('Lo que falta')}</h3><div style="display:grid;gap:8px;">${pendientes.length ? pendientes.map(m => `<div style="padding:10px 12px;background:var(--bg);border-radius:9px;color:var(--gray);">${m.icono} ${t('Tema pendiente')}: ${escape(m.texto)}<div style="font-size:11px;margin-top:3px;">${escape(m.detalle)}</div></div>`).join('') : `<div style="padding:10px 12px;background:var(--success)12;border-radius:9px;color:var(--success);">✅ ${t('No hay misiones pendientes')}</div>`}</div><h3 style="margin:16px 0 8px;">🏅 ${t('Condecoraciones y logros')}</h3><div style="display:flex;gap:6px;flex-wrap:wrap;">${condecoraciones.length ? condecoraciones.map(x => `<span style="padding:7px 10px;background:var(--secondary)12;border-radius:10px;color:var(--secondary);">${escape(x)}</span>`).join('') : `<span style="color:var(--gray);">${t('Aún no hay condecoraciones. La primera misión te espera.')}</span>`}</div>${completadas.length ? `<h3 style="margin:16px 0 8px;">✅ ${t('Hitos conseguidos')}</h3><div style="display:grid;gap:6px;">${completadas.map(m => `<div style="padding:8px 10px;background:var(--success)08;border-radius:8px;color:var(--success);">✅ ${escape(m.texto)}</div>`).join('')}</div>` : ''}</div>`;
+                    const campañaActual = campañas.temaActual?.nombre || t('Nivel completado');
+                    const hitosHtml = misiones.map(m => `<div style="padding:9px 11px;border-radius:9px;background:${m.hecho ? 'var(--success)08' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : '⬜'} ${t(m.texto)}<div style="font-size:11px;margin-top:3px;">${escape(m.detalle)}</div></div>`).join('');
+                    const campañasHechas = listaCampañas.filter(c => c.completado).map(c => `<div style="padding:8px 10px;color:var(--success);">✅ ${t('Campaña')} ${c.indice}: ${escape(c.nombre)}</div>`).join('');
+                    const campañasPendientes = listaCampañas.filter(c => !c.completado).map(c => `<div style="padding:8px 10px;color:var(--gray);">🎯 ${t('Campaña')} ${c.indice}: ${escape(c.nombre)}</div>`).join('');
+                    const contenedor = fallback.firstElementChild;
+                    const tituloFalta = [...(contenedor?.querySelectorAll('h3') || [])].find(h => h.textContent.includes('Lo que falta'));
+                    const bloqueFalta = tituloFalta?.nextElementSibling;
+                    tituloFalta?.remove();
+                    bloqueFalta?.remove();
+                    const tituloCondecoraciones = [...(contenedor?.querySelectorAll('h3') || [])].find(h => h.textContent.includes('Condecoraciones'));
+                    tituloCondecoraciones?.insertAdjacentHTML('beforebegin', `<h3 style="margin:16px 0 8px;">🎯 ${t('Campaña actual')} · ${escape(campañaActual)}</h3><div style="display:grid;gap:8px;">${hitosHtml || `<div style="color:var(--gray);">${t('No hay hitos registrados')}</div>`}</div>`);
+                    if (campañasHechas || campañasPendientes) contenedor?.insertAdjacentHTML('beforeend', `<details style="margin-top:16px;"><summary style="cursor:pointer;font-weight:700;color:var(--gray);">🗂️ ${t('Ver otras campañas')}</summary><div style="display:grid;gap:4px;margin-top:8px;">${campañasHechas}${campañasPendientes}</div></details>`);
+                    fallback.querySelector('button')?.addEventListener('click', () => fallback.remove());
+                    fallback.addEventListener('click', e => { if (e.target === fallback) fallback.remove(); });
+                    document.getElementById('pipeline-campana-overlay')?.remove();
+                    document.body.appendChild(fallback);
+                } catch (fallbackError) { console.error('❌ Error en informe alternativo:', fallbackError); }
+            });
+        }
+
         cambiarPaginaPanel(tipo, pagina) {
             if (tipo === 'misiones') this._paginaMisiones = Math.max(1, Number(pagina) || 1);
             if (tipo === 'logros') this._paginaLogros = Math.max(1, Number(pagina) || 1);
-            this.abrirPanel();
+            this.abrirPanelSeguro();
         }
     }
 
