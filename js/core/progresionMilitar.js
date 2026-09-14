@@ -148,6 +148,7 @@
             overlay.id = 'pipeline-recluta-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
             overlay.innerHTML = `<div style="width:min(620px,100%);background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);"><div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;color:var(--primary);">🧭 Formación inicial</h2><button onclick="this.closest('#pipeline-recluta-overlay').remove()" style="border:0;background:var(--bg);padding:8px;border-radius:8px;">✕</button></div><p style="color:var(--gray);">Completa estos cuatro pasos para aprender a usar Pipeline Neuro y acceder a la ruta de ascensos de tu nivel.</p><ol style="line-height:2.2;">${pasos.map(p => `<li>${p}</li>`).join('')}</ol><button onclick="window.ProgresionMilitar.marcarFormacionCompleta()" style="border:0;border-radius:9px;padding:10px 14px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">✅ He completado la formación</button></div>`;
+            overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
             document.body.appendChild(overlay);
         }
@@ -177,6 +178,7 @@
                 <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} Paso ${m.paso}/4 · ${m.texto}</div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.detalle}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
                 <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
             </div>`;
+            overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
             document.body.appendChild(overlay);
         }
