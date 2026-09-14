@@ -282,24 +282,13 @@ class GestorNiveles {
             await this._guardarEvaluacion(evaluacion);
 
             if (debeSubir && typeof window.uiCore !== 'undefined') {
-                await window.UIConfig._mostrarCelebracionNivelPro(nivelActual, nivelAlcanzado, mensaje, gapAnalysis);
-                
-                const hacerExamen = await window.uiCore.confirm(
-                    `📝 ¿Quieres hacer un examen de nivel para confirmar tu dominio de **${nivelAlcanzado}**?\n\n` +
-                    `🎁 **BONUS:** Si apruebas, ganarás **2x de experiencia** y desbloquearás contenido exclusivo.\n\n` +
-                    `📊 **Análisis de brecha:**\n${gapAnalysis.resumen}`,
-                    '🎯 Examen de Nivel con Bonus'
+                // No se solicita examen: las estadísticas solo sirven como
+                // diagnóstico. La promoción depende exclusivamente del
+                // currículo predefinido completado.
+                window.uiCore.mostrarToast(
+                    '📚 Tu dominio progresa. Completa todos los temas predefinidos para subir oficialmente de nivel.',
+                    'info'
                 );
-                
-                if (hacerExamen) {
-                    const resultado = await this.iniciarExamenNivel(usuarioId, idioma, nivelAlcanzado);
-                    if (resultado?.aprobado) {
-                        window.uiCore.mostrarToast('🎁 ¡Bonus 2x activado! Experiencia duplicada.', 'success');
-                        await this._aplicarBonusExperiencia(usuarioId, 2);
-                    }
-                } else {
-                    window.uiCore.mostrarToast('📊 Nivel actualizado. Puedes hacer el examen después desde Configuración.', 'info');
-                }
             }
 
             return evaluacion;
