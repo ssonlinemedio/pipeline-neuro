@@ -30,6 +30,7 @@
                 else console.log(mensaje);
             });
             window.addEventListener('formacionReclutaCompletada', () => window.UIDashboard?._cargarDashboardInicial?.());
+            window.addEventListener('formacionPasoCompletado', () => window.UIDashboard?._cargarDashboardInicial?.());
         }
 
         _leer() {
@@ -69,6 +70,7 @@
         }
 
         async obtenerSnapshot(idioma) {
+            await this._sincronizarEvidenciasFormacion(idioma);
             const historias = await db?.obtenerHistorias?.() || [];
             const filtradas = idioma ? historias.filter(h => !h.idioma || h.idioma === idioma) : historias;
             const completadas = filtradas.filter(h => h.estado === 'completada' || h._completada === true).length;
@@ -123,6 +125,30 @@
             const idiomaBase = String(idioma || '').toLowerCase().slice(0, 2);
             const campaña = campañas[idiomaBase] || `Campaña ${idioma || 'global'}`;
             return { puntos, rango, siguiente, progresoRango, completadas, dominadas, frases: frases.length, misiones, condecoraciones, racha: Number(this.estado.diasActivos || 0), campaña, formacionCompleta, nivel, rangoPorNivel };
+        }
+
+        async _sincronizarEvidenciasFormacion(idioma) {
+            const cambios = {};
+            try {
+                const historias = await db?.obtenerHistorias?.() || [];
+                const historiasIdioma = historias.filter(h => !h.idioma || h.idioma === idioma);
+                cambios.importacionProbada = historiasIdioma.length > 0;
+                const hayOnda = historiasIdioma.some(h => h._esOnda === true || h._esOndaCruzada === true);
+                const ondasElipse = window.modoElipse?.getHistoriasElipse?.() || window.modoElipse?._historiasElipse || [];
+                cambios.ondaProbada = hayOnda || ondasElipse.length > 0;
+                const progreso = await db?.obtenerTodoProgreso?.() || [];
+                cambios.estudioProbado = progreso.length > 0;
+            } catch (e) { console.warn('⚠️ No se pudieron verificar evidencias de formación:', e); }
+            try {
+                const historialManual = JSON.parse(localStorage.getItem('pipeline_manual_historial') || '[]');
+                const ultimaLectura = localStorage.getItem('pipeline_manual_ultima_lectura');
+                cambios.manualLeido = historialManual.length > 0 || (ultimaLectura !== null && Number(ultimaLectura) > 0);
+            } catch (e) {}
+            let cambiado = false;
+            for (const [campo, valor] of Object.entries(cambios)) {
+                if (this.estado[campo] !== valor) { this.estado[campo] = valor; cambiado = true; }
+            }
+            if (cambiado) this._guardar();
         }
 
         async renderDashboard(idioma) {
@@ -209,6 +235,17 @@
             window.uiCore?.mostrarToast?.('🎖️ Formación completada. Ya puedes ascender a Soldado.', 'success');
         }
 
+        registrarPasoFormacion(paso) {
+            const campos = { 1: 'manualLeido', 2: 'importacionProbada', 3: 'ondaProbada', 4: 'estudioProbado' };
+            const campo = campos[Number(paso)];
+            if (!campo || this.estado[campo] === true) return;
+            this.estado[campo] = true;
+            this._guardar();
+            window.dispatchEvent(new CustomEvent('formacionPasoCompletado', {
+                detail: { paso: Number(paso), campo, fecha: Date.now() }
+            }));
+        }
+
         abrirPasoFormacion(paso) {
             const destinos = { 1: 'manual', 2: 'temas', 3: 'elipse', 4: 'study' };
             const modulo = destinos[Number(paso)];
@@ -260,7 +297,7 @@
             const overlay = document.createElement('div');
             overlay.id = 'pipeline-campana-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:18px;';
-            overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+            overlay.innerHTML = `<div style="width:min(720px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
                 <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.4</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2><div style="font-size:12px;color:var(--secondary);">Nivel lingüístico ${s.nivel} · ruta objetivo: ${RANGOS[s.rangoPorNivel]?.nombre || 'Soldado'}</div></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
                 <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${misionesPagina.visibles.map(m => `<div onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} ${lang === 'en' ? 'Step' : lang === 'zh' ? '步骤' : 'Paso'} ${m.paso}/4 · ${textoPaso(m)} <span style="float:right;color:var(--primary);font-size:11px;">→ ${lang === 'en' ? 'Open' : lang === 'zh' ? '打开' : 'Abrir'}</span></div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${detallePaso(m)}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>${misionesPagina.botones}
