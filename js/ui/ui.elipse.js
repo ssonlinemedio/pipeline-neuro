@@ -2521,7 +2521,7 @@ class UIEclipse {
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (window.PipelineI18n ? window.PipelineI18n.t('Importando...') : 'Importando...');
                 this.disabled = true;
 
-                const data = JSON.parse(jsonText);
+                const data = self._normalizarJSONOnda(jsonText);
                 const primeraFrase = data.historias?.[0]?.frases?.[0]?.original || '';
                 if (primeraFrase.includes('[') || primeraFrase.includes('Frase') || primeraFrase.includes('frase')) {
                     self._core?.mostrarToast('⚠️ Esto es una PLANTILLA vacía. Completa el JSON con la IA y luego importa.', 'warning');
@@ -2684,7 +2684,7 @@ class UIEclipse {
                     this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
                     this.disabled = true;
 
-                    const data = JSON.parse(jsonText);
+                const data = self._normalizarJSONOnda(jsonText);
                     await self._importarOndaDesdeJSON(data);
                     self._core.cerrarModal();
                     self._core.mostrarToast('✅ Onda importada correctamente', 'success');
@@ -2757,6 +2757,30 @@ class UIEclipse {
             this._importando = false;
             throw error;
         }
+    }
+
+    _normalizarJSONOnda(entrada) {
+        let data = entrada;
+        if (typeof data === 'string') {
+            const limpio = data.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').replace(/^\uFEFF/, '');
+            data = JSON.parse(limpio);
+        }
+
+        if (Array.isArray(data)) return { historias: data };
+        if (!data || typeof data !== 'object') throw new Error('JSON inválido');
+        if (Array.isArray(data.historias)) return data;
+
+        // Aceptar respuestas envueltas por asistentes, APIs o plantillas externas.
+        for (const envoltorio of ['data', 'resultado', 'result', 'response', 'output']) {
+            if (data[envoltorio] && typeof data[envoltorio] === 'object') {
+                const normalizado = this._normalizarJSONOnda(data[envoltorio]);
+                if (normalizado.historias?.length) return { ...data, ...normalizado };
+            }
+        }
+
+        if (data.historia && typeof data.historia === 'object') return { ...data, historias: [data.historia] };
+        if (data.titulo && Array.isArray(data.frases)) return { ...data, historias: [data] };
+        throw new Error('JSON inválido: debe contener "historias"');
     }
 
     // ============================================================
