@@ -863,6 +863,9 @@ class UIDashboard {
         const foco = Math.max(0, Math.min(100, Number(neuroEstado?.foco ?? 0)));
         const eficiencia = Math.max(0, Math.min(100, Number(neuroEstado?.eficiencia ?? 0)));
         const fatiga = Math.max(0, Math.min(100, Number(neuroEstado?.fatiga ?? 0)));
+        const progresionMilitar = window.ProgresionMilitar
+            ? await window.ProgresionMilitar.renderDashboard(idiomaActivo)
+            : '';
 
         const tarjetasLite = [...this._TARJETAS_LITE];
         if (esTonal && !tarjetasLite.some(t => t.id === 'tonos')) {
@@ -931,6 +934,7 @@ class UIDashboard {
 
         let html = `
             <div class="dm-dashboard">
+                ${progresionMilitar}
                 <section class="dm-hero">
                     <div class="dm-hero-main">
                         <div>
