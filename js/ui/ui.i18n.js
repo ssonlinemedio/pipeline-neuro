@@ -93,6 +93,13 @@
     }
   };
 
+  Object.assign(DICT.en, {
+    'Evaluación opcional':'Optional assessment','Examen de nivel':'Level assessment','Evaluación diagnóstica: no modifica tu nivel oficial.':'Diagnostic assessment: it does not change your official level.','Pregunta':'Question','Escribe tu respuesta':'Type your answer','Corregir examen':'Grade assessment','Resultado':'Result','Nivel evaluado':'Level assessed','El sistema de evaluación no está disponible.':'The assessment system is unavailable.'
+  });
+  Object.assign(DICT.zh, {
+    'Evaluación opcional':'可选评估','Examen de nivel':'等级评估','Evaluación diagnóstica: no modifica tu nivel oficial.':'诊断评估：不会改变你的官方等级。','Pregunta':'问题','Escribe tu respuesta':'输入答案','Corregir examen':'批改评估','Resultado':'结果','Nivel evaluado':'评估等级','El sistema de evaluación no está disponible.':'评估系统不可用。'
+  });
+
   // Cobertura ampliada de textos VISUALES de los módulos UI entregados.
   // No se incluyen nombres de idiomas, contenido de historias, vocabulario,
   // traducciones pedagógicas ni valores de idioma nativo/objetivo.

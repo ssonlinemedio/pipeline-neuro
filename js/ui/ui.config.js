@@ -3598,6 +3598,63 @@ Este JSON contiene TODOS los campos necesarios para un curso completo.
             }));
         } catch (e) { console.warn('⚠️ Error guardando logros:', e); }
     }
+
+    _textoExamen(texto) {
+        return window.PipelineI18n?.t?.(texto) || texto;
+    }
+
+    _escaparExamen(texto) {
+        return String(texto ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' })[c]);
+    }
+
+    async _iniciarExamenConfig(idioma, nivel) {
+        idioma = idioma || gestorIdiomas?.getIdiomaActivo?.();
+        nivel = nivel || this._obtenerNivelRealUsuario();
+        const usuario = await db.getUsuario();
+        if (!usuario || !idioma) return null;
+        if (!window.gestorNiveles) {
+            this._getCore()?.mostrarToast(this._textoExamen('El sistema de evaluación no está disponible.'), 'error');
+            return null;
+        }
+        return window.gestorNiveles.iniciarExamenNivel(usuario.id, idioma, nivel);
+    }
+
+    async _mostrarExamenNivelPro(preguntas, nivel) {
+        if (!Array.isArray(preguntas) || !preguntas.length) return { cancelado: true };
+        const t = value => this._textoExamen(value);
+        const core = this._getCore();
+        const overlay = document.createElement('div');
+        overlay.id = 'pipeline-examen-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px;';
+        const cards = preguntas.map((p, i) => {
+            const contenido = p.tipo === 'multiple'
+                ? (p.opciones || []).map((op, j) => `<label style="display:flex;gap:10px;align-items:center;padding:11px 12px;border:1px solid var(--light);border-radius:10px;background:var(--white);cursor:pointer;"><input type="radio" name="examen-${i}" value="${this._escaparExamen(op)}"> <span>${this._escaparExamen(op)}</span></label>`).join('')
+                : `<input data-examen-answer="${i}" type="text" placeholder="${this._escaparExamen(t('Escribe tu respuesta'))}" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--light);border-radius:10px;font:inherit;">`;
+            return `<article style="padding:16px;border:1px solid var(--light);border-radius:14px;background:linear-gradient(135deg,var(--white),var(--bg));box-shadow:0 5px 18px rgba(15,23,42,.06);"><div style="font-size:11px;color:var(--secondary);font-weight:700;margin-bottom:8px;">${t('Pregunta')} ${i + 1}/${preguntas.length} · ${this._escaparExamen(p.tipo || 'traducción')}</div><div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:12px;line-height:1.45;">${this._escaparExamen(p.pregunta)}</div><div style="display:grid;gap:8px;">${contenido}</div></article>`;
+        }).join('');
+        overlay.innerHTML = `<div style="width:min(700px,100%);max-height:92vh;overflow:auto;background:var(--white);border-radius:20px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.3);font-family:inherit;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;"><div><div style="font-size:11px;color:var(--secondary);font-weight:700;text-transform:uppercase;letter-spacing:.08em;">${t('Evaluación opcional')}</div><h2 style="margin:4px 0;color:var(--primary);">🧠 ${t('Examen de nivel')} · ${this._escaparExamen(nivel)}</h2><p style="margin:0;color:var(--gray);font-size:12px;">${t('Evaluación diagnóstica: no modifica tu nivel oficial.')}</p></div><button type="button" data-examen-cancel style="border:0;background:var(--bg);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:18px;">×</button></div><form data-examen-form style="display:grid;gap:12px;">${cards}<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;"><button type="button" data-examen-cancel style="padding:10px 16px;border:1px solid var(--light);background:var(--white);border-radius:10px;cursor:pointer;">${t('Cancelar')}</button><button type="submit" style="padding:10px 18px;border:0;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;border-radius:10px;cursor:pointer;font-weight:700;">${t('Corregir examen')}</button></div></form></div>`;
+        document.body.appendChild(overlay);
+        return await new Promise(resolve => {
+            const cerrar = resultado => { overlay.remove(); resolve(resultado); };
+            overlay.querySelectorAll('[data-examen-cancel]').forEach(b => b.addEventListener('click', () => cerrar({ cancelado: true })));
+            overlay.querySelector('[data-examen-form]').addEventListener('submit', e => {
+                e.preventDefault();
+                const normalizar = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?!¡.,;:]/g, '').trim();
+                const respuestas = preguntas.map((p, i) => {
+                    const seleccionado = overlay.querySelector(`input[name="examen-${i}"]:checked`)?.value;
+                    const escrito = overlay.querySelector(`[data-examen-answer="${i}"]`)?.value;
+                    const respuesta = seleccionado ?? escrito ?? '';
+                    return { respuesta, correcto: normalizar(respuesta) === normalizar(p.respuestaCorrecta), tipo: p.tipo };
+                });
+                const correctas = respuestas.filter(r => r.correcto).length;
+                cerrar({ puntuacion: Math.round((correctas / preguntas.length) * 100), respuestas });
+            });
+        });
+    }
+
+    _mostrarCelebracionExamen(nivel, puntuacion) {
+        this._getCore()?.mostrarToast(`${this._textoExamen('Resultado')}: ${puntuacion}% · ${this._textoExamen('Nivel evaluado')}: ${nivel}`, puntuacion >= 70 ? 'success' : 'info');
+    }
 }
 
 // ============================================================

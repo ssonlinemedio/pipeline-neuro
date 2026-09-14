@@ -49,6 +49,8 @@ class GestorNiveles {
     // ============================================================
     
     async _generarPreguntasExamen(idioma, nivel, numPreguntas) {
+        const usuario = await db.getUsuario();
+        const idiomaNativo = usuario?.idiomaNativo || 'español';
         // 🔥 1. Intentar usar Vigía para generar preguntas reales
         if (window.vigia && window.vigia.enLinea) {
             try {
@@ -74,7 +76,7 @@ class GestorNiveles {
                     
                     const pregunta = {
                         tipo: tipo,
-                        pregunta: `Traduce al español: "${frase.original}"`,
+                        pregunta: `Traduce a ${idiomaNativo}: "${frase.original}"`,
                         respuestaCorrecta: frase.traduccion,
                         opciones: []
                     };
