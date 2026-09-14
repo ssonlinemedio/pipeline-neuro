@@ -80,7 +80,8 @@
             const misiones = [
                 { texto: 'Completa una historia u onda', hecho: completadas > 0, icono: '📚' },
                 { texto: 'Domina 5 frases con RCN ≥ 4', hecho: dominadas >= 5, icono: '🧠' },
-                { texto: 'Mantén una sesión hoy', hecho: this.estado.ultimoDia === new Date().toISOString().slice(0, 10), icono: '🔥' }
+                { texto: 'Mantén una sesión hoy', hecho: this.estado.ultimoDia === new Date().toISOString().slice(0, 10), icono: '🔥' },
+                { texto: 'Objetivo semanal: domina 10 frases', hecho: dominadas >= 10, icono: '📅' }
             ];
             const condecoraciones = [
                 completadas >= 1 && 'Primera misión',
