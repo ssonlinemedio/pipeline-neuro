@@ -3388,6 +3388,11 @@ class UIEclipse {
                         <p style="font-size:12px;color:var(--gray);margin:2px 0 0;">${esBase ? 'Base' : `Onda ${historia._ondaIndice || '?'}`} · ${frases.length} frases · Nivel ${historia.nivel || 'A1'} · ${idioma}${historia._palabrasNuevas?.length > 0 ? ` · 📝 ${historia._palabrasNuevas.length} palabras nuevas` : ''}<span style="font-size:9px;color:var(--primary);margin-left:8px;">🧠 SRS activo</span><span style="font-size:9px;color:var(--success);margin-left:8px;">🔍 Elipse</span></p>
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._estudiarHistoriaDesdeVisor()" style="padding:4px 14px;font-size:11px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:4px;cursor:pointer;"><i class="fas fa-play"></i> Estudiar</button>
+                    <button class="btn-secondary" onclick="window.UIClipse._ttsEscucharHistoria()" title="Escuchar" style="padding:4px 10px;font-size:11px;border:1px solid var(--primary);color:var(--primary);border-radius:6px;cursor:pointer;"><i class="fas fa-volume-up"></i> Escuchar</button>
+                    <button class="btn-secondary" onclick="window.UIClipse._ttsPausa()" title="Pausa" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-pause"></i></button>
+                    <button class="btn-secondary" onclick="window.UIClipse._ttsContinuar()" title="Continuar" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-play"></i></button>
+                    <button class="btn-secondary" onclick="window.UIClipse._ttsDetener()" title="Detener" style="padding:4px 8px;font-size:11px;border-radius:6px;cursor:pointer;"><i class="fas fa-stop"></i></button>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);"><i class="fas fa-gauge-high"></i><input type="range" min="0.6" max="1.4" step="0.1" value="${window.TTS?.getRate?.() || 1}" oninput="window.UIClipse._ttsVelocidad(this.value)" style="width:64px;"></label>
                     <button class="btn-danger" onclick="window.UIClipse._eliminarOnda(${historia.id})" 
                             style="padding:4px 14px;font-size:11px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;" 
                             title="Eliminar esta onda permanentemente (sincronizado con Temas y Ondas Cruzadas)"
@@ -3438,7 +3443,7 @@ class UIEclipse {
                     <div style="display:flex;gap:8px;align-items:start;">
                         <span style="font-size:12px;font-weight:600;color:var(--gray-light);min-width:28px;">${num}.</span>
                         <div style="flex:1;">
-                            <div style="font-size:${esJeroglifico ? '22px' : '18px'};font-weight:700;color:var(--dark);line-height:1.6;">${esJeroglifico ? (f.segmentacion?.hanzi || f.original) : f.original}</div>
+                            <div style="display:flex;align-items:flex-start;gap:8px;"><div style="font-size:${esJeroglifico ? '22px' : '18px'};font-weight:700;color:var(--dark);line-height:1.6;flex:1;">${esJeroglifico ? (f.segmentacion?.hanzi || f.original) : f.original}</div><button class="btn-secondary" onclick="window.UIClipse._ttsEscucharFrase(${i})" title="Escuchar" style="padding:2px 8px;font-size:10px;border:1px solid var(--primary);color:var(--primary);border-radius:4px;cursor:pointer;"><i class="fas fa-volume-up"></i></button></div>
                             ${transcripcion ? `<div style="font-size:14px;color:${esJeroglifico ? 'var(--primary)' : 'var(--secondary)'};margin-top:2px;letter-spacing:1px;">${esJeroglifico ? '🔊' : '🎤'} ${transcripcion}</div>` : ''}
                             <div style="font-size:16px;color:var(--gray);margin-top:4px;">→ ${f.traduccion}</div>
                             ${f.reglaGramatical ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;padding:2px 10px;background:var(--primary)08;border-radius:4px;display:inline-block;">📋 ${f.reglaGramatical}</div>` : ''}
@@ -3489,8 +3494,24 @@ class UIEclipse {
         this._visorAbierto = true;
     }
 
+    _ttsEscucharHistoria() {
+        const textos = (this._frasesVisor || []).map(frase => frase.original || '').filter(Boolean);
+        window.TTS?.speak(textos, { lang: this._historiaVisor?.idioma || gestorIdiomas?.getIdiomaActivo?.() || 'es' });
+    }
+
+    _ttsEscucharFrase(index) {
+        const frase = this._frasesVisor?.[index];
+        if (frase) window.TTS?.speak(frase.original || '', { lang: frase.idioma || this._historiaVisor?.idioma || 'es' });
+    }
+
+    _ttsPausa() { window.TTS?.pause(); }
+    _ttsContinuar() { window.TTS?.resume(); }
+    _ttsDetener() { window.TTS?.stop(); }
+    _ttsVelocidad(rate) { window.TTS?.setRate(rate); }
+
     _cerrarVisorYVolver() {
         console.log('🔄 Cerrando visor y volviendo al Modo Elipse...');
+        window.TTS?.stop();
         this._visorAbierto = false;
         this._historiaVisor = null;
         this._frasesVisor = [];
