@@ -258,7 +258,7 @@ class GestorProgresoHistorias {
             await this._verificarYActualizarEstadoTema(historia.temaId);
 
             // 🔥 DISPARAR EVENTO DE ESTADO CAMBIADO
-            this._dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcnFinal);
+            this._dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcnFinal, historia.temaId);
             
             // 🔥 FORZAR ACTUALIZACIÓN DE UI
             await this._forzarActualizacionUI(historiaId, completado, esOnda, esOndaCruzada);
@@ -556,7 +556,7 @@ class GestorProgresoHistorias {
         }
     }
 
-    _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn) {
+    _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn, temaId) {
         let tipo = 'historia';
         if (esOndaCruzada) {
             tipo = 'onda_cruzada';
@@ -571,6 +571,7 @@ class GestorProgresoHistorias {
                 origen: origen,
                 tipo: tipo,
                 rcn: rcn || 0,
+                temaId: temaId || null,
                 esOndaCruzada: esOndaCruzada,
                 esOnda: esOnda
             }
