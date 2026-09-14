@@ -124,6 +124,29 @@
         async renderDashboard(idioma) {
             const s = await this.obtenerSnapshot(idioma);
             const tr = (texto) => window.PipelineI18n?.t?.(texto) || texto;
+            const lang = window.PipelineI18n?.getLanguage?.() || 'es';
+            const misionTexto = (m) => {
+                const textos = {
+                    en: ['Complete a story or wave', 'Master 5 phrases with RCN ≥ 4', 'Maintain a session today', 'Weekly objective: master 10 phrases'],
+                    zh: ['完成一个故事或波', '掌握5个 RCN ≥ 4 的句子', '今天保持一次学习', '每周目标：掌握10个句子']
+                };
+                return textos[lang]?.[m.paso - 1] || m.texto;
+            };
+            const misionDetalle = (m) => {
+                if (lang === 'en') {
+                    if (m.paso === 1) return m.hecho ? '1/1 achieved' : '0/1 · open Library or Ellipse';
+                    if (m.paso === 2) return `${m.actual}/5 · ${Math.max(0, 5 - m.actual)} remaining`;
+                    if (m.paso === 3) return m.hecho ? '1/1 · session recorded today' : '0/1 · study a sentence or story';
+                    return `${m.actual}/10 · ${Math.max(0, 10 - m.actual)} remaining this week`;
+                }
+                if (lang === 'zh') {
+                    if (m.paso === 1) return m.hecho ? '1/1 · 已完成' : '0/1 · 打开资料库或椭圆模式';
+                    if (m.paso === 2) return `${m.actual}/5 · 还剩 ${Math.max(0, 5 - m.actual)}`;
+                    if (m.paso === 3) return m.hecho ? '1/1 · 今日学习已记录' : '0/1 · 学习一个句子或故事';
+                    return `${m.actual}/10 · 本周还剩 ${Math.max(0, 10 - m.actual)}`;
+                }
+                return m.detalle;
+            };
             const siguiente = s.siguiente ? `${s.siguiente.icono} ${tr(s.siguiente.nombre)}` : tr('Rango máximo');
             const rutas = {
                 es: '🧭 Formación → A1 Soldado → A2 Cabo → B1 Sargento → B2 Teniente → C1 Capitán → C2 Comandante → dominio: Teniente Coronel',
@@ -142,7 +165,7 @@
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
                 <div style="margin:8px 0;font-size:10px;color:var(--gray);">${ruta}</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--gray);">
-                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} ${tr('Paso')} ${m.paso}: ${tr(m.texto)} · ${tr(m.detalle)}</span>`).join('')}
+                    ${s.misiones.map(m => `<span style="padding:5px 8px;border-radius:10px;background:${m.hecho ? 'var(--success)15' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.hecho ? '✅' : m.icono} ${tr('Paso')} ${m.paso}: ${misionTexto(m)} · ${misionDetalle(m)}</span>`).join('')}
                 </div>
                 ${s.condecoraciones.length ? `<div style="margin-top:10px;font-size:11px;color:var(--secondary);">🏅 ${s.condecoraciones.join(' · ')}</div>` : ''}
                 <button class="btn-secondary" onclick="window.ProgresionMilitar.abrirPanel()" style="margin-top:12px;padding:5px 10px;font-size:11px;">📋 Abrir informe</button>
