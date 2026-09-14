@@ -216,6 +216,27 @@
         async abrirPanel() {
             const idioma = window.gestorIdiomas?.getIdiomaActivo?.() || 'es';
             const s = await this.obtenerSnapshot(idioma);
+            const lang = window.PipelineI18n?.getLanguage?.() || 'es';
+            const textoPaso = (m) => lang === 'en'
+                ? ['Read the basic instructions', 'Import your first story', 'Create an Ellipse or Cross-Wave', 'Complete the study tutorial'][m.paso - 1]
+                : lang === 'zh'
+                    ? ['阅读基本说明', '导入你的第一个故事', '创建椭圆波或交叉波', '完成学习教程'][m.paso - 1]
+                    : m.texto;
+            const detallePaso = (m) => {
+                if (lang === 'en') {
+                    if (m.paso === 1) return m.hecho ? '1/1 · instructions reviewed' : '0/1 · open the user manual';
+                    if (m.paso === 2) return m.hecho ? '1/1 · import completed' : '0/1 · use Import JSON in Topics';
+                    if (m.paso === 3) return m.hecho ? '1/1 · wave created' : '0/1 · generate a wave from Topics';
+                    return m.hecho ? '1/1 · study flow tested' : '0/1 · open Study and listen to a sentence';
+                }
+                if (lang === 'zh') {
+                    if (m.paso === 1) return m.hecho ? '1/1 · 已阅读说明' : '0/1 · 打开用户手册';
+                    if (m.paso === 2) return m.hecho ? '1/1 · 导入已完成' : '0/1 · 在主题中使用导入 JSON';
+                    if (m.paso === 3) return m.hecho ? '1/1 · 波已创建' : '0/1 · 从主题生成波';
+                    return m.hecho ? '1/1 · 已测试学习流程' : '0/1 · 打开学习并听一句话';
+                }
+                return m.detalle;
+            };
             document.getElementById('pipeline-campana-overlay')?.remove();
             const overlay = document.createElement('div');
             overlay.id = 'pipeline-campana-overlay';
@@ -223,7 +244,7 @@
             overlay.innerHTML = `<div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--white);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
                 <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="color:var(--gray);font-size:12px;">🎖️ ${s.campaña} · INFORME DE CAMPAÑA · v1.4</div><h2 style="margin:5px 0;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h2><div style="font-size:12px;color:var(--secondary);">Nivel lingüístico ${s.nivel} · ruta objetivo: ${RANGOS[s.rangoPorNivel]?.nombre || 'Soldado'}</div></div><button onclick="this.closest('#pipeline-campana-overlay').remove()" style="border:0;background:var(--bg);border-radius:8px;padding:8px;cursor:pointer;">✕</button></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;"><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.puntos}</b><small style="display:block;color:var(--gray);">Puntos</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.completadas}</b><small style="display:block;color:var(--gray);">Historias</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>${s.dominadas}</b><small style="display:block;color:var(--gray);">Frases dominadas</small></div><div style="padding:12px;background:var(--bg);border-radius:10px;"><b>🔥 ${s.racha}</b><small style="display:block;color:var(--gray);">Días activos</small></div></div>
-                <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} Paso ${m.paso}/4 · ${m.texto} <span style="float:right;color:var(--primary);font-size:11px;">→ Abrir</span></div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${m.detalle}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
+                <h3>🎯 Misión de campaña · pasos</h3><div style="display:grid;gap:9px;">${s.misiones.map(m => `<div onclick="window.ProgresionMilitar.abrirPasoFormacion(${m.paso})" style="padding:10px;border-radius:9px;background:${m.hecho ? 'var(--success)12' : 'var(--bg)'};color:${m.hecho ? 'var(--success)' : 'var(--dark)'};cursor:pointer;border:1px solid ${m.hecho ? 'var(--success)' : 'var(--light)'};"><div style="font-weight:700;">${m.hecho ? '✅' : m.icono} ${lang === 'en' ? 'Step' : lang === 'zh' ? '步骤' : 'Paso'} ${m.paso}/4 · ${textoPaso(m)} <span style="float:right;color:var(--primary);font-size:11px;">→ ${lang === 'en' ? 'Open' : lang === 'zh' ? '打开' : 'Abrir'}</span></div><div style="font-size:11px;margin-top:4px;color:${m.hecho ? 'var(--success)' : 'var(--gray)'};">${detallePaso(m)}</div><div style="height:5px;background:var(--light);border-radius:5px;margin-top:7px;overflow:hidden;"><div style="height:100%;width:${Math.round((m.actual / m.meta) * 100)}%;background:${m.hecho ? 'var(--success)' : 'var(--primary)'};"></div></div></div>`).join('')}</div>
                 <h3>🏅 Condecoraciones</h3><div style="color:var(--secondary);">${s.condecoraciones.length ? s.condecoraciones.map(x => `<span style="display:inline-block;padding:7px 10px;margin:3px;background:var(--secondary)12;border-radius:10px;">🏅 ${x}</span>`).join('') : 'Aún no hay condecoraciones. La primera misión te espera.'}</div>
             </div>`;
             overlay.innerHTML = window.PipelineI18n?.html?.(overlay.innerHTML) || overlay.innerHTML;
