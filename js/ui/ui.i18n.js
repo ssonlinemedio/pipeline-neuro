@@ -138,6 +138,18 @@
     "Resultados": "结果"
   });
 
+  Object.assign(DICT.en, {
+    'Progresión de campaña':'Campaign progression','Informe de campaña':'Campaign report','Abrir informe':'Open report','Abrir formación':'Open training','Formación':'Training','Formación inicial':'Initial training','Ruta de ascenso:':'Promotion path:','Días activos':'Active days','Historias':'Stories','Frases dominadas':'Mastered phrases','Puntos':'Points','Misiones activas':'Active missions','Misión de campaña · pasos':'Campaign mission · steps','Formación de recluta · pasos obligatorios':'Initial training · required steps','Lee las instrucciones básicas':'Read the basic instructions','Importa tu primera historia':'Import your first story','Crea una onda Elipse o Cruzada':'Create an Ellipse or Cross-Wave','Completa el tutorial de estudio':'Complete the study tutorial','Objetivo semanal: domina 10 frases':'Weekly objective: master 10 phrases','Condecoraciones':'Decorations','Primera misión':'First mission','He completado la formación':'I have completed the training','Nivel lingüístico':'Language level','restantes':'remaining','esta semana':'this week','sesión registrada hoy':'session recorded today','estudia una frase o historia':'study a sentence or story','abre Biblioteca o Elipse':'open Library or Ellipse','usa Importar JSON en Temas':'use Import JSON in Topics','genera una onda desde Temas':'generate a wave from Topics','abre Study y escucha una frase':'open Study and listen to a sentence','Campaña Chino':'China Campaign','Operación Londres':'Operation London','Misión París':'Paris Mission','Campaña Berlín':'Berlin Campaign','Ruta Roma':'Rome Route','Ruta Pekín':'Beijing Route','Desafío Tokio':'Tokyo Challenge'
+  });
+  Object.assign(DICT.zh, {
+    'Progresión de campaña':'战役进度','Informe de campaña':'战役报告','Abrir informe':'打开报告','Abrir formación':'打开培训','Formación':'培训','Formación inicial':'初始培训','Ruta de ascenso:':'晋升路线：','Días activos':'活跃天数','Historias':'故事','Frases dominadas':'已掌握句子','Puntos':'积分','Misiones activas':'进行中的任务','Misión de campaña · pasos':'战役任务·步骤','Formación de recluta · pasos obligatorios':'初始培训·必做步骤','Lee las instrucciones básicas':'阅读基本说明','Importa tu primera historia':'导入你的第一个故事','Crea una onda Elipse o Cruzada':'创建椭圆波或交叉波','Completa el tutorial de estudio':'完成学习教程','Objetivo semanal: domina 10 frases':'每周目标：掌握10个句子','Condecoraciones':'勋章','Primera misión':'第一个任务','He completado la formación':'我已完成培训','Nivel lingüístico':'语言等级','restantes':'剩余','esta semana':'本周','sesión registrada hoy':'今日学习已记录','estudia una frase o historia':'学习一个句子或故事','abre Biblioteca o Elipse':'打开资料库或椭圆模式','usa Importar JSON en Temas':'在主题中使用导入 JSON','genera una onda desde Temas':'从主题生成波','abre Study y escucha una frase':'打开学习并听一句话','Campaña Chino':'中文战役','Operación Londres':'伦敦行动','Misión París':'巴黎任务','Campaña Berlín':'柏林战役','Ruta Roma':'罗马路线','Ruta Pekín':'北京路线','Desafío Tokio':'东京挑战'
+  });
+
+  Object.assign(DICT.en, {'Soldado':'Soldier','Cabo':'Corporal','Sargento':'Sergeant','Teniente':'Lieutenant','Capitán':'Captain','Comandante':'Commander','Teniente Coronel':'Lieutenant Colonel','Paso':'Step','Rango máximo':'Maximum rank','Campaña China':'China Campaign'});
+  Object.assign(DICT.zh, {'Soldado':'士兵','Cabo':'下士','Sargento':'中士','Teniente':'中尉','Capitán':'上尉','Comandante':'少校','Teniente Coronel':'中校','Paso':'步骤','Rango máximo':'最高等级','Campaña China':'中文战役'});
+  Object.assign(DICT.en, {'Dual':'Dual','Lectura dual':'Dual reading'});
+  Object.assign(DICT.zh, {'Dual':'双语','Lectura dual':'双语朗读'});
+
   // Mi Espacio: Spanish source strings and equivalent UI translations.
   Object.assign(DICT.en, {
     "APRENDIZAJE PERSONAL": "PERSONAL LEARNING",
