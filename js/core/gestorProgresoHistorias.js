@@ -162,6 +162,12 @@ class GestorProgresoHistorias {
             let frasesCompletadas = 0;
             let totalFrases = frases.length;
 
+            // En Elipse/Temas, marcar manualmente una onda significa dominarla.
+            // Elevamos sus frases a RCN 5 sin borrar datos de repasos anteriores.
+            if (completado && origen !== 'srs') {
+                await this._marcarFrasesComoDominadas(frases);
+            }
+
             if (totalFrases > 0) {
                 let totalRCN = 0;
                 let count = 0;
@@ -495,6 +501,29 @@ class GestorProgresoHistorias {
             return false;
         }
         return this.cambiarEstadoHistoria(Number(historiaId), completada, 'srs');
+    }
+
+    async _marcarFrasesComoDominadas(frases) {
+        const ahora = Date.now();
+        const proximoRepaso = ahora + (365 * 24 * 60 * 60 * 1000);
+        for (const frase of frases || []) {
+            const actual = await db.obtenerProgreso(frase.id) || {
+                fraseId: frase.id,
+                fase: 1,
+                rg: 0,
+                repasosExitosos: 0,
+                repasosFallidos: 0,
+                intervaloActual: 0,
+                neuroMetrics: { historialRCN: [], historialIntervalos: [], curvaOlvido: [], eficiencia: 1 }
+            };
+            actual.rcn = 5;
+            actual.fase = Math.max(Number(actual.fase) || 1, 5);
+            actual.estado = 'completada';
+            actual.ultimoRepaso = ahora;
+            actual.proximoRepaso = proximoRepaso;
+            actual.fechaCreacion = actual.fechaCreacion || ahora;
+            await db.guardarProgreso(actual);
+        }
     }
 
     _dispararEventoEstadoCambiado(historiaId, completado, origen, esOnda, esOndaCruzada, rcn) {
