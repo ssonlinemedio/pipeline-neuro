@@ -154,13 +154,23 @@
                 zh: '🧭 培训 → A1 士兵 → A2 下士 → B1 中士 → B2 中尉 → C1 上尉 → C2 少校 → 掌握：中校'
             };
             const ruta = rutas[window.PipelineI18n?.getLanguage?.() || 'es'] || rutas.es;
+            const resumen = lang === 'en'
+                ? `${s.completadas} stories · ${s.dominadas} mastered phrases<br>🔥 ${s.racha} campaign days`
+                : lang === 'zh'
+                    ? `${s.completadas} 个故事 · ${s.dominadas} 个已掌握句子<br>🔥 战役 ${s.racha} 天`
+                    : `${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña`;
+            const progresoTexto = lang === 'en'
+                ? `${s.puntos} points · next: ${siguiente}`
+                : lang === 'zh'
+                    ? `${s.puntos} 积分 · 下一等级：${siguiente}`
+                    : `${s.puntos} puntos · próximo: ${siguiente}`;
             return `<section class="dm-neuro-panel" style="grid-column:1/-1;border:1px solid var(--primary);background:linear-gradient(135deg,var(--white),var(--bg));">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
                     <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${tr(s.rango.nombre)}</h3>
-                    <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
+                    <div style="font-size:12px;color:var(--gray);">${progresoTexto}</div></div>
                     <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">${s.formacionCompleta ? '📋 Informe de campaña' : '📖 Abrir formación'}</button>
-                    <div style="text-align:right;font-size:12px;color:var(--gray);">${s.completadas} historias · ${s.dominadas} frases dominadas<br>🔥 ${s.racha} días de campaña</div>
+                    <div style="text-align:right;font-size:12px;color:var(--gray);">${resumen}</div>
                 </div>
                 <div style="height:8px;background:var(--light);border-radius:8px;margin:12px 0 10px;overflow:hidden;"><div style="height:100%;width:${s.progresoRango}%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:8px;"></div></div>
                 <div style="margin:8px 0;font-size:10px;color:var(--gray);">${ruta}</div>
