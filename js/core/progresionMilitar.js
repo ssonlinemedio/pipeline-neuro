@@ -99,7 +99,7 @@
             const siguiente = s.siguiente ? `${s.siguiente.icono} ${s.siguiente.nombre}` : 'Rango máximo';
             return `<section class="dm-neuro-panel" style="grid-column:1/-1;border:1px solid var(--primary);background:linear-gradient(135deg,var(--white),var(--bg));">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-                    <div><div style="font-size:12px;color:var(--gray);">🎖️ ${s.campaña} · Progresión de campaña</div>
+                    <div><div style="font-size:12px;color:var(--gray);">🎖️ Progresión de campaña</div><div style="display:inline-block;margin-top:3px;padding:3px 8px;border-radius:8px;background:var(--secondary)15;color:var(--secondary);font-size:11px;font-weight:700;">🗺️ ${s.campaña}</div>
                     <h3 style="margin:4px 0;font-size:22px;color:var(--primary);">${s.rango.icono} ${s.rango.nombre}</h3>
                     <div style="font-size:12px;color:var(--gray);">${s.puntos} puntos · próximo: ${siguiente}</div></div>
                     <button onclick="window.ProgresionMilitar.abrirPanel()" style="border:0;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;font-weight:700;cursor:pointer;">📋 Campaña completa</button>
