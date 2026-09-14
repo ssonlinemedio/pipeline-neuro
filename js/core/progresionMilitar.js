@@ -65,6 +65,11 @@
             const progreso = await db?.obtenerTodoProgreso?.() || [];
             const dominadas = progreso.filter(p => Number(p.rcn || 0) >= 4 || p.estado === 'completada').length;
             const puntos = Math.min(999, (completadas * 10) + (dominadas * 2) + (Number(this.estado.diasActivos || 0) * 3));
+            // Migración segura: quien ya tiene contenido/progreso no vuelve a Recluta.
+            if (this.estado.formacionRecluta === undefined && (filtradas.length > 0 || progreso.length > 0)) {
+                this.estado.formacionRecluta = true;
+                this._guardar();
+            }
             const formacionCompleta = this.estado.formacionRecluta === true;
             const indice = formacionCompleta ? Math.max(0, RANGOS.reduce((i, r, n) => puntos >= r.minimo ? n : i, 0)) : 0;
             const rango = RANGOS[indice];
