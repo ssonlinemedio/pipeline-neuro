@@ -1002,12 +1002,32 @@ class Database {
             
             const historiaParaGuardar = { ...historia };
             delete historiaParaGuardar.id;
+            if (!historiaParaGuardar.localKey) {
+                const tituloNormalizado = String(historiaParaGuardar.titulo || 'sin-titulo')
+                    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                historiaParaGuardar.localKey = historiaParaGuardar._esPredefinido === true
+                    ? `catalog:${historiaParaGuardar.idioma}:${historiaParaGuardar.nivel}:${tituloNormalizado}`
+                    : `user:${crypto.randomUUID()}`;
+            }
             
             if (historia.temaId !== undefined && historia.temaId !== null) {
                 console.log(`📚 Guardando historia con temaId: ${historia.temaId}`);
             }
             
-            return this.add('historias', historiaParaGuardar);
+            const idGenerado = await this.add('historias', historiaParaGuardar);
+            if (idGenerado && historiaParaGuardar._esPredefinido !== true && window.PipelineSync) {
+                window.PipelineSync.enqueue('user_stories', 'upsert', {
+                    local_key: historiaParaGuardar.localKey,
+                    title: historiaParaGuardar.titulo || 'Historia sin título',
+                    content: historiaParaGuardar,
+                    content_version: Number(historiaParaGuardar._contentVersion || 1),
+                    created_at: historiaParaGuardar.fechaCreacion || new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    version: 1
+                }).catch(error => console.warn('⚠️ No se pudo encolar historia propia:', error));
+            }
+            return idGenerado;
         } catch (e) {
             console.warn('⚠️ Error guardando historia:', e);
             return null;
