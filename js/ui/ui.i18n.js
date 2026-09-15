@@ -2865,7 +2865,7 @@
     'Sesión iniciada. La sincronización está disponible.':'Signed in. Synchronization is available.',
     'Cuenta creada. Revisa tu correo si se solicita confirmación.':'Account created. Check your email if confirmation is required.',
     'Sesión cerrada. Tus datos locales se conservan.':'Signed out. Your local data is preserved.',
-    'Sincronización completada:':'Synchronization completed:','cambios.':'changes.','No hay una sesión sincronizable ahora.':'There is no synchronizable session now.','Enviados':'Sent','Recibidos':'Received','historias':'stories','temas':'topics','progreso':'progress',
+    'Sincronización completada:':'Synchronization completed:','cambios.':'changes.','No hay una sesión sincronizable ahora.':'There is no synchronizable session now.','Enviados':'Sent','Recibidos':'Received','historias':'stories','temas':'topics','estados aplicados':'states applied',
     'La contraseña debe tener al menos 6 caracteres.':'The password must be at least 6 characters long.'
   });
   Object.assign(DICT.zh, {
@@ -2874,7 +2874,7 @@
     'Sesión activa. Tus datos locales siguen disponibles.':'会话已开启。本地数据仍然可用。','Sin cuenta conectada. La aplicación funciona en modo local.':'未连接账户。应用可在本地运行。',
     'Introduce correo y contraseña.':'请输入邮箱和密码。','La sincronización no está disponible ahora.':'同步暂不可用。','Sesión iniciada. La sincronización está disponible.':'登录成功。可以同步。',
     'Cuenta creada. Revisa tu correo si se solicita confirmación.':'账户已创建。如需确认，请检查邮箱。','Sesión cerrada. Tus datos locales se conservan.':'已退出登录。本地数据已保留。',
-    'Sincronización completada:':'同步完成：','cambios.':'项更改。','No hay una sesión sincronizable ahora.':'当前没有可同步的会话。','La contraseña debe tener al menos 6 caracteres.':'密码至少需要 6 个字符。','Enviados':'已发送','Recibidos':'已接收','historias':'故事','temas':'主题','progreso':'进度'
+    'Sincronización completada:':'同步完成：','cambios.':'项更改。','No hay una sesión sincronizable ahora.':'当前没有可同步的会话。','La contraseña debe tener al menos 6 caracteres.':'密码至少需要 6 个字符。','Enviados':'已发送','Recibidos':'已接收','historias':'故事','temas':'主题','estados aplicados':'已应用状态'
   });
 
   Object.assign(DICT.en, {'Protege tu progreso con Supabase (opcional)':'Protect your progress with Supabase (optional)','1/1 · cuenta sincronizable activa':'1/1 · sync account active','0/1 · crea una cuenta desde Configuración':'0/1 · create an account in Settings'});
