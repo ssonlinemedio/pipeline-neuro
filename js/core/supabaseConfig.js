@@ -4,7 +4,7 @@
     'use strict';
 
     window.PIPELINE_SUPABASE_CONFIG = Object.freeze({
-        url: 'https://tkgfoazvsrdquievamt.supabase.co',
+        url: 'https://tgkfoaazvsrdquievamt.supabase.co',
         publishableKey: 'sb_publishable_ybQZK7a4GcyZWxJ-EI6bcA_A30tfI49',
         enabled: true
     });
