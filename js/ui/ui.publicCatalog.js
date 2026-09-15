@@ -13,9 +13,28 @@
             const list = overlay.querySelector('#publicCatalogItems');
             const client = window.PipelineSupabase?.getClient?.();
             if (!client) { list.innerHTML = `<div style="padding:14px;background:var(--bg);border-radius:9px;color:var(--gray);">${t('Catálogo no disponible ahora. Puedes continuar usando el contenido local.')}</div>`; return; }
+            const sessionInfo = await window.PipelineSupabase?.getSession?.();
+            if (sessionInfo?.session) {
+                const profile = await client.from('profiles').select('role').eq('id', sessionInfo.session.user.id).maybeSingle();
+                if (profile.data?.role === 'admin') await this.renderAdminPanel(overlay, client);
+            }
             const { data, error } = await client.from('public_catalog').select('content_key,idioma,nivel,title,content_version,updated_at').eq('status', 'published').order('idioma').order('nivel');
             if (error || !data?.length) { list.innerHTML = `<div style="padding:14px;background:var(--bg);border-radius:9px;color:var(--gray);">${t('Todavía no hay contenido público disponible.')}</div>`; return; }
             list.innerHTML = data.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;background:var(--bg);border-radius:9px;"><div><strong style="color:var(--dark);">${item.title}</strong><div style="font-size:11px;color:var(--gray);">${item.idioma} · ${item.nivel} · v${item.content_version}</div></div><span style="font-size:11px;color:var(--secondary);">${t('Disponible')}</span></div>`).join('');
+        },
+        async renderAdminPanel(overlay, client) {
+            const { data } = await client.from('catalog_submissions').select('id,title,idioma,nivel,content_key,created_at').eq('status', 'pending').order('created_at');
+            const panel = document.createElement('div');
+            panel.style.cssText = 'margin:14px 0;padding:14px;background:#fff8e8;border:1px solid #fdcb6e;border-radius:10px;';
+            panel.innerHTML = `<strong style="color:var(--dark);">🛡️ ${t('Revisión de administradores')}</strong><div style="font-size:12px;color:var(--gray);margin:4px 0 10px;">${data?.length || 0} ${t('propuestas pendientes')}</div>` + ((data || []).map(item => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #fdcb6e55;font-size:12px;"><span>${item.title} · ${item.idioma} · ${item.nivel}</span><button type="button" data-approve="${item.id}" style="padding:5px 9px;background:var(--success);color:white;border:0;border-radius:6px;cursor:pointer;">${t('Aprobar')}</button></div>`).join('') || `<div style="font-size:12px;color:var(--gray);">${t('No hay propuestas pendientes')}</div>`);
+            overlay.querySelector('#publicCatalogItems').before(panel);
+            panel.querySelectorAll('[data-approve]').forEach(button => button.addEventListener('click', async () => {
+                const { data: submission, error } = await client.from('catalog_submissions').select('*').eq('id', button.dataset.approve).single();
+                if (error || !submission) return;
+                const published = await client.from('public_catalog').upsert({ content_key: submission.content_key, title: submission.title, idioma: submission.idioma, nivel: submission.nivel, content: submission.content, content_version: 1, status: 'published' }, { onConflict: 'content_key' });
+                if (!published.error) await client.from('catalog_submissions').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', submission.id);
+                await this.open(); overlay.remove();
+            }));
         }
     };
     window.PipelinePublicCatalog = Catalog;
