@@ -106,7 +106,12 @@
             for (const remote of data) {
                 if (!remote.local_key || !remote.content || typeof remote.content !== 'object') continue;
                 const local = byKey.get(remote.local_key);
-                if (local && Number(local._syncVersion || 0) >= Number(remote.version || 1)) continue;
+                const remoteVersion = Number(remote.version || 1);
+                const localVersion = Number(local?._syncVersion || 0);
+                const remoteTime = Date.parse(remote.updated_at || '') || 0;
+                const localTime = Date.parse(local?._syncUpdatedAt || '') || 0;
+                if (local && localVersion > remoteVersion) continue;
+                if (local && localVersion === remoteVersion && localTime >= remoteTime) continue;
                 const source = { ...remote.content };
                 delete source.id;
                 const frases = Array.isArray(source.frases) ? source.frases : [];
@@ -123,6 +128,7 @@
                     titulo: source.titulo || remote.title || 'Historia sincronizada',
                     _esPredefinido: false,
                     _syncVersion: Number(remote.version || 1),
+                    _syncUpdatedAt: remote.updated_at || new Date().toISOString(),
                     _contentVersion: Number(remote.content_version || source._contentVersion || 1),
                     fechaCreacion: source.fechaCreacion || remote.created_at || new Date().toISOString()
                 };
@@ -159,8 +165,13 @@
             for (const remote of data) {
                 if (!remote.local_key || !remote.content || typeof remote.content !== 'object') continue;
                 const local = byKey.get(remote.local_key);
-                if (local && Number(local._syncVersion || 0) >= Number(remote.version || 1)) continue;
-                const topic = { ...remote.content, localKey: remote.local_key, _syncVersion: Number(remote.version || 1) };
+                const remoteVersion = Number(remote.version || 1);
+                const localVersion = Number(local?._syncVersion || 0);
+                const remoteTime = Date.parse(remote.updated_at || '') || 0;
+                const localTime = Date.parse(local?._syncUpdatedAt || '') || 0;
+                if (local && localVersion > remoteVersion) continue;
+                if (local && localVersion === remoteVersion && localTime >= remoteTime) continue;
+                const topic = { ...remote.content, localKey: remote.local_key, _syncVersion: remoteVersion, _syncUpdatedAt: remote.updated_at || new Date().toISOString() };
                 delete topic.id;
                 const id = local?.id || await database.add('temas', topic);
                 if (!id) continue;
