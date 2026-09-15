@@ -204,6 +204,7 @@ class GestorProgresoHistorias {
             historia._rcnPromedio = rcnFinal;
             historia.estado = estadoFinal;
             historia._completada = completado;
+            historia.version = Number(historia.version || 0) + 1;
             if (completado) {
                 historia._fechaCompletado = Date.now();
             } else {
