@@ -210,6 +210,11 @@ class GestorProgresoHistorias {
                 delete historia._fechaCompletado;
             }
             await db.update('historias', historia);
+            // El checkbox modifica metadatos de la historia, no solo el SRS.
+            // Reencolamos el documento completo para otros dispositivos.
+            if (origen !== 'srs' && historia._esPredefinido !== true) {
+                await db._encolarHistoriaPropiaCompleta?.(historiaId);
+            }
             this._log(`✅ Historia actualizada en DB: estado=${estadoFinal}, RCN=${rcnFinal.toFixed(1)}`);
 
             // 🔥 SOLO SINCRONIZAR CON ELIPSE SI NO ES ONDA CRUZADA
