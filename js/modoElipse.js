@@ -583,6 +583,13 @@ class ModoElipse {
         const temaCanonico = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         if (temaCanonico) {
             const tema = await db.obtenerTema(Number(temaCanonico));
+            if (tema?._esPredefinido === true || tema?.origen === 'predefinido' || tema?._origenPredefinido === true) {
+                this._elipseActiva = null;
+                this._temaIdPersistido = null;
+                this._historiasElipse = [];
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return [];
+            }
             if (tema?.idioma === this._obtenerIdiomaActual()) {
                 await this._recuperarElipseDesdeTema(temaCanonico);
                 return this._historiasElipse;
@@ -795,6 +802,12 @@ class ModoElipse {
         this._recuperando = true;
         try {
             const contexto = await db.obtenerContextoTema(temaId);
+            if (contexto.tema?._esPredefinido === true || contexto.tema?.origen === 'predefinido' || contexto.tema?._origenPredefinido === true) {
+                this._elipseActiva = null;
+                this._historiasElipse = [];
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return;
+            }
             if (contexto.tema.idioma !== this._obtenerIdiomaActual()) return;
             this._elipseActiva = String(contexto.tema.id);
             this._historiasElipse = contexto.historias.filter(h => !this._esOndaCruzada(h)).map((h, indice, todas) => ({
