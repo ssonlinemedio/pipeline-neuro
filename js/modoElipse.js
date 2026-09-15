@@ -716,11 +716,8 @@ class ModoElipse {
             }
         } catch (e) {}
         
-        const idiomaActual = this._obtenerIdiomaActual();
-        const temaId = this._elipseActiva;
-        if (temaId) {
-            this._cargarEstadoPorIdioma(idiomaActual);
-        }
+        // La selección persistida se valida al cargar datos, cuando IndexedDB
+        // ya está disponible. No recuperar aquí una base predefinida.
     }
 
     _guardarConfiguracion() {

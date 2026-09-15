@@ -1627,8 +1627,8 @@ class UIEclipse {
                             <br><span style="color:var(--success);font-weight:700;">✅ Botón "Ondas Cruzadas" funcional y navega al módulo</span>
                         </p>
                     </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn-secondary" onclick="window.UIClipse._seleccionarTema()" style="padding:6px 14px;font-size:12px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <button class="btn-primary" onclick="window.UIClipse._seleccionarTema()" style="padding:11px 18px;font-size:14px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:9px;cursor:pointer;font-weight:700;box-shadow:0 4px 12px rgba(108,92,231,.25);">
                             <i class="fas fa-folder-open"></i> Seleccionar Tema
                         </button>
                         <button class="btn-primary" onclick="window.UIClipse._generarPlantilla()" style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);color:white;border:none;border-radius:6px;cursor:pointer;">
