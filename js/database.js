@@ -1223,7 +1223,18 @@ class Database {
         const frase = await this.get('frases', Number(progreso.fraseId));
         if (!frase) throw new Error('Progress references a missing phrase');
         const dato = { ...progreso, fraseId: frase.id, idioma: frase.idioma, tipo: 'frase' };
-        return this._guardarProgresoUnico('progreso', 'fraseId', dato);
+        const guardado = await this._guardarProgresoUnico('progreso', 'fraseId', dato);
+        if (window.PipelineSync) {
+            const contentKey = frase.contentKey || frase._contentKey || `legacy:${frase.idioma}:${frase.id}`;
+            window.PipelineSync.enqueue('learning_states', 'upsert', {
+                content_key: contentKey,
+                content_version: Number(frase.contentVersion || frase._contentVersion || 1),
+                state: guardado,
+                updated_at: new Date().toISOString(),
+                version: Number(guardado.version || 1)
+            }).catch(error => console.warn('⚠️ No se pudo encolar progreso:', error));
+        }
+        return guardado;
     }
 
     async _guardarProgresoUnico(store, index, dato) {

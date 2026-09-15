@@ -30,6 +30,17 @@
                 attempts: 0,
                 lastError: null
             };
+            const pendientes = await database.getAll('sync_queue');
+            const anterior = pendientes.find(item => item.entity === entity &&
+                item.operation === operation && item.entityKey === record.entityKey);
+            if (anterior) {
+                return database.update('sync_queue', {
+                    ...anterior,
+                    payload: record.payload,
+                    queuedAt: record.queuedAt,
+                    lastError: null
+                });
+            }
             return database.add('sync_queue', record);
         }
 
@@ -72,6 +83,9 @@
 
         async _send(client, item) {
             const table = TABLES[item.entity];
+            const sessionInfo = await window.PipelineSupabase.getSession();
+            const userId = sessionInfo.session?.user?.id;
+            if (!userId) return { ok: false, error: new Error('No authenticated user') };
             if (item.operation === 'delete') {
                 const { error } = await client.from(table).update({
                     deleted_at: new Date().toISOString(),
@@ -79,7 +93,7 @@
                 }).eq('id', item.payload.id);
                 return { ok: !error, error };
             }
-            const { error } = await client.from(table).upsert(item.payload, {
+            const { error } = await client.from(table).upsert({ ...item.payload, user_id: userId }, {
                 onConflict: item.entity === 'mode_states' ? 'user_id,mode,content_key' :
                     item.entity === 'user_stories' ? 'user_id,local_key' : 'user_id,content_key'
             });
