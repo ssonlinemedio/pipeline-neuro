@@ -1349,6 +1349,10 @@ class ModoElipse {
     // ============================================================
 
     async generarPlantillaOnda(temaId, historiaId = null, descripcion = '') {
+        const temaProtegido = await db?.obtenerTema?.(Number(temaId));
+        if (temaProtegido?._esPredefinido === true || temaProtegido?.origen === 'predefinido' || temaProtegido?._origenPredefinido === true) {
+            throw new Error('Los temas predefinidos por nivel no admiten nuevas ondas. Usa un tema de Mis Temas.');
+        }
         if (this._generando) return null;
         this._generando = true;
         try {

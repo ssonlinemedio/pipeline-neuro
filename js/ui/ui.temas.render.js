@@ -829,7 +829,7 @@ class UITemasRender {
         const numCaracteres = tema._caracteresSincronizadosCount || 0;
 
         let elipseEstado = null;
-        if (window.modoElipse) {
+        if (window.modoElipse && tema._esPredefinido !== true && tema.origen !== 'predefinido' && tema._origenPredefinido !== true) {
             elipseEstado = window.modoElipse.getEstadoElipse(temaId);
         }
 
