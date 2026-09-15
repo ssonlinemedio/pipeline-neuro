@@ -94,9 +94,15 @@
   };
 
   Object.assign(DICT.en, {
+    'Revisión de administradores':'Administrator review','propuestas pendientes':'pending submissions','Aprobar':'Approve','No hay propuestas pendientes':'No pending submissions',
+    'Catálogo Público':'Public Catalog','Historias y temas compartidos por la comunidad':'Stories and topics shared by the community','Explora historias y temas compartidos por la comunidad.':'Explore stories and topics shared by the community.','Explorar catálogo':'Explore catalog','Puedes explorar y descargar contenido público sin tener cuenta. Tu progreso seguirá siendo local. Para publicar tus propias historias o sincronizar entre dispositivos, crea una cuenta de Supabase.':'You can explore and download public content without an account. Your progress remains local. To publish your own stories or sync across devices, create a Supabase account.','Cargando catálogo...':'Loading catalog...','Catálogo no disponible ahora. Puedes continuar usando el contenido local.':'The catalog is unavailable right now. You can continue using local content.','Todavía no hay contenido público disponible.':'No public content is available yet.','Disponible':'Available',
+    '¿Cómo funciona?':'How does it work?','Cuenta opcional en Supabase':'Optional Supabase account','Sin cuenta, Pipeline Neuro funciona completamente en local y no sincroniza datos. Para usar backup y varios dispositivos, crea aquí una cuenta gratuita de Supabase con tu correo y contraseña.':'Without an account, Pipeline Neuro works entirely locally and does not sync data. To use backup and multiple devices, create a free Supabase account here with your email and password.','Crea tu cuenta de Supabase en este formulario.':'Create your Supabase account in this form.','Inicia sesión cuando recibas la confirmación.':'Sign in when you receive confirmation.','Pulsa “Sincronizar ahora” para enviar tu estado.':'Click “Sync now” to upload your state.','Cerrar sesión no borra tus datos locales. Supabase guarda solo la copia sincronizable de tu cuenta.':'Signing out does not delete your local data. Supabase stores only the synchronizable copy of your account.','Crear cuenta en Supabase':'Create a Supabase account',
     'Evaluación opcional':'Optional assessment','Examen de nivel':'Level assessment','Evaluación diagnóstica: no modifica tu nivel oficial.':'Diagnostic assessment: it does not change your official level.','Pregunta':'Question','Escribe tu respuesta':'Type your answer','Corregir examen':'Grade assessment','Resultado':'Result','Nivel evaluado':'Level assessed','El sistema de evaluación no está disponible.':'The assessment system is unavailable.','❌ No se pudo abrir el informe de campaña.':'❌ The campaign report could not be opened.','El informe detallado no está disponible todavía.':'The detailed report is not available yet.','Puedes continuar estudiando y completar el tema actual.':'You can continue studying and complete the current topic.','Informe de campaña':'Campaign report','Temas completados':'Completed topics','Historias completadas':'Completed stories','Campaña actual':'Current campaign','Completa el tema':'Complete the topic','Siguiente tema':'Next topic','Tema pendiente':'Pending topic','Campañas del nivel':'Level campaigns','Campaña completada':'Campaign completed','Campaña pendiente':'Campaign pending','Campaña':'Campaign','Nivel completado':'Level completed','Lo que falta':'What is missing','No hay misiones pendientes':'No pending missions','Hitos conseguidos':'Milestones achieved'
   });
   Object.assign(DICT.zh, {
+    'Revisión de administradores':'管理员审核','propuestas pendientes':'待审核提案','Aprobar':'批准','No hay propuestas pendientes':'暂无待审核提案',
+    'Catálogo Público':'公共目录','Historias y temas compartidos por la comunidad':'社区分享的故事和主题','Explora historias y temas compartidos por la comunidad.':'探索社区分享的故事和主题。','Explorar catálogo':'探索目录','Puedes explorar y descargar contenido público sin tener cuenta. Tu progreso seguirá siendo local. Para publicar tus propias historias o sincronizar entre dispositivos, crea una cuenta de Supabase.':'无需账户即可浏览和下载公共内容。你的进度仍保存在本地。要发布自己的故事或在设备间同步，请创建 Supabase 账户。','Cargando catálogo...':'正在加载目录…','Catálogo no disponible ahora. Puedes continuar usando el contenido local.':'目录暂不可用。你可以继续使用本地内容。','Todavía no hay contenido público disponible.':'目前没有公共内容。','Disponible':'可用',
+    '¿Cómo funciona?':'如何使用？','Cuenta opcional en Supabase':'可选的 Supabase 账户','Sin cuenta, Pipeline Neuro funciona completamente en local y no sincroniza datos. Para usar backup y varios dispositivos, crea aquí una cuenta gratuita de Supabase con tu correo y contraseña.':'没有账户时，Pipeline Neuro 完全在本地运行，不会同步数据。要使用备份和多设备功能，请在此使用邮箱和密码创建免费的 Supabase 账户。','Crea tu cuenta de Supabase en este formulario.':'在此表单中创建 Supabase 账户。','Inicia sesión cuando recibas la confirmación.':'收到确认后登录。','Pulsa “Sincronizar ahora” para enviar tu estado.':'点击“立即同步”上传你的状态。','Cerrar sesión no borra tus datos locales. Supabase guarda solo la copia sincronizable de tu cuenta.':'退出登录不会删除本地数据。Supabase 只保存账户的可同步副本。','Crear cuenta en Supabase':'创建 Supabase 账户',
     'Evaluación opcional':'可选评估','Examen de nivel':'等级评估','Evaluación diagnóstica: no modifica tu nivel oficial.':'诊断评估：不会改变你的官方等级。','Pregunta':'问题','Escribe tu respuesta':'输入答案','Corregir examen':'批改评估','Resultado':'结果','Nivel evaluado':'评估等级','El sistema de evaluación no está disponible.':'评估系统不可用。','❌ No se pudo abrir el informe de campaña.':'❌ 无法打开战役报告。','El informe detallado no está disponible todavía.':'详细报告暂不可用。','Puedes continuar estudiando y completar el tema actual.':'你可以继续学习并完成当前主题。','Informe de campaña':'战役报告','Temas completados':'已完成主题','Historias completadas':'已完成故事','Campaña actual':'当前战役','Completa el tema':'完成主题','Siguiente tema':'下一个主题','Tema pendiente':'待完成主题','Nivel completado':'等级已完成','Lo que falta':'待完成内容','No hay misiones pendientes':'没有待完成任务','Hitos conseguidos':'已完成里程碑'
   });
   Object.assign(DICT.zh, {'Campañas del nivel':'本等级战役','Campaña completada':'战役已完成','Campaña pendiente':'战役待完成','Campaña':'战役'});
@@ -2847,6 +2853,57 @@
     '[data-contenido-pedagogico]','[data-native-language-content]','[data-target-language-content]',
     '[data-idioma-nativo-content]','[data-idioma-objetivo-content]','[contenteditable="true"]'
   ].join(',');
+
+  Object.assign(DICT.en, {
+    'Cuenta y sincronización':'Account and synchronization',
+    'Opcional: protege tu progreso y continúa en otros dispositivos.':'Optional: protect your progress and continue on other devices.',
+    'Comprobando estado de la cuenta...':'Checking account status...',
+    'Correo electrónico':'Email address','Contraseña':'Password','Iniciar sesión':'Sign in','Crear cuenta':'Create account',
+    'Sincronizar ahora':'Sync now','Cerrar sesión':'Sign out','Sesión activa. Tus datos locales siguen disponibles.':'Session active. Your local data remains available.',
+    'Sin cuenta conectada. La aplicación funciona en modo local.':'No account connected. The application works locally.',
+    'Introduce correo y contraseña.':'Enter an email and password.','La sincronización no está disponible ahora.':'Synchronization is not available right now.',
+    'Sesión iniciada. La sincronización está disponible.':'Signed in. Synchronization is available.',
+    'Cuenta creada. Revisa tu correo si se solicita confirmación.':'Account created. Check your email if confirmation is required.',
+    'Sesión cerrada. Tus datos locales se conservan.':'Signed out. Your local data is preserved.',
+    'Sincronización completada:':'Synchronization completed:','cambios.':'changes.','No hay una sesión sincronizable ahora.':'There is no synchronizable session now.','Enviados':'Sent','Recibidos':'Received','historias':'stories','temas':'topics','estados aplicados':'states applied',
+    'La contraseña debe tener al menos 6 caracteres.':'The password must be at least 6 characters long.'
+  });
+  Object.assign(DICT.zh, {
+    'Cuenta y sincronización':'账户与同步','Opcional: protege tu progreso y continúa en otros dispositivos.':'可选：保护你的进度并在其他设备上继续学习。','Comprobando estado de la cuenta...':'正在检查账户状态…',
+    'Correo electrónico':'电子邮箱','Contraseña':'密码','Iniciar sesión':'登录','Crear cuenta':'创建账户','Sincronizar ahora':'立即同步','Cerrar sesión':'退出登录',
+    'Sesión activa. Tus datos locales siguen disponibles.':'会话已开启。本地数据仍然可用。','Sin cuenta conectada. La aplicación funciona en modo local.':'未连接账户。应用可在本地运行。',
+    'Introduce correo y contraseña.':'请输入邮箱和密码。','La sincronización no está disponible ahora.':'同步暂不可用。','Sesión iniciada. La sincronización está disponible.':'登录成功。可以同步。',
+    'Cuenta creada. Revisa tu correo si se solicita confirmación.':'账户已创建。如需确认，请检查邮箱。','Sesión cerrada. Tus datos locales se conservan.':'已退出登录。本地数据已保留。',
+    'Sincronización completada:':'同步完成：','cambios.':'项更改。','No hay una sesión sincronizable ahora.':'当前没有可同步的会话。','La contraseña debe tener al menos 6 caracteres.':'密码至少需要 6 个字符。','Enviados':'已发送','Recibidos':'已接收','historias':'故事','temas':'主题','estados aplicados':'已应用状态'
+  });
+
+  Object.assign(DICT.en, {'Protege tu progreso con Supabase (opcional)':'Protect your progress with Supabase (optional)','1/1 · cuenta sincronizable activa':'1/1 · sync account active','0/1 · crea una cuenta desde Configuración':'0/1 · create an account in Settings'});
+  Object.assign(DICT.zh, {'Protege tu progreso con Supabase (opcional)':'使用 Supabase 保护进度（可选）','1/1 · cuenta sincronizable activa':'1/1 · 同步账户已启用','0/1 · crea una cuenta desde Configuración':'0/1 · 在设置中创建账户'});
+
+  // Modo Elipse y recomendaciones: las etiquetas de interfaz se traducen;
+  // los títulos y descripciones de historias se conservan en su idioma fuente.
+  Object.assign(DICT.en, {
+    'Recomendaciones NeuroAdaptativas':'Neuroadaptive Recommendations','Estudia':'Study','Estudiar':'Study','Repasar':'Review',
+    'Pendiente':'Pending','Completada':'Completed','Base':'Base','Onda':'Wave','Historias de la Elipse':'Ellipse Stories',
+    'Elipse de Conocimiento':'Knowledge Ellipse','Seleccionar Tema':'Select Topic','Generar Plantilla':'Generate Template',
+    'Importar Onda':'Import Wave','Limpiar':'Clear','Configuración avanzada':'Advanced settings','Configuración del Modo Elipse':'Ellipse Mode Settings',
+    'Máximo de ondas':'Maximum waves','Palabras nuevas por onda':'New words per wave','Nivel base':'Base level','Descripción opcional':'Optional description',
+    'Habilitada':'Enabled','¿Qué te gustaría cambiar?':'What would you like to change?','Cancelar':'Cancel','Aceptar':'Accept',
+    'Número...':'Number...','Interferencias':'Interferences','Sincronizadas':'Synchronized','Revisadas':'Reviewed','Tiempo':'Time',
+    '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'You completed all waves! Generate a new wave to continue.',
+    'Selecciona un tema con historias para iniciar la elipse.':'Select a topic with stories to start the ellipse.','Historias de la Elipse (2)':'Ellipse Stories (2)','2 elipses en el grafo':'2 ellipses in the graph','Ver Grafo':'View Graph','2 conexiones activas':'2 active connections'
+  });
+  Object.assign(DICT.zh, {
+    'Recomendaciones NeuroAdaptativas':'神经自适应建议','Estudia':'学习','Estudiar':'学习','Repasar':'复习',
+    'Pendiente':'待完成','Completada':'已完成','Base':'基础','Onda':'波','Historias de la Elipse':'椭圆故事',
+    'Elipse de Conocimiento':'知识椭圆','Seleccionar Tema':'选择主题','Generar Plantilla':'生成模板',
+    'Importar Onda':'导入波','Limpiar':'清除','Configuración avanzada':'高级设置','Configuración del Modo Elipse':'椭圆模式设置',
+    'Máximo de ondas':'最大波数','Palabras nuevas por onda':'每波新词','Nivel base':'基础等级','Descripción opcional':'可选描述',
+    'Habilitada':'已启用','¿Qué te gustaría cambiar?':'你想更改什么？','Cancelar':'取消','Aceptar':'确定',
+    'Número...':'数字…','Interferencias':'干扰','Sincronizadas':'已同步','Revisadas':'已复习','Tiempo':'时间',
+    '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'你已完成所有波！生成新波以继续。',
+    'Selecciona un tema con historias para iniciar la elipse.':'选择一个包含故事的主题以开始椭圆。','Historias de la Elipse (2)':'椭圆故事（2）','2 elipses en el grafo':'图中有 2 个椭圆','Ver Grafo':'查看图','2 conexiones activas':'2 个活动连接'
+  });
 
   function normalizeLang(lang) {
     const v = String(lang || '').toLowerCase();

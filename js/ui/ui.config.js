@@ -838,6 +838,8 @@ class UIConfig {
                     </button>
                 </div>
 
+                ${window.PipelineSupabaseAuth ? window.PipelineSupabaseAuth.render() : ''}
+
                 <!-- Sección: Gestión de Idiomas -->
                 <div class="config-section languages-section" style="background:var(--white);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--primary)20;">
                     <h3 style="font-size:16px;font-weight:700;color:var(--dark);margin:0 0 12px 0;"><i class="fas fa-globe-americas"></i> Idiomas de Aprendizaje</h3>

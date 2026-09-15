@@ -529,6 +529,21 @@ class ModoElipse {
         const temaId = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         
         console.log(`🌌 ModoElipse.cargarDatos(): idioma=${idiomaActual}, tema=${temaId}`);
+
+        // Nunca recuperar automáticamente una Elipse asociada a contenido
+        // predefinido por nivel: esos estados no forman parte de Mis Temas.
+        if (temaId && typeof db !== 'undefined' && db.obtenerTema) {
+            const temaActivo = await db.obtenerTema(Number(temaId));
+            if (temaActivo?._esPredefinido === true || temaActivo?.origen === 'predefinido' || temaActivo?._origenPredefinido === true) {
+                console.log(`🛡️ Elipse: se descarta tema predefinido activo (${temaActivo.nombre})`);
+                this._elipseActiva = null;
+                this._temaIdPersistido = null;
+                this._historiasElipse = [];
+                this._datosCargados = false;
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return;
+            }
+        }
         
         if (temaId) {
             this._cargarEstadoPorIdioma(idiomaActual);
@@ -568,6 +583,13 @@ class ModoElipse {
         const temaCanonico = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         if (temaCanonico) {
             const tema = await db.obtenerTema(Number(temaCanonico));
+            if (tema?._esPredefinido === true || tema?.origen === 'predefinido' || tema?._origenPredefinido === true) {
+                this._elipseActiva = null;
+                this._temaIdPersistido = null;
+                this._historiasElipse = [];
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return [];
+            }
             if (tema?.idioma === this._obtenerIdiomaActual()) {
                 await this._recuperarElipseDesdeTema(temaCanonico);
                 return this._historiasElipse;
@@ -694,11 +716,8 @@ class ModoElipse {
             }
         } catch (e) {}
         
-        const idiomaActual = this._obtenerIdiomaActual();
-        const temaId = this._elipseActiva;
-        if (temaId) {
-            this._cargarEstadoPorIdioma(idiomaActual);
-        }
+        // La selección persistida se valida al cargar datos, cuando IndexedDB
+        // ya está disponible. No recuperar aquí una base predefinida.
     }
 
     _guardarConfiguracion() {
@@ -780,6 +799,12 @@ class ModoElipse {
         this._recuperando = true;
         try {
             const contexto = await db.obtenerContextoTema(temaId);
+            if (contexto.tema?._esPredefinido === true || contexto.tema?.origen === 'predefinido' || contexto.tema?._origenPredefinido === true) {
+                this._elipseActiva = null;
+                this._historiasElipse = [];
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return;
+            }
             if (contexto.tema.idioma !== this._obtenerIdiomaActual()) return;
             this._elipseActiva = String(contexto.tema.id);
             this._historiasElipse = contexto.historias.filter(h => !this._esOndaCruzada(h)).map((h, indice, todas) => ({
@@ -1349,6 +1374,10 @@ class ModoElipse {
     // ============================================================
 
     async generarPlantillaOnda(temaId, historiaId = null, descripcion = '') {
+        const temaProtegido = await db?.obtenerTema?.(Number(temaId));
+        if (temaProtegido?._esPredefinido === true || temaProtegido?.origen === 'predefinido' || temaProtegido?._origenPredefinido === true) {
+            throw new Error('Los temas predefinidos por nivel no admiten nuevas ondas. Usa un tema de Mis Temas.');
+        }
         if (this._generando) return null;
         this._generando = true;
         try {

@@ -1248,6 +1248,10 @@ class ModoOndasCruzadas {
     // ============================================================
 
     async generarOndaCruzada(temaId, configuracion = {}) {
+        const temaProtegido = await db?.obtenerTema?.(Number(temaId));
+        if (temaProtegido?._esPredefinido === true || temaProtegido?.origen === 'predefinido' || temaProtegido?._origenPredefinido === true) {
+            throw new Error('Los temas predefinidos por nivel no admiten ondas cruzadas. Usa un tema de Mis Temas.');
+        }
         if (this._generando) {
             throw new Error('Ya hay una generación en curso');
         }

@@ -5,7 +5,7 @@
 class Database {
     constructor() {
         this.dbName = 'PipelineDB';
-        this.dbVersion = 21;
+        this.dbVersion = 22;
         this.db = null;
         this._initialized = false;
         this._initializing = false;
@@ -38,6 +38,7 @@ class Database {
             reglasGramaticales: '++id, idioma, nivel, tipo, regla, explicacion, ejemplos, frecuencia, fechaCreacion, ultimoUso',
             metricasGramaticales: '++id, usuarioId, idioma, progresoGeneral, reglasDominadas, reglasAprendiendo, reglasPendientes, edadGramatical, ultimaActualizacion',
             perfilesAprendizaje: '++id, usuarioId, nivelConfianza, variaciones, patrones, fechaActualizacion'
+            ,sync_queue: '++id, entity, operation, entityKey, queuedAt, attempts, lastError'
         };
         
         this._cache = {
@@ -913,13 +914,37 @@ class Database {
                     existing.transcripcion = frase.transcripcion;
                 }
                 await this.update('frases', { ...existing, ...frase });
+                await this._encolarHistoriaPropiaCompleta(frase.historiaId);
                 return existing.id;
             }
-            return this.add('frases', { ...frase, rg: 0, rcn: 0, transcripcion: frase.transcripcion || '' });
+            const idGenerado = await this.add('frases', { ...frase, rg: 0, rcn: 0, transcripcion: frase.transcripcion || '' });
+            if (idGenerado) await this._encolarHistoriaPropiaCompleta(frase.historiaId);
+            return idGenerado;
         } catch (e) {
             console.warn('⚠️ Error guardando frase:', e);
             return null;
         }
+    }
+
+    async _encolarHistoriaPropiaCompleta(historiaId) {
+        if (!historiaId || !window.PipelineSync) return;
+        const historia = await this.get('historias', Number(historiaId));
+        if (!historia || historia._esPredefinido === true || !historia.localKey) return;
+        const frases = await this.getByIndex('frases', 'historiaId', Number(historiaId));
+        const contenido = { ...historia, frases: frases.map(({ id, ...frase }) => frase) };
+        if (historia.temaId) {
+            const tema = await this.get('temas', Number(historia.temaId));
+            if (tema?.localKey) contenido.tema_local_key = tema.localKey;
+        }
+        window.PipelineSync.enqueue('user_stories', 'upsert', {
+            local_key: historia.localKey,
+            title: historia.titulo || 'Historia sin título',
+            content: contenido,
+            content_version: Number(historia._contentVersion || 1),
+            created_at: historia.fechaCreacion || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            version: Number(historia.version || 1) + 1
+        }).catch(error => console.warn('⚠️ No se pudo actualizar historia propia:', error));
     }
 
     async obtenerFrases() {
@@ -1001,12 +1026,32 @@ class Database {
             
             const historiaParaGuardar = { ...historia };
             delete historiaParaGuardar.id;
+            if (!historiaParaGuardar.localKey) {
+                const tituloNormalizado = String(historiaParaGuardar.titulo || 'sin-titulo')
+                    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                historiaParaGuardar.localKey = historiaParaGuardar._esPredefinido === true
+                    ? `catalog:${historiaParaGuardar.idioma}:${historiaParaGuardar.nivel}:${tituloNormalizado}`
+                    : `user:${crypto.randomUUID()}`;
+            }
             
             if (historia.temaId !== undefined && historia.temaId !== null) {
                 console.log(`📚 Guardando historia con temaId: ${historia.temaId}`);
             }
             
-            return this.add('historias', historiaParaGuardar);
+            const idGenerado = await this.add('historias', historiaParaGuardar);
+            if (idGenerado && historiaParaGuardar._esPredefinido !== true && window.PipelineSync) {
+                window.PipelineSync.enqueue('user_stories', 'upsert', {
+                    local_key: historiaParaGuardar.localKey,
+                    title: historiaParaGuardar.titulo || 'Historia sin título',
+                    content: historiaParaGuardar,
+                    content_version: Number(historiaParaGuardar._contentVersion || 1),
+                    created_at: historiaParaGuardar.fechaCreacion || new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    version: 1
+                }).catch(error => console.warn('⚠️ No se pudo encolar historia propia:', error));
+            }
+            return idGenerado;
         } catch (e) {
             console.warn('⚠️ Error guardando historia:', e);
             return null;
@@ -1075,6 +1120,10 @@ class Database {
             
             const temaParaGuardar = { ...tema };
             delete temaParaGuardar.id;
+            if (!temaParaGuardar.localKey) {
+                const slug = String(temaParaGuardar.nombre).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                temaParaGuardar.localKey = `user:${temaParaGuardar.idioma || 'es'}:${temaParaGuardar.nivel || 'A1'}:${slug}`;
+            }
             
             const temas = await this.obtenerTemas();
             const existente = temas.find(t => 
@@ -1083,13 +1132,15 @@ class Database {
             );
             
             if (existente) {
-                await this.update('temas', { ...existente, ...tema });
+                await this.update('temas', { ...existente, ...temaParaGuardar });
+                if (window.PipelineSync && temaParaGuardar._esPredefinido !== true) this._encolarTemaPropio({ ...existente, ...temaParaGuardar });
                 return existente.id;
             }
             
             const idGenerado = await this.add('temas', temaParaGuardar);
             if (idGenerado) {
                 console.log(`📚 Tema guardado con ID: ${idGenerado}`);
+                if (window.PipelineSync && temaParaGuardar._esPredefinido !== true) this._encolarTemaPropio({ ...temaParaGuardar, id: idGenerado });
             } else {
                 console.warn(`⚠️ No se pudo guardar el tema "${tema.nombre}"`);
             }
@@ -1099,6 +1150,19 @@ class Database {
             console.warn('⚠️ Error guardando tema:', e);
             return null;
         }
+        }
+
+    async _encolarTemaPropio(tema) {
+        const copia = { ...tema };
+        delete copia.id;
+        window.PipelineSync?.enqueue('user_topics', 'upsert', {
+            local_key: tema.localKey,
+            name: tema.nombre,
+            content: copia,
+            created_at: tema.fechaCreacion || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            version: Number(tema._syncVersion || 1) + 1
+        }).catch(error => console.warn('⚠️ No se pudo encolar tema propio:', error));
     }
 
     async obtenerTemas() {
@@ -1222,7 +1286,19 @@ class Database {
         const frase = await this.get('frases', Number(progreso.fraseId));
         if (!frase) throw new Error('Progress references a missing phrase');
         const dato = { ...progreso, fraseId: frase.id, idioma: frase.idioma, tipo: 'frase' };
-        return this._guardarProgresoUnico('progreso', 'fraseId', dato);
+        const guardado = await this._guardarProgresoUnico('progreso', 'fraseId', dato);
+        if (window.PipelineSync) {
+            const contentKey = frase.contentKey || frase._contentKey || `legacy:${frase.idioma}:${frase.id}`;
+            window.PipelineSync.enqueue('learning_states', 'upsert', {
+                content_key: contentKey,
+                content_version: Number(frase.contentVersion || frase._contentVersion || 1),
+                state: guardado,
+                updated_at: new Date().toISOString(),
+                version: Number(guardado.version || 1)
+            }).catch(error => console.warn('⚠️ No se pudo encolar progreso:', error));
+        }
+
+        return guardado;
     }
 
     async _guardarProgresoUnico(store, index, dato) {

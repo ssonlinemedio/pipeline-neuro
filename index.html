@@ -29,7 +29,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
     
     <link rel="icon" type="image/png" sizes="192x192" href="icons/android-icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/android-icon-512x512.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
     
     <meta name="msapplication-TileColor" content="#6C5CE7">
     <meta name="msapplication-TileImage" content="icons/mstile-150x150.png">
@@ -2038,6 +2038,10 @@
     <!-- ============================================================ -->
 
     <!-- 0. BALANCEADOR DE CARGA GROQ -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/core/supabaseConfig.js"></script>
+    <script src="js/core/supabaseClient.js"></script>
+    <script src="js/core/syncManager.js"></script>
     <script src="js/core/balanceadorGroq.js"></script>
 
     <!-- 1. VALIDADOR DE IDIOMAS -->
@@ -2141,6 +2145,7 @@
     <script src="js/ui/ui.grammar.js"></script>
     <script src="js/ui/ui.chat.js"></script>
     <script src="js/ui/ui.config.js"></script>
+    <script src="js/ui/ui.supabaseAuth.js"></script>
     <script src="js/ui/ui.tools.js"></script>
     <script src="js/ui/ui.json.js"></script>
 
@@ -2169,6 +2174,7 @@
 
     <!-- 17. UI - BIBLIOTECA DE LECTURA -->
     <script src="js/ui/ui.biblioteca.js"></script>
+    <script src="js/ui/ui.publicCatalog.js"></script>
 
     <!-- 18. UI - MANUAL INTERACTIVO -->
     <script src="js/ui/ui.manual.js"></script>

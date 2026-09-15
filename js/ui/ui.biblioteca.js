@@ -753,6 +753,8 @@ class UIBiblioteca {
                         </div>
                     </div>
 
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px 18px;background:linear-gradient(135deg,var(--secondary)08,var(--primary)08);border:2px solid var(--secondary)20;border-radius:12px;box-shadow:var(--shadow);"><div><h3 style="margin:0;color:var(--dark);font-size:16px;">🌐 Catálogo Público</h3><p style="margin:4px 0 0;color:var(--gray);font-size:12px;">Explora historias y temas compartidos por la comunidad.</p></div><button type="button" onclick="window.PipelinePublicCatalog?.open()" style="padding:9px 14px;border:0;border-radius:8px;background:var(--secondary);color:white;cursor:pointer;font-weight:700;"><i class="fas fa-globe"></i> Explorar catálogo</button></div>
+
                     <div style="background:var(--white);border-radius:12px;padding:12px 18px;margin-bottom:16px;border:2px solid var(--primary)20;box-shadow:var(--shadow);">
                         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                             <div style="display:flex;align-items:center;gap:10px;">

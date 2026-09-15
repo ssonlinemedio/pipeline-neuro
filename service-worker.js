@@ -2,9 +2,9 @@
 // SERVICE WORKER v15.0 - NEURO CACHE OPTIMIZADO
 // ============================================================
 
-const CACHE_NAME = 'pipeline-neuro-v20.6';
-const OFFLINE_CACHE = 'pipeline-offline-v20.6';
-const DYNAMIC_CACHE = 'pipeline-dynamic-v20.6';
+const CACHE_NAME = 'pipeline-neuro-v21.4';
+const OFFLINE_CACHE = 'pipeline-offline-v21.4';
+const DYNAMIC_CACHE = 'pipeline-dynamic-v21.4';
 
 // Assets estáticos para cache
 const STATIC_ASSETS = [
@@ -18,6 +18,11 @@ const STATIC_ASSETS = [
     '/js/app.js',
     '/js/database.js',
     '/js/core/ttsManager.js',
+    '/js/core/supabaseConfig.js',
+    '/js/core/supabaseClient.js',
+    '/js/core/syncManager.js',
+    '/js/ui/ui.supabaseAuth.js',
+    '/js/ui/ui.publicCatalog.js',
     '/js/core/gestorProgresoHistorias.js',
     '/js/core/progresionMilitar.js',
     '/js/modoElipse.js',

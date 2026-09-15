@@ -1989,7 +1989,8 @@ class UIOndasCruzadasReal {
 
     async _seleccionarTemaModal() {
         const idiomaActual = this._obtenerIdiomaActual();
-        const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActual);
+        const todosLosTemas = (await db.obtenerTemasPorIdioma(idiomaActual))
+            .filter(t => t._esPredefinido !== true && t.origen !== 'predefinido' && t._origenPredefinido !== true);
 
         if (todosLosTemas.length === 0) {
             this._core?.mostrarToast('📚 No hay temas disponibles en ' + idiomaActual, 'warning');
