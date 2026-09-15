@@ -18,7 +18,7 @@ function createDevice(userId, online) {
         crypto: { randomUUID: () => 'generated-id' },
         PipelineSupabase: {
             getClient: () => online ? {
-                from: table => ({ upsert: async (payload, options) => {
+                from: table => ({ select: () => ({ is: async () => ({ data: [], error: null }) }), upsert: async (payload, options) => {
                     sent.push({ table, payload, options });
                     assert.equal(payload.user_id, userId, 'RLS identity must come from the authenticated session');
                     return { error: null };

@@ -83,10 +83,33 @@
                         });
                     }
                 }
-                return { status: 'ok', processed };
+                const pulled = await this.pullLearningStates(client);
+                return { status: 'ok', processed, pulled };
             } finally {
                 this._running = false;
             }
+        }
+
+        async pullLearningStates(client) {
+            const database = this._getDatabase();
+            if (!database) return 0;
+            const { data, error } = await client.from(TABLES.learning_states)
+                .select('content_key,content_version,state,updated_at,version')
+                .is('deleted_at', null);
+            if (error || !Array.isArray(data)) return 0;
+            const pending = await database.getAll('sync_queue');
+            const pendingKeys = new Set(pending.filter(item => item.entity === 'learning_states').map(item => item.entityKey));
+            let applied = 0;
+            for (const remote of data) {
+                if (pendingKeys.has(remote.content_key)) continue;
+                const match = String(remote.content_key || '').match(/^legacy:[^:]+:(\d+)$/);
+                if (!match || !remote.state || typeof remote.state !== 'object') continue;
+                const local = await database.get('progreso', Number(match[1]));
+                if (!local || Number(local.version || 0) > Number(remote.version || 0)) continue;
+                await database.update('progreso', { ...remote.state, id: local.id, version: Number(remote.version || local.version || 1) });
+                applied += 1;
+            }
+            return applied;
         }
 
         async _send(client, item) {
