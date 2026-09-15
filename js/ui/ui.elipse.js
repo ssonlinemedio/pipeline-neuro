@@ -1921,8 +1921,11 @@ class UIEclipse {
 
     _renderizarConfiguracion() {
         const config = window.modoElipse?.getConfiguracion() || {};
+        const grafo = window.modoOndasCruzadas?.getEstado?.() || {};
+        const tieneTemaActivo = Boolean(this._temaId);
         return `
-            <div style="background:var(--bg);border-radius:10px;padding:12px 16px;border:1px solid var(--light);margin-top:8px;">
+            <details style="background:var(--bg);border-radius:10px;padding:12px 16px;border:1px solid var(--light);margin-top:8px;">
+                <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--dark);">⚙️ Configuración avanzada</summary>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
                     <div>
                         <span style="font-size:12px;font-weight:600;color:var(--gray);">⚙️ Configuración</span>
@@ -1933,7 +1936,7 @@ class UIEclipse {
                             <span>🔥 Sin IA en background</span>
                             <span>🧠 ${this._ondasRevisadas.size} ondas revisadas</span>
                             <span>🔄 SRS: ${this._progresoGlobal}%</span>
-                            <span>🌊 ${window.modoOndasCruzadas?.getEstado?.()?.grafoSize || 0} elipses conectadas</span>
+                            <span>🌊 ${tieneTemaActivo ? (grafo.grafoSize || 0) : 0} elipses conectadas</span>
                             <span>📝 Descripción opcional: Habilitada</span>
                             <span style="color:var(--danger);">🗑️ Eliminar sincronizado</span>
                             <span style="color:var(--info);">🔍 Verificación automática</span>
@@ -1948,7 +1951,7 @@ class UIEclipse {
                     </div>
                     <button class="btn-secondary" onclick="window.UIClipse._abrirConfiguracion()" style="padding:4px 12px;font-size:11px;background:var(--bg);border:1px solid var(--light);border-radius:6px;cursor:pointer;"><i class="fas fa-cog"></i> Configurar</button>
                 </div>
-            </div>
+            </details>
         `;
     }
 
@@ -1961,6 +1964,7 @@ class UIEclipse {
         const progresoPct = ondas.length > 0 ? Math.round((completadas / ondas.length) * 100) : 0;
         const sincronizadas = ondas.filter(h => h._sincronizado).length;
         const estadoOndasCruzadas = window.modoOndasCruzadas?.getEstado?.() || {};
+        const tieneTemaActivo = Boolean(this._temaId);
         return `
             <div style="background:var(--bg);border-radius:10px;padding:10px 16px;border:1px solid var(--light);margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;font-size:10px;color:var(--gray);">
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--primary);">${progresoPct}%</div><div style="font-size:8px;color:var(--gray-light);">Progreso</div></div>
@@ -1971,8 +1975,8 @@ class UIEclipse {
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--info);">${totalPalabras}</div><div style="font-size:8px;color:var(--gray-light);">Palabras</div></div>
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--primary);">${this._ondasRevisadas.size}</div><div style="font-size:8px;color:var(--gray-light);">Revisadas</div></div>
                 <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--gray);">${tiempo}m</div><div style="font-size:8px;color:var(--gray-light);">Tiempo</div></div>
-                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--secondary);">${estadoOndasCruzadas.grafoSize || 0}</div><div style="font-size:8px;color:var(--gray-light);">Elipses</div></div>
-                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--warning);">${estadoOndasCruzadas.interferencias || 0}</div><div style="font-size:8px;color:var(--gray-light);">Interferencias</div></div>
+                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--secondary);">${tieneTemaActivo ? (estadoOndasCruzadas.grafoSize || 0) : 0}</div><div style="font-size:8px;color:var(--gray-light);">Elipses</div></div>
+                <div style="text-align:center;"><div style="font-size:16px;font-weight:800;color:var(--warning);">${tieneTemaActivo ? (estadoOndasCruzadas.interferencias || 0) : 0}</div><div style="font-size:8px;color:var(--gray-light);">Interferencias</div></div>
             </div>
         `;
     }
