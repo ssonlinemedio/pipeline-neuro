@@ -5,6 +5,7 @@
     const MAX_ATTEMPTS = 8;
     const TABLES = Object.freeze({
         user_stories: 'user_stories',
+        user_topics: 'user_topics',
         learning_states: 'learning_states',
         mode_states: 'mode_states'
     });
@@ -83,9 +84,10 @@
                         });
                     }
                 }
+                const pulledTopics = await this.pullUserTopics(client);
                 const pulledStories = await this.pullUserStories(client);
                 const pulled = await this.pullLearningStates(client);
-                return { status: 'ok', processed, pulled, pulledStories };
+                return { status: 'ok', processed, pulled, pulledStories, pulledTopics };
             } finally {
                 this._running = false;
             }
@@ -109,6 +111,12 @@
                 delete source.id;
                 const frases = Array.isArray(source.frases) ? source.frases : [];
                 delete source.frases;
+                if (source.tema_local_key) {
+                    const topic = await database.getAll('temas');
+                    const linked = topic.find(item => item.localKey === source.tema_local_key);
+                    if (linked) source.temaId = linked.id;
+                    delete source.tema_local_key;
+                }
                 const historia = {
                     ...source,
                     localKey: remote.local_key,
@@ -133,6 +141,31 @@
                     await database.add('frases', { ...copia, historiaId: Number(historiaId) });
                 }
                 byKey.set(remote.local_key, { ...historia, id: historiaId });
+                applied += 1;
+            }
+            return applied;
+        }
+
+        async pullUserTopics(client) {
+            const database = this._getDatabase();
+            if (!database) return 0;
+            const { data, error } = await client.from(TABLES.user_topics)
+                .select('local_key,name,content,version,created_at,updated_at,deleted_at')
+                .is('deleted_at', null);
+            if (error || !Array.isArray(data)) return 0;
+            const localTopics = await database.getAll('temas');
+            const byKey = new Map(localTopics.filter(topic => topic.localKey).map(topic => [topic.localKey, topic]));
+            let applied = 0;
+            for (const remote of data) {
+                if (!remote.local_key || !remote.content || typeof remote.content !== 'object') continue;
+                const local = byKey.get(remote.local_key);
+                if (local && Number(local._syncVersion || 0) >= Number(remote.version || 1)) continue;
+                const topic = { ...remote.content, localKey: remote.local_key, _syncVersion: Number(remote.version || 1) };
+                delete topic.id;
+                const id = local?.id || await database.add('temas', topic);
+                if (!id) continue;
+                await database.update('temas', { ...topic, id });
+                byKey.set(remote.local_key, { ...topic, id });
                 applied += 1;
             }
             return applied;
@@ -174,7 +207,8 @@
             }
             const { error } = await client.from(table).upsert({ ...item.payload, user_id: userId }, {
                 onConflict: item.entity === 'mode_states' ? 'user_id,mode,content_key' :
-                    item.entity === 'user_stories' ? 'user_id,local_key' : 'user_id,content_key'
+                    item.entity === 'user_stories' ? 'user_id,local_key' :
+                        item.entity === 'user_topics' ? 'user_id,local_key' : 'user_id,content_key'
             });
             return { ok: !error, error };
         }

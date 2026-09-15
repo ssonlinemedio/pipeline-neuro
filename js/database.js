@@ -932,6 +932,10 @@ class Database {
         if (!historia || historia._esPredefinido === true || !historia.localKey) return;
         const frases = await this.getByIndex('frases', 'historiaId', Number(historiaId));
         const contenido = { ...historia, frases: frases.map(({ id, ...frase }) => frase) };
+        if (historia.temaId) {
+            const tema = await this.get('temas', Number(historia.temaId));
+            if (tema?.localKey) contenido.tema_local_key = tema.localKey;
+        }
         window.PipelineSync.enqueue('user_stories', 'upsert', {
             local_key: historia.localKey,
             title: historia.titulo || 'Historia sin título',
@@ -1116,6 +1120,10 @@ class Database {
             
             const temaParaGuardar = { ...tema };
             delete temaParaGuardar.id;
+            if (!temaParaGuardar.localKey) {
+                const slug = String(temaParaGuardar.nombre).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                temaParaGuardar.localKey = `user:${temaParaGuardar.idioma || 'es'}:${temaParaGuardar.nivel || 'A1'}:${slug}`;
+            }
             
             const temas = await this.obtenerTemas();
             const existente = temas.find(t => 
@@ -1124,13 +1132,15 @@ class Database {
             );
             
             if (existente) {
-                await this.update('temas', { ...existente, ...tema });
+                await this.update('temas', { ...existente, ...temaParaGuardar });
+                if (window.PipelineSync && temaParaGuardar._esPredefinido !== true) this._encolarTemaPropio({ ...existente, ...temaParaGuardar });
                 return existente.id;
             }
             
             const idGenerado = await this.add('temas', temaParaGuardar);
             if (idGenerado) {
                 console.log(`📚 Tema guardado con ID: ${idGenerado}`);
+                if (window.PipelineSync && temaParaGuardar._esPredefinido !== true) this._encolarTemaPropio({ ...temaParaGuardar, id: idGenerado });
             } else {
                 console.warn(`⚠️ No se pudo guardar el tema "${tema.nombre}"`);
             }
@@ -1140,6 +1150,19 @@ class Database {
             console.warn('⚠️ Error guardando tema:', e);
             return null;
         }
+        }
+
+    async _encolarTemaPropio(tema) {
+        const copia = { ...tema };
+        delete copia.id;
+        window.PipelineSync?.enqueue('user_topics', 'upsert', {
+            local_key: tema.localKey,
+            name: tema.nombre,
+            content: copia,
+            created_at: tema.fechaCreacion || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            version: Number(tema._syncVersion || 1) + 1
+        }).catch(error => console.warn('⚠️ No se pudo encolar tema propio:', error));
     }
 
     async obtenerTemas() {
@@ -1274,6 +1297,7 @@ class Database {
                 version: Number(guardado.version || 1)
             }).catch(error => console.warn('⚠️ No se pudo encolar progreso:', error));
         }
+
         return guardado;
     }
 
