@@ -21,6 +21,7 @@ const STATIC_ASSETS = [
     '/js/core/supabaseConfig.js',
     '/js/core/supabaseClient.js',
     '/js/core/syncManager.js',
+    '/js/ui/ui.supabaseAuth.js',
     '/js/core/gestorProgresoHistorias.js',
     '/js/core/progresionMilitar.js',
     '/js/modoElipse.js',

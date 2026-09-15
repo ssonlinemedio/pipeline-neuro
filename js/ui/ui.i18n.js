@@ -2848,6 +2848,29 @@
     '[data-idioma-nativo-content]','[data-idioma-objetivo-content]','[contenteditable="true"]'
   ].join(',');
 
+  Object.assign(DICT.en, {
+    'Cuenta y sincronización':'Account and synchronization',
+    'Opcional: protege tu progreso y continúa en otros dispositivos.':'Optional: protect your progress and continue on other devices.',
+    'Comprobando estado de la cuenta...':'Checking account status...',
+    'Correo electrónico':'Email address','Contraseña':'Password','Iniciar sesión':'Sign in','Crear cuenta':'Create account',
+    'Sincronizar ahora':'Sync now','Cerrar sesión':'Sign out','Sesión activa. Tus datos locales siguen disponibles.':'Session active. Your local data remains available.',
+    'Sin cuenta conectada. La aplicación funciona en modo local.':'No account connected. The application works locally.',
+    'Introduce correo y contraseña.':'Enter an email and password.','La sincronización no está disponible ahora.':'Synchronization is not available right now.',
+    'Sesión iniciada. La sincronización está disponible.':'Signed in. Synchronization is available.',
+    'Cuenta creada. Revisa tu correo si se solicita confirmación.':'Account created. Check your email if confirmation is required.',
+    'Sesión cerrada. Tus datos locales se conservan.':'Signed out. Your local data is preserved.',
+    'Sincronización completada:':'Synchronization completed:','cambios.':'changes.','No hay una sesión sincronizable ahora.':'There is no synchronizable session now.',
+    'La contraseña debe tener al menos 6 caracteres.':'The password must be at least 6 characters long.'
+  });
+  Object.assign(DICT.zh, {
+    'Cuenta y sincronización':'账户与同步','Opcional: protege tu progreso y continúa en otros dispositivos.':'可选：保护你的进度并在其他设备上继续学习。','Comprobando estado de la cuenta...':'正在检查账户状态…',
+    'Correo electrónico':'电子邮箱','Contraseña':'密码','Iniciar sesión':'登录','Crear cuenta':'创建账户','Sincronizar ahora':'立即同步','Cerrar sesión':'退出登录',
+    'Sesión activa. Tus datos locales siguen disponibles.':'会话已开启。本地数据仍然可用。','Sin cuenta conectada. La aplicación funciona en modo local.':'未连接账户。应用可在本地运行。',
+    'Introduce correo y contraseña.':'请输入邮箱和密码。','La sincronización no está disponible ahora.':'同步暂不可用。','Sesión iniciada. La sincronización está disponible.':'登录成功。可以同步。',
+    'Cuenta creada. Revisa tu correo si se solicita confirmación.':'账户已创建。如需确认，请检查邮箱。','Sesión cerrada. Tus datos locales se conservan.':'已退出登录。本地数据已保留。',
+    'Sincronización completada:':'同步完成：','cambios.':'项更改。','No hay una sesión sincronizable ahora.':'当前没有可同步的会话。','La contraseña debe tener al menos 6 caracteres.':'密码至少需要 6 个字符。'
+  });
+
   function normalizeLang(lang) {
     const v = String(lang || '').toLowerCase();
     if (v.startsWith('zh')) return 'zh';
