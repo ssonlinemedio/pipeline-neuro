@@ -89,3 +89,18 @@ considerarse la única copia de seguridad.
 7. Incorporar progresivamente temas, Elipse y Ondas Cruzadas.
 
 No se recomienda introducir inicialmente Storage, Realtime ni Edge Functions.
+
+## Simulación de dos usuarios y dos dispositivos
+
+Se ejecutó `tests/supabase-sync-simulation.cjs` con dos dispositivos del usuario
+A, un dispositivo del usuario B, modo offline, reconexión y actualizaciones
+repetidas de la misma unidad. Resultado: `PASS`.
+
+- La cola conserva cambios offline.
+- Las actualizaciones repetidas se agrupan.
+- La reconexión vacía correctamente la cola.
+- Dos dispositivos pueden sincronizar el mismo usuario.
+- El `user_id` se toma de la sesión autenticada y distingue a los usuarios.
+
+Esta prueba es una simulación del contrato del cliente; todavía no sustituye
+una prueba real contra el proyecto Supabase ni una prueba visual en navegador.

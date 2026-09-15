@@ -12,6 +12,14 @@
     class SyncManager {
         constructor() {
             this._running = false;
+            window.addEventListener('online', () => this.syncNow().catch(error =>
+                console.warn('⚠️ Sincronización al recuperar conexión:', error)));
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    this.syncNow().catch(error =>
+                        console.warn('⚠️ Sincronización al volver a la aplicación:', error));
+                }
+            });
         }
 
         _getDatabase() {
