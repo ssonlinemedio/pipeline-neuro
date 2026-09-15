@@ -3,6 +3,7 @@
     'use strict';
 
     const MAX_ATTEMPTS = 8;
+    const AUTO_SYNC_INTERVAL = 5 * 60 * 1000;
     const TABLES = Object.freeze({
         user_stories: 'user_stories',
         user_topics: 'user_topics',
@@ -21,6 +22,12 @@
                         console.warn('⚠️ Sincronización al volver a la aplicación:', error));
                 }
             });
+            window.setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    this.syncNow().catch(error =>
+                        console.warn('⚠️ Sincronización automática:', error));
+                }
+            }, AUTO_SYNC_INTERVAL);
         }
 
         _getDatabase() {
