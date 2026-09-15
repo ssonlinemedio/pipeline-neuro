@@ -1579,7 +1579,7 @@ class UIEclipse {
         const tieneDatosGuardados = this._temaId ? !!this._cachePorTema[this._temaId] : false;
 
         const estadoOndasCruzadas = window.modoOndasCruzadas?.getEstado?.() || {};
-        const totalElipsesConectadas = estadoOndasCruzadas.grafoSize || 0;
+        const totalElipsesConectadas = tieneDatos ? (estadoOndasCruzadas.grafoSize || 0) : 0;
         const totalInterferencias = estadoOndasCruzadas.interferencias || 0;
 
         let html = `
@@ -1605,7 +1605,7 @@ class UIEclipse {
                             ${totalElipsesConectadas > 0 ? `<span style="font-size:10px;color:var(--secondary);margin-left:8px;">🌊 ${totalElipsesConectadas} elipses conectadas</span>` : ''}
                             ${totalInterferencias > 0 ? `<span style="font-size:10px;color:var(--warning);margin-left:8px;">🔗 ${totalInterferencias} interferencias</span>` : ''}
                         </p>
-                        <p style="font-size:11px;color:var(--gray-light);margin:2px 0 0;">
+                        <p style="display:none;font-size:11px;color:var(--gray-light);margin:2px 0 0;">
                             🖱️ Palabras desglosadas → Modal interactivo · ⭐ Guardar en Mi Espacio
                             <br>🔄 <strong>TODO retorna al Modo Elipse</strong> · 🧠 SRS conectado al Pipeline
                             <br>🔘 <strong>Botón "Volver al Modo Elipse" en Estudio (funcional)</strong>
