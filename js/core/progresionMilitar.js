@@ -84,6 +84,12 @@
             const progreso = await db?.obtenerTodoProgreso?.() || [];
             const dominadas = progreso.filter(p => Number(p.rcn || 0) >= 4 || p.estado === 'completada').length;
             const puntos = Math.min(999, (completadas * 10) + (dominadas * 2) + (Number(this.estado.diasActivos || 0) * 3));
+            try {
+                const sessionInfo = await window.PipelineSupabase?.getSession?.();
+                this.estado.supabaseProbado = Boolean(sessionInfo?.session);
+            } catch (e) {
+                this.estado.supabaseProbado = false;
+            }
             // Tener contenido no demuestra que el usuario haya completado la
             // formación inicial. Solo se completa mediante los cuatro pasos o
             // la confirmación explícita del usuario.
@@ -137,7 +143,8 @@
                 { paso: 1, texto: 'Lee las instrucciones básicas', hecho: this.estado.manualLeido === true, actual: this.estado.manualLeido === true ? 1 : 0, meta: 1, icono: '📖', detalle: this.estado.manualLeido === true ? '1/1 · instrucciones revisadas' : '0/1 · abre el manual de usuario' },
                 { paso: 2, texto: 'Importa tu primera historia', hecho: this.estado.importacionProbada === true, actual: this.estado.importacionProbada === true ? 1 : 0, meta: 1, icono: '📥', detalle: this.estado.importacionProbada === true ? '1/1 · importación realizada' : '0/1 · usa Importar JSON en Temas' },
                 { paso: 3, texto: 'Crea una onda Elipse o Cruzada', hecho: this.estado.ondaProbada === true, actual: this.estado.ondaProbada === true ? 1 : 0, meta: 1, icono: '🌌', detalle: this.estado.ondaProbada === true ? '1/1 · onda creada' : '0/1 · genera una onda desde Temas' },
-                { paso: 4, texto: 'Completa el tutorial de estudio', hecho: this.estado.estudioProbado === true, actual: this.estado.estudioProbado === true ? 1 : 0, meta: 1, icono: '🎓', detalle: this.estado.estudioProbado === true ? '1/1 · flujo probado' : '0/1 · abre Study y escucha una frase' }
+                { paso: 4, texto: 'Completa el tutorial de estudio', hecho: this.estado.estudioProbado === true, actual: this.estado.estudioProbado === true ? 1 : 0, meta: 1, icono: '🎓', detalle: this.estado.estudioProbado === true ? '1/1 · flujo probado' : '0/1 · abre Study y escucha una frase' },
+                { paso: 5, texto: 'Protege tu progreso con Supabase (opcional)', hecho: this.estado.supabaseProbado === true, actual: this.estado.supabaseProbado === true ? 1 : 0, meta: 1, icono: '☁️', detalle: this.estado.supabaseProbado === true ? '1/1 · cuenta sincronizable activa' : '0/1 · crea una cuenta desde Configuración' }
             ] : [
                 { paso: 1, texto: 'Completa una historia u onda', hecho: Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0) > 0, actual: Math.min(Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0), 1), meta: 1, icono: '📚', detalle: Number(this.estado.campaña_historia || 0) + Number(this.estado.campaña_onda || 0) > 0 ? '1/1 conseguido' : '0/1 · abre Biblioteca o Elipse' },
                 { paso: 2, texto: 'Domina 5 frases con RCN ≥ 4', hecho: Number(this.estado.campaña_frases || 0) >= 5, actual: Math.min(Number(this.estado.campaña_frases || 0), 5), meta: 5, icono: '🧠', detalle: `${Math.min(Number(this.estado.campaña_frases || 0), 5)}/5 · ${Math.max(0, 5 - Number(this.estado.campaña_frases || 0))} restantes` },
@@ -314,7 +321,7 @@
         }
 
         abrirPasoFormacion(paso) {
-            const destinos = { 1: 'manual', 2: 'temas', 3: 'elipse', 4: 'study', 5: 'temas' };
+            const destinos = { 1: 'manual', 2: 'temas', 3: 'elipse', 4: 'study', 5: 'config' };
             const modulo = destinos[Number(paso)];
             if (!modulo) return;
             document.getElementById('pipeline-campana-overlay')?.remove();
@@ -326,6 +333,11 @@
                     detail: { paso: 1, campo: 'manualLeido', fecha: Date.now() }
                 }));
             }
+            if (Number(paso) === 5) {
+                window.uiCore?.irAModulo?.('config');
+                setTimeout(() => document.getElementById('supabaseAuthEmail')?.focus(), 0);
+                return;
+            }
             window.uiCore?.irAModulo?.(modulo);
         }
 
@@ -334,21 +346,23 @@
             const s = await this.obtenerSnapshot(idioma);
             const lang = window.PipelineI18n?.getLanguage?.() || 'es';
             const textoPaso = (m) => lang === 'en'
-                ? ['Read the basic instructions', 'Import your first story', 'Create an Ellipse or Cross-Wave', 'Complete the study tutorial'][m.paso - 1]
+                ? ['Read the basic instructions', 'Import your first story', 'Create an Ellipse or Cross-Wave', 'Complete the study tutorial', 'Protect your progress with Supabase (optional)'][m.paso - 1]
                 : lang === 'zh'
-                    ? ['阅读基本说明', '导入你的第一个故事', '创建椭圆波或交叉波', '完成学习教程'][m.paso - 1]
+                    ? ['阅读基本说明', '导入你的第一个故事', '创建椭圆波或交叉波', '完成学习教程', '使用 Supabase 保护进度（可选）'][m.paso - 1]
                     : m.texto;
             const detallePaso = (m) => {
                 if (lang === 'en') {
                     if (m.paso === 1) return m.hecho ? '1/1 · instructions reviewed' : '0/1 · open the user manual';
                     if (m.paso === 2) return m.hecho ? '1/1 · import completed' : '0/1 · use Import JSON in Topics';
                     if (m.paso === 3) return m.hecho ? '1/1 · wave created' : '0/1 · generate a wave from Topics';
+                    if (m.paso === 5) return m.hecho ? '1/1 · sync account active' : '0/1 · create an account in Settings';
                     return m.hecho ? '1/1 · study flow tested' : '0/1 · open Study and listen to a sentence';
                 }
                 if (lang === 'zh') {
                     if (m.paso === 1) return m.hecho ? '1/1 · 已阅读说明' : '0/1 · 打开用户手册';
                     if (m.paso === 2) return m.hecho ? '1/1 · 导入已完成' : '0/1 · 在主题中使用导入 JSON';
                     if (m.paso === 3) return m.hecho ? '1/1 · 波已创建' : '0/1 · 从主题生成波';
+                    if (m.paso === 5) return m.hecho ? '1/1 · 同步账户已启用' : '0/1 · 在设置中创建账户';
                     return m.hecho ? '1/1 · 已测试学习流程' : '0/1 · 打开学习并听一句话';
                 }
                 return m.detalle;

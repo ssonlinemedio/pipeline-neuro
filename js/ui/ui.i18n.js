@@ -2873,6 +2873,9 @@
     'Sincronización completada:':'同步完成：','cambios.':'项更改。','No hay una sesión sincronizable ahora.':'当前没有可同步的会话。','La contraseña debe tener al menos 6 caracteres.':'密码至少需要 6 个字符。'
   });
 
+  Object.assign(DICT.en, {'Protege tu progreso con Supabase (opcional)':'Protect your progress with Supabase (optional)','1/1 · cuenta sincronizable activa':'1/1 · sync account active','0/1 · crea una cuenta desde Configuración':'0/1 · create an account in Settings'});
+  Object.assign(DICT.zh, {'Protege tu progreso con Supabase (opcional)':'使用 Supabase 保护进度（可选）','1/1 · cuenta sincronizable activa':'1/1 · 同步账户已启用','0/1 · crea una cuenta desde Configuración':'0/1 · 在设置中创建账户'});
+
   function normalizeLang(lang) {
     const v = String(lang || '').toLowerCase();
     if (v.startsWith('zh')) return 'zh';
