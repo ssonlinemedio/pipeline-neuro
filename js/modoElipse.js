@@ -529,6 +529,21 @@ class ModoElipse {
         const temaId = this._elipseActiva || localStorage.getItem('pipeline_elipse_tema_activo');
         
         console.log(`🌌 ModoElipse.cargarDatos(): idioma=${idiomaActual}, tema=${temaId}`);
+
+        // Nunca recuperar automáticamente una Elipse asociada a contenido
+        // predefinido por nivel: esos estados no forman parte de Mis Temas.
+        if (temaId && typeof db !== 'undefined' && db.obtenerTema) {
+            const temaActivo = await db.obtenerTema(Number(temaId));
+            if (temaActivo?._esPredefinido === true || temaActivo?.origen === 'predefinido' || temaActivo?._origenPredefinido === true) {
+                console.log(`🛡️ Elipse: se descarta tema predefinido activo (${temaActivo.nombre})`);
+                this._elipseActiva = null;
+                this._temaIdPersistido = null;
+                this._historiasElipse = [];
+                this._datosCargados = false;
+                localStorage.removeItem('pipeline_elipse_tema_activo');
+                return;
+            }
+        }
         
         if (temaId) {
             this._cargarEstadoPorIdioma(idiomaActual);
