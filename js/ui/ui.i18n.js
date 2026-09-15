@@ -2891,7 +2891,7 @@
     'Habilitada':'Enabled','¿Qué te gustaría cambiar?':'What would you like to change?','Cancelar':'Cancel','Aceptar':'Accept',
     'Número...':'Number...','Interferencias':'Interferences','Sincronizadas':'Synchronized','Revisadas':'Reviewed','Tiempo':'Time',
     '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'You completed all waves! Generate a new wave to continue.',
-    'Selecciona un tema con historias para iniciar la elipse.':'Select a topic with stories to start the ellipse.'
+    'Selecciona un tema con historias para iniciar la elipse.':'Select a topic with stories to start the ellipse.','Historias de la Elipse (2)':'Ellipse Stories (2)','2 elipses en el grafo':'2 ellipses in the graph','Ver Grafo':'View Graph','2 conexiones activas':'2 active connections'
   });
   Object.assign(DICT.zh, {
     'Recomendaciones NeuroAdaptativas':'神经自适应建议','Estudia':'学习','Estudiar':'学习','Repasar':'复习',
@@ -2902,7 +2902,7 @@
     'Habilitada':'已启用','¿Qué te gustaría cambiar?':'你想更改什么？','Cancelar':'取消','Aceptar':'确定',
     'Número...':'数字…','Interferencias':'干扰','Sincronizadas':'已同步','Revisadas':'已复习','Tiempo':'时间',
     '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'你已完成所有波！生成新波以继续。',
-    'Selecciona un tema con historias para iniciar la elipse.':'选择一个包含故事的主题以开始椭圆。'
+    'Selecciona un tema con historias para iniciar la elipse.':'选择一个包含故事的主题以开始椭圆。','Historias de la Elipse (2)':'椭圆故事（2）','2 elipses en el grafo':'图中有 2 个椭圆','Ver Grafo':'查看图','2 conexiones activas':'2 个活动连接'
   });
 
   function normalizeLang(lang) {
