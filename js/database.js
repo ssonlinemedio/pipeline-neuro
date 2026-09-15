@@ -914,13 +914,33 @@ class Database {
                     existing.transcripcion = frase.transcripcion;
                 }
                 await this.update('frases', { ...existing, ...frase });
+                await this._encolarHistoriaPropiaCompleta(frase.historiaId);
                 return existing.id;
             }
-            return this.add('frases', { ...frase, rg: 0, rcn: 0, transcripcion: frase.transcripcion || '' });
+            const idGenerado = await this.add('frases', { ...frase, rg: 0, rcn: 0, transcripcion: frase.transcripcion || '' });
+            if (idGenerado) await this._encolarHistoriaPropiaCompleta(frase.historiaId);
+            return idGenerado;
         } catch (e) {
             console.warn('⚠️ Error guardando frase:', e);
             return null;
         }
+    }
+
+    async _encolarHistoriaPropiaCompleta(historiaId) {
+        if (!historiaId || !window.PipelineSync) return;
+        const historia = await this.get('historias', Number(historiaId));
+        if (!historia || historia._esPredefinido === true || !historia.localKey) return;
+        const frases = await this.getByIndex('frases', 'historiaId', Number(historiaId));
+        const contenido = { ...historia, frases: frases.map(({ id, ...frase }) => frase) };
+        window.PipelineSync.enqueue('user_stories', 'upsert', {
+            local_key: historia.localKey,
+            title: historia.titulo || 'Historia sin título',
+            content: contenido,
+            content_version: Number(historia._contentVersion || 1),
+            created_at: historia.fechaCreacion || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            version: Number(historia.version || 1) + 1
+        }).catch(error => console.warn('⚠️ No se pudo actualizar historia propia:', error));
     }
 
     async obtenerFrases() {
