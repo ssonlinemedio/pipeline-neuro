@@ -2880,6 +2880,31 @@
   Object.assign(DICT.en, {'Protege tu progreso con Supabase (opcional)':'Protect your progress with Supabase (optional)','1/1 · cuenta sincronizable activa':'1/1 · sync account active','0/1 · crea una cuenta desde Configuración':'0/1 · create an account in Settings'});
   Object.assign(DICT.zh, {'Protege tu progreso con Supabase (opcional)':'使用 Supabase 保护进度（可选）','1/1 · cuenta sincronizable activa':'1/1 · 同步账户已启用','0/1 · crea una cuenta desde Configuración':'0/1 · 在设置中创建账户'});
 
+  // Modo Elipse y recomendaciones: las etiquetas de interfaz se traducen;
+  // los títulos y descripciones de historias se conservan en su idioma fuente.
+  Object.assign(DICT.en, {
+    'Recomendaciones NeuroAdaptativas':'Neuroadaptive Recommendations','Estudia':'Study','Estudiar':'Study','Repasar':'Review',
+    'Pendiente':'Pending','Completada':'Completed','Base':'Base','Onda':'Wave','Historias de la Elipse':'Ellipse Stories',
+    'Elipse de Conocimiento':'Knowledge Ellipse','Seleccionar Tema':'Select Topic','Generar Plantilla':'Generate Template',
+    'Importar Onda':'Import Wave','Limpiar':'Clear','Configuración avanzada':'Advanced settings','Configuración del Modo Elipse':'Ellipse Mode Settings',
+    'Máximo de ondas':'Maximum waves','Palabras nuevas por onda':'New words per wave','Nivel base':'Base level','Descripción opcional':'Optional description',
+    'Habilitada':'Enabled','¿Qué te gustaría cambiar?':'What would you like to change?','Cancelar':'Cancel','Aceptar':'Accept',
+    'Número...':'Number...','Interferencias':'Interferences','Sincronizadas':'Synchronized','Revisadas':'Reviewed','Tiempo':'Time',
+    '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'You completed all waves! Generate a new wave to continue.',
+    'Selecciona un tema con historias para iniciar la elipse.':'Select a topic with stories to start the ellipse.'
+  });
+  Object.assign(DICT.zh, {
+    'Recomendaciones NeuroAdaptativas':'神经自适应建议','Estudia':'学习','Estudiar':'学习','Repasar':'复习',
+    'Pendiente':'待完成','Completada':'已完成','Base':'基础','Onda':'波','Historias de la Elipse':'椭圆故事',
+    'Elipse de Conocimiento':'知识椭圆','Seleccionar Tema':'选择主题','Generar Plantilla':'生成模板',
+    'Importar Onda':'导入波','Limpiar':'清除','Configuración avanzada':'高级设置','Configuración del Modo Elipse':'椭圆模式设置',
+    'Máximo de ondas':'最大波数','Palabras nuevas por onda':'每波新词','Nivel base':'基础等级','Descripción opcional':'可选描述',
+    'Habilitada':'已启用','¿Qué te gustaría cambiar?':'你想更改什么？','Cancelar':'取消','Aceptar':'确定',
+    'Número...':'数字…','Interferencias':'干扰','Sincronizadas':'已同步','Revisadas':'已复习','Tiempo':'时间',
+    '¡Has completado todas las ondas! Genera una nueva onda para continuar.':'你已完成所有波！生成新波以继续。',
+    'Selecciona un tema con historias para iniciar la elipse.':'选择一个包含故事的主题以开始椭圆。'
+  });
+
   function normalizeLang(lang) {
     const v = String(lang || '').toLowerCase();
     if (v.startsWith('zh')) return 'zh';
