@@ -954,7 +954,7 @@ class UITemasRender {
             `;
         }
 
-        if (window.modoElipse) {
+        if (window.modoElipse && tema._esPredefinido !== true && tema.origen !== 'predefinido' && tema._origenPredefinido !== true) {
             html += `
                 <button class="btn-secondary" onclick="window.UITemasActions.generarOndaElipse(${temaId})" 
                         style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#6C5CE7,#00CEC9);color:white;border:none;border-radius:6px;cursor:pointer;">
