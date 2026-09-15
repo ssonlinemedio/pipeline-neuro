@@ -213,7 +213,7 @@ class GestorProgresoHistorias {
             await db.update('historias', historia);
             // El checkbox modifica metadatos de la historia, no solo el SRS.
             // Reencolamos el documento completo para otros dispositivos.
-            if (origen !== 'srs' && historia._esPredefinido !== true) {
+            if (historia._esPredefinido !== true) {
                 await db._encolarHistoriaPropiaCompleta?.(historiaId);
             }
             this._log(`✅ Historia actualizada en DB: estado=${estadoFinal}, RCN=${rcnFinal.toFixed(1)}`);
