@@ -83,11 +83,59 @@
                         });
                     }
                 }
+                const pulledStories = await this.pullUserStories(client);
                 const pulled = await this.pullLearningStates(client);
-                return { status: 'ok', processed, pulled };
+                return { status: 'ok', processed, pulled, pulledStories };
             } finally {
                 this._running = false;
             }
+        }
+
+        async pullUserStories(client) {
+            const database = this._getDatabase();
+            if (!database) return 0;
+            const { data, error } = await client.from(TABLES.user_stories)
+                .select('local_key,title,content,content_version,created_at,updated_at,version,deleted_at')
+                .is('deleted_at', null);
+            if (error || !Array.isArray(data)) return 0;
+            const localStories = await database.getAll('historias');
+            const byKey = new Map(localStories.filter(story => story.localKey).map(story => [story.localKey, story]));
+            let applied = 0;
+            for (const remote of data) {
+                if (!remote.local_key || !remote.content || typeof remote.content !== 'object') continue;
+                const local = byKey.get(remote.local_key);
+                if (local && Number(local._syncVersion || 0) >= Number(remote.version || 1)) continue;
+                const source = { ...remote.content };
+                delete source.id;
+                const frases = Array.isArray(source.frases) ? source.frases : [];
+                delete source.frases;
+                const historia = {
+                    ...source,
+                    localKey: remote.local_key,
+                    titulo: source.titulo || remote.title || 'Historia sincronizada',
+                    _esPredefinido: false,
+                    _syncVersion: Number(remote.version || 1),
+                    _contentVersion: Number(remote.content_version || source._contentVersion || 1),
+                    fechaCreacion: source.fechaCreacion || remote.created_at || new Date().toISOString()
+                };
+                let historiaId = local?.id;
+                if (historiaId) {
+                    await database.update('historias', { ...historia, id: historiaId });
+                    const antiguas = await database.getByIndex('frases', 'historiaId', Number(historiaId));
+                    for (const frase of antiguas) await database.delete('frases', frase.id);
+                } else {
+                    historiaId = await database.add('historias', historia);
+                }
+                if (!historiaId) continue;
+                for (const frase of frases) {
+                    const copia = { ...frase };
+                    delete copia.id;
+                    await database.add('frases', { ...copia, historiaId: Number(historiaId) });
+                }
+                byKey.set(remote.local_key, { ...historia, id: historiaId });
+                applied += 1;
+            }
+            return applied;
         }
 
         async pullLearningStates(client) {
