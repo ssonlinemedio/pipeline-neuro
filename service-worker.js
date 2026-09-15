@@ -20,6 +20,7 @@ const STATIC_ASSETS = [
     '/js/core/ttsManager.js',
     '/js/core/supabaseConfig.js',
     '/js/core/supabaseClient.js',
+    '/js/core/syncManager.js',
     '/js/core/gestorProgresoHistorias.js',
     '/js/core/progresionMilitar.js',
     '/js/modoElipse.js',

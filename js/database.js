@@ -5,7 +5,7 @@
 class Database {
     constructor() {
         this.dbName = 'PipelineDB';
-        this.dbVersion = 21;
+        this.dbVersion = 22;
         this.db = null;
         this._initialized = false;
         this._initializing = false;
@@ -38,6 +38,7 @@ class Database {
             reglasGramaticales: '++id, idioma, nivel, tipo, regla, explicacion, ejemplos, frecuencia, fechaCreacion, ultimoUso',
             metricasGramaticales: '++id, usuarioId, idioma, progresoGeneral, reglasDominadas, reglasAprendiendo, reglasPendientes, edadGramatical, ultimaActualizacion',
             perfilesAprendizaje: '++id, usuarioId, nivelConfianza, variaciones, patrones, fechaActualizacion'
+            ,sync_queue: '++id, entity, operation, entityKey, queuedAt, attempts, lastError'
         };
         
         this._cache = {
