@@ -1116,7 +1116,8 @@ class UIEclipse {
             const idiomaActivo = gestorIdiomas?.getIdiomaActivo() || 'es';
             console.log(`🌌 Seleccionando tema para idioma: ${idiomaActivo}`);
 
-            const todosLosTemas = await db.obtenerTemasPorIdioma(idiomaActivo);
+            const todosLosTemas = (await db.obtenerTemasPorIdioma(idiomaActivo))
+                .filter(t => t._esPredefinido !== true && t.origen !== 'predefinido' && t._origenPredefinido !== true);
 
             const temasConHistorias = [];
             for (const t of todosLosTemas) {
